@@ -81,7 +81,7 @@ startBtn.addEventListener('click', () => {
   audioEngine.init();
   
   // Play background theme music
-  audioEngine.playBackgroundTheme('assets/audio/theme_1.wav');
+  audioEngine.playBackgroundTheme('/assets/audio/theme_1.wav');
   
   // Preload all narrations
   lettersData.forEach(letter => {
@@ -129,8 +129,8 @@ function animate() {
       const letterData = lettersData.find(l => l.id === activeLetterId);
       if (letterData) {
         // Update Images
-        const frontPath = letterData.frontImage || `assets/letters/${activeLetterId}.jpg`;
-        const backPath = letterData.backImage || `assets/letters/${activeLetterId}-${activeLetterId}.jpg`;
+        const frontPath = letterData.frontImage || `/assets/letters/${activeLetterId}.jpg`;
+        const backPath = letterData.backImage || `/assets/letters/${activeLetterId}-${activeLetterId}.jpg`;
         
         if (frontImage.src !== new URL(frontPath, window.location.href).href) {
              frontImage.src = frontPath;

@@ -12,7 +12,7 @@ export async function loadLetters(scene, lettersData) {
 
   lettersData.forEach((data) => {
     const fileNumber = data.id;
-    const path = `/textures/${fileNumber}.glb`;
+    const path = `/assets/textures/${fileNumber}.glb`;
     console.log(`Queueing: ${path}`);
 
     const loadPromise = new Promise((resolve, reject) => {
