@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>House of Dreams</title>
+    <link rel="stylesheet" href="/src/styles/main.css">
+  </head>
+  <body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+      <div class="loader"></div>
+      <div>Loading Experience...</div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" style="display: none;"> <!-- Initially hidden, shown after load -->
+      <h1>House of Dreams</h1>
+      <p>Explore the archive. Listen to the stories.</p>
+      <button id="start-btn" class="btn">Enter Archive</button>
+    </div>
+
+    <!-- Pause Screen -->
+    <div id="pause-screen" style="display: none;">
+      <h2>Paused</h2>
+      <button id="resume-btn" class="btn">Resume</button>
+    </div>
+
+    <!-- HUD -->
+    <div id="reticle"></div>
+    <div id="controls-hint">WASD to Move • Mouse to Look</div>
+    
+    <!-- Subtitles -->
+    <div id="subtitle-container"></div>
+
+    <!-- Letter Preview -->
+    <div id="letter-preview">
+      <div class="preview-card">
+        <img id="preview-front" src="" alt="Front">
+        <div class="preview-label">Front</div>
+      </div>
+      <div class="preview-card">
+        <img id="preview-back" src="" alt="Back">
+        <div class="preview-label">Back</div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
