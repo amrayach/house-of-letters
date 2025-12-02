@@ -1,17 +1,13 @@
 import { execSync } from 'child_process';
-import { readdirSync, existsSync, mkdirSync } from 'fs';
+import { readdirSync, existsSync, mkdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 
-const inputDir = './assets/textures';
-const outputDir = './assets/textures/compressed';
-const texturesDir = './assets/textures';
+const inputDir = './public/assets/textures';
+const outputDir = './public/assets/models';
 
-// Create directories if they don't exist
+// Create output directory if it doesn't exist
 if (!existsSync(outputDir)) {
   mkdirSync(outputDir, { recursive: true });
-}
-if (!existsSync(texturesDir)) {
-  mkdirSync(texturesDir, { recursive: true });
 }
 
 // Get all .glb files
@@ -47,6 +43,10 @@ glbFiles.forEach(file => {
     
     // Clean up temp file
     execSync(`rm ${tempPath}`, { stdio: 'ignore' });
+    
+    // Delete original uncompressed source file
+    unlinkSync(inputPath);
+    console.log(`  → Deleted original: ${file}`);
     
     console.log(`✓ Completed: ${file}`);
   } catch (error) {

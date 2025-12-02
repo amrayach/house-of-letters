@@ -1,19 +1,36 @@
 import { defineConfig } from 'vite';
 import glsl from 'vite-plugin-glsl';
+import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [glsl()],
-  publicDir: 'public', // Serves static assets from /public
+  publicDir: 'public',
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+      '@audio': resolve(__dirname, 'src/audio'),
+      '@renderer': resolve(__dirname, 'src/renderer'),
+      '@data': resolve(__dirname, 'src/data'),
+      '@config': resolve(__dirname, 'src/config'),
+      '@utils': resolve(__dirname, 'src/utils'),
+      '@interaction': resolve(__dirname, 'src/interaction')
+    }
+  },
   server: {
     open: true,
     fs: {
-      // Allow serving files from assets directory
-      allow: ['..']
+      allow: ['.']
     }
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          three: ['three']
+        }
+      }
+    }
   },
-  // Ensure assets folder is accessible
   assetsInclude: ['**/*.glb']
 });

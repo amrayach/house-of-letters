@@ -1,12 +1,13 @@
 import * as THREE from 'three';
-import { initScene } from './renderer/sceneSetup.js';
-import { initLighting } from './renderer/lighting.js';
-import { initControls } from './renderer/controls.js';
-import { loadLetters } from './renderer/letters.js';
-import { audioEngine } from './audio/audioEngine.js';
-import { themeMixer } from './audio/themeMixer.js';
-import { ProximityManager } from './interaction/proximityManager.js';
-import lettersData from './data/letters.json';
+import { initScene } from '@renderer/sceneSetup.js';
+import { initLighting } from '@renderer/lighting.js';
+import { initControls } from '@renderer/controls.js';
+import { loadLetters } from '@renderer/letters.js';
+import { audioEngine } from '@audio/audioEngine.js';
+import { themeMixer } from '@audio/themeMixer.js';
+import { ProximityManager } from '@interaction/proximityManager.js';
+import { AUDIO, ASSETS } from '@config/constants.js';
+import lettersData from '@data/letters.json';
 
 // 1. Initialize Scene
 const { scene, camera, renderer } = initScene();
@@ -33,11 +34,6 @@ const resumeBtn = document.getElementById('resume-btn');
     letterObjects = await loadLetters(scene, lettersData);
     console.log('All letters loaded successfully!');
 
-    // Force shader compilation to prevent lag at start
-    console.log('Compiling shaders...');
-    renderer.compile(scene, camera);
-    console.log('Shaders compiled!');
-    
     // 5. Interaction
     proximityManager = new ProximityManager(camera, letterObjects);
 
@@ -79,10 +75,10 @@ const resumeBtn = document.getElementById('resume-btn');
 startBtn.addEventListener('click', () => {
   // Initialize Audio Context
   audioEngine.init();
-  
+
   // Play background theme music
-  audioEngine.playBackgroundTheme('/assets/audio/theme_1.wav');
-  
+  audioEngine.playBackgroundTheme(AUDIO.THEME_PATH);
+
   // Preload all narrations
   lettersData.forEach(letter => {
     if (letter.narration) {
@@ -115,7 +111,7 @@ function animate() {
   let activeLetterId = null;
   if (proximityManager) {
     activeLetterId = proximityManager.update();
-    
+
     // Update Audio Theme
     themeMixer.update(activeLetterId);
 
@@ -131,14 +127,14 @@ function animate() {
         // Update Images
         const frontPath = letterData.frontImage || `/assets/letters/${activeLetterId}.jpg`;
         const backPath = letterData.backImage || `/assets/letters/${activeLetterId}-${activeLetterId}.jpg`;
-        
+
         if (frontImage.src !== new URL(frontPath, window.location.href).href) {
-             frontImage.src = frontPath;
+          frontImage.src = frontPath;
         }
         if (backImage.src !== new URL(backPath, window.location.href).href) {
-             backImage.src = backPath;
+          backImage.src = backPath;
         }
-        
+
         // Show Preview
         previewContainer.classList.add('visible');
 
@@ -163,27 +159,26 @@ function animate() {
 
   if (letterObjects.length > 0) {
     // Optimization: Only animate letters within view distance
-    const animationRadiusSq = 20.0 * 20.0; // Squared for faster comparison
-    
+    const animationRadiusSq = 15.0 * 15.0; // Reduced radius for better performance
+
     letterObjects.forEach((letter, i) => {
       const distSq = camera.position.distanceToSquared(letter.position);
-      
+
       // Skip animation for distant letters to save CPU
       if (distSq > animationRadiusSq) return;
-      
+
       const offset = i * 2; // Phase offset
-      
-      // Gentle rotation (torsion) - reduced frequency
-      letter.rotation.y = Math.sin(time * 0.15 + offset) * 0.2;
-      
-      // Swaying (wind) - reduced frequency
-      letter.rotation.z = Math.sin(time * 0.3 + offset) * 0.05;
-      letter.rotation.x = Math.cos(time * 0.25 + offset) * 0.05;
-      
-      // Vertical bobbing (air currents) - reduced frequency
-      letter.position.y = letter.userData.position.y + Math.sin(time * 0.5 + offset) * 0.1;
+
+      // Gentle rotation (torsion) - reduced frequency and amplitude
+      letter.rotation.y = Math.sin(time * 0.1 + offset) * 0.15;
+
+      // Swaying (wind) - simplified to only z-axis rotation
+      letter.rotation.z = Math.sin(time * 0.2 + offset) * 0.03;
+
+      // Vertical bobbing (air currents) - reduced frequency and amplitude
+      letter.position.y = letter.userData.position.y + Math.sin(time * 0.3 + offset) * 0.08;
     });
-    
+
     // Update Audio Theme
     // themeMixer.update(activeLetterId) is already called above
   }

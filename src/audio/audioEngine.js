@@ -1,4 +1,5 @@
 import { Howl, Howler } from 'howler';
+import { AUDIO } from '@config/constants.js';
 
 export class AudioEngine {
   constructor() {
@@ -29,8 +30,8 @@ export class AudioEngine {
     this.backgroundTheme = new Howl({
       src: [url],
       loop: true,
-      volume: 1.0,
-      html5: true, // Use HTML5 Audio for streaming (faster start for music)
+      volume: AUDIO.THEME_VOLUME,
+      html5: true,
       onload: () => console.log('Background theme loaded'),
       onloaderror: (id, error) => console.error('Error loading background theme:', error)
     });
@@ -48,14 +49,14 @@ export class AudioEngine {
       this.narrations[letterId] = new Howl({
         src: [url],
         loop: false,
-        volume: 1.0,
+        volume: AUDIO.NARRATION_VOLUME,
         onload: () => console.log(`Narration ${letterId} loaded`),
         onloaderror: (id, error) => console.error(`Error loading narration ${letterId}:`, error),
         onend: () => {
           console.log(`Narration ${letterId} ended`);
           // Restore theme volume when narration ends
           if (this.backgroundTheme) {
-            this.backgroundTheme.fade(this.backgroundTheme.volume(), 1.0, 500);
+            this.backgroundTheme.fade(this.backgroundTheme.volume(), AUDIO.THEME_VOLUME, AUDIO.FADE_DURATION);
           }
         }
       });
@@ -82,7 +83,7 @@ export class AudioEngine {
 
     // Duck the background theme
     if (this.backgroundTheme && this.backgroundTheme.playing()) {
-      this.backgroundTheme.fade(this.backgroundTheme.volume(), 0.2, 500);
+      this.backgroundTheme.fade(this.backgroundTheme.volume(), AUDIO.DUCKING_VOLUME, AUDIO.FADE_DURATION);
     }
 
     // Play the narration
@@ -99,7 +100,7 @@ export class AudioEngine {
 
     // Restore theme volume
     if (this.backgroundTheme && this.backgroundTheme.playing()) {
-      this.backgroundTheme.fade(this.backgroundTheme.volume(), 1.0, 500);
+      this.backgroundTheme.fade(this.backgroundTheme.volume(), AUDIO.THEME_VOLUME, AUDIO.FADE_DURATION);
     }
   }
 

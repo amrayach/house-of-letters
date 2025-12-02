@@ -12,24 +12,25 @@ export function initScene() {
     500 // Increased to ensure proper rendering distance
   );
   // Adjusted camera start position for larger grid (2x spread)
-  camera.position.set(0, 1.6, 50); 
+  camera.position.set(0, 1.6, 50);
 
-  const renderer = new THREE.WebGLRenderer({ 
+  const renderer = new THREE.WebGLRenderer({
     antialias: false, // Disable antialiasing for better performance
     powerPreference: "high-performance" // Use discrete GPU if available
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Reduce from 2 to 1.5 for better performance
+  renderer.outputColorSpace = THREE.SRGBColorSpace; // Ensure proper color rendering for textures
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; // Better color reproduction
+  renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = false; // Disable shadows for better performance with many objects
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
 
   // Ground (large enough to cover play area)
   const groundGeometry = new THREE.PlaneGeometry(1000, 1000); // Increased from 200 to prevent black screen
-  const groundMaterial = new THREE.MeshStandardMaterial({ 
-    color: 0x080808,
-    roughness: 0.8,
-    metalness: 0.2
+  const groundMaterial = new THREE.MeshBasicMaterial({
+    color: 0x404040
   });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2;
