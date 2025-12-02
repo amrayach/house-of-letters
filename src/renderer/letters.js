@@ -5,9 +5,11 @@ import { MODEL, ASSETS } from '@config/constants.js';
 const gltfLoader = getGLTFLoader();
 const sharedStringMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
 
-export async function loadLetters(scene, lettersData) {
+export async function loadLetters(scene, lettersData, onProgress = null) {
   const letterObjects = [];
   const loadPromises = [];
+  let loadedCount = 0;
+  const totalCount = lettersData.length;
 
   console.log(`Attempting to load ${lettersData.length} GLB files...`);
 
@@ -170,15 +172,21 @@ export async function loadLetters(scene, lettersData) {
 
           scene.add(model);
           letterObjects.push(model);
+          loadedCount++;
+          if (onProgress) onProgress(loadedCount, totalCount);
           resolve(model);
         },
         (progress) => {
           // Optional: handle loading progress
-          const percent = (progress.loaded / progress.total) * 100;
-          console.log(`Loading model ${data.id}: ${percent.toFixed(0)}%`);
+          if (progress.total > 0) {
+            const percent = (progress.loaded / progress.total) * 100;
+            console.log(`Loading model ${data.id}: ${percent.toFixed(0)}%`);
+          }
         },
         (error) => {
-          console.error(`Error loading model ${data.id}:`, error);
+          console.error(`Error loading model ${data.id} from ${path}:`, error);
+          loadedCount++;
+          if (onProgress) onProgress(loadedCount, totalCount);
           reject(error);
         }
       );
@@ -187,9 +195,19 @@ export async function loadLetters(scene, lettersData) {
     loadPromises.push(loadPromise);
   });
 
-  // Wait for all models to load
-  await Promise.all(loadPromises);
-  console.log(`Loaded ${letterObjects.length} letter models`);
-
+  // Wait for all models to load, but don't fail if some models are missing
+  const results = await Promise.allSettled(loadPromises);
+  
+  // Log results
+  const successful = results.filter(r => r.status === 'fulfilled').length;
+  const failed = results.filter(r => r.status === 'rejected');
+  
+  console.log(`Loaded ${successful}/${lettersData.length} letter models`);
+  
+  if (failed.length > 0) {
+    console.warn(`Failed to load ${failed.length} models:`, failed.map(r => r.reason));
+  }
+  
+  // Return whatever models were successfully loaded
   return letterObjects;
 }

@@ -23,6 +23,7 @@ let letterObjects = [];
 let proximityManager = null;
 
 const loadingScreen = document.getElementById('loading-screen');
+const loadingProgress = document.getElementById('loading-progress');
 const startScreen = document.getElementById('start-screen');
 const startBtn = document.getElementById('start-btn');
 const pauseScreen = document.getElementById('pause-screen');
@@ -31,8 +32,25 @@ const resumeBtn = document.getElementById('resume-btn');
 (async () => {
   try {
     console.log('Loading letter models...');
-    letterObjects = await loadLetters(scene, lettersData);
-    console.log('All letters loaded successfully!');
+    
+    // Progress callback to update UI
+    const updateProgress = (loaded, total) => {
+      if (loadingProgress) {
+        loadingProgress.textContent = `Loading models: ${loaded}/${total}`;
+      }
+    };
+    
+    // Add a timeout to prevent infinite loading
+    const loadingTimeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Loading timeout - assets took too long to load')), 60000);
+    });
+    
+    letterObjects = await Promise.race([
+      loadLetters(scene, lettersData, updateProgress),
+      loadingTimeout
+    ]);
+    
+    console.log(`Loaded ${letterObjects.length} letters successfully!`);
 
     // 5. Interaction
     proximityManager = new ProximityManager(camera, letterObjects);
@@ -67,7 +85,16 @@ const resumeBtn = document.getElementById('resume-btn');
 
   } catch (error) {
     console.error('Error loading letters:', error);
-    loadingScreen.innerHTML = `<div style="color:red">Error loading experience. Check console.</div>`;
+    loadingScreen.innerHTML = `
+      <div style="color: #ff6b6b; text-align: center; padding: 20px;">
+        <h2>Error Loading Experience</h2>
+        <p style="margin: 10px 0;">${error.message || 'Failed to load assets'}</p>
+        <p style="font-size: 12px; opacity: 0.7;">Check the browser console for details (F12)</p>
+        <button onclick="location.reload()" style="margin-top: 15px; padding: 10px 20px; cursor: pointer;">
+          Retry
+        </button>
+      </div>
+    `;
   }
 })();
 

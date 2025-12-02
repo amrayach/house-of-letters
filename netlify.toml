@@ -1,0 +1,35 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Ensure GLB files are served with correct MIME type
+[[headers]]
+  for = "/*.glb"
+  [headers.values]
+    Content-Type = "model/gltf-binary"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/assets/models/*.glb"
+  [headers.values]
+    Content-Type = "model/gltf-binary"
+    Access-Control-Allow-Origin = "*"
+
+# Ensure audio files are served correctly
+[[headers]]
+  for = "/*.wav"
+  [headers.values]
+    Content-Type = "audio/wav"
+    Access-Control-Allow-Origin = "*"
+
+[[headers]]
+  for = "/assets/audio/*.wav"
+  [headers.values]
+    Content-Type = "audio/wav"
+    Access-Control-Allow-Origin = "*"
+
+# SPA fallback - redirect all routes to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
