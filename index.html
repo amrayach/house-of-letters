@@ -31,6 +31,20 @@
     <div id="reticle"></div>
     <div id="controls-hint">WASD to Move • Mouse to Look</div>
     
+    <!-- Debug Panel -->
+    <div id="debug-panel">
+      <div class="debug-title">Debug Controls</div>
+      <div class="debug-row">
+        <label for="speed-slider">Walking Speed:</label>
+        <input type="range" id="speed-slider" min="5" max="300" value="100" step="5">
+        <span id="speed-value">100</span>
+      </div>
+      <div class="debug-row">
+        <span>Current Speed:</span>
+        <span id="current-speed">0.00</span>
+      </div>
+    </div>
+    
     <!-- Subtitles -->
     <div id="subtitle-container"></div>
 

@@ -1,6 +1,17 @@
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import * as THREE from 'three';
 
+// Debug: Walking speed configuration
+let walkingSpeed = 100.0;
+
+export function setWalkingSpeed(speed) {
+  walkingSpeed = speed;
+}
+
+export function getWalkingSpeed() {
+  return walkingSpeed;
+}
+
 export function initControls(camera, domElement) {
   const controls = new PointerLockControls(camera, domElement);
 
@@ -58,9 +69,11 @@ export function initControls(camera, domElement) {
 
   const velocity = new THREE.Vector3();
   const direction = new THREE.Vector3();
+  let currentSpeed = 0;
 
   return {
     controls,
+    getVelocity: () => currentSpeed,
     update: (delta) => {
       // Clamp delta to prevent physics explosions during lag spikes
       const timeStep = Math.min(delta, 0.05);
@@ -73,16 +86,21 @@ export function initControls(camera, domElement) {
         direction.x = Number(moveState.right) - Number(moveState.left);
         direction.normalize();
 
-        if (moveState.forward || moveState.backward) velocity.z -= direction.z * 100.0 * timeStep;
-        if (moveState.left || moveState.right) velocity.x -= direction.x * 100.0 * timeStep;
+        if (moveState.forward || moveState.backward) velocity.z -= direction.z * walkingSpeed * timeStep;
+        if (moveState.left || moveState.right) velocity.x -= direction.x * walkingSpeed * timeStep;
 
         controls.moveRight(-velocity.x * timeStep);
         controls.moveForward(-velocity.z * timeStep);
+        
+        // Calculate current speed for debug display
+        currentSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
         
         // Debug: Log position occasionally
         if (Math.random() < 0.01) {
           console.log('Camera position:', controls.getObject().position);
         }
+      } else {
+        currentSpeed = 0;
       }
     }
   };

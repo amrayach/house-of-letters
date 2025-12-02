@@ -140,6 +140,58 @@ body {
   z-index: 100;
 }
 
+/* Debug Panel */
+#debug-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 15px;
+  z-index: 1500;
+  font-size: 0.85rem;
+  min-width: 220px;
+  backdrop-filter: blur(5px);
+}
+
+.debug-title {
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffa500;
+}
+
+.debug-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.debug-row label,
+.debug-row span {
+  white-space: nowrap;
+}
+
+.debug-row input[type="range"] {
+  flex: 1;
+  cursor: pointer;
+  accent-color: #ffa500;
+}
+
+#speed-value,
+#current-speed {
+  min-width: 45px;
+  text-align: right;
+  font-family: monospace;
+  color: #00ff88;
+}
+
 /* Letter Preview */
 #letter-preview {
   position: absolute;

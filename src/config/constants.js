@@ -20,7 +20,7 @@ export const CAMERA = {
 // Models
 export const MODEL = {
   SCALE: 8,
-  GRID_SCALE: 2.0
+  GRID_SCALE: 4.0
 };
 
 // Audio

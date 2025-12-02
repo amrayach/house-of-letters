@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { initScene } from '@renderer/sceneSetup.js';
 import { initLighting } from '@renderer/lighting.js';
-import { initControls } from '@renderer/controls.js';
+import { initControls, setWalkingSpeed, getWalkingSpeed } from '@renderer/controls.js';
 import { loadLetters } from '@renderer/letters.js';
 import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
@@ -16,7 +16,18 @@ const { scene, camera, renderer } = initScene();
 const { pointLight, pointLight2 } = initLighting(scene);
 
 // 3. Controls
-const { controls, update: updateControls } = initControls(camera, document.body);
+const { controls, update: updateControls, getVelocity } = initControls(camera, document.body);
+
+// Debug: Speed slider setup
+const speedSlider = document.getElementById('speed-slider');
+const speedValueDisplay = document.getElementById('speed-value');
+const currentSpeedDisplay = document.getElementById('current-speed');
+
+speedSlider.addEventListener('input', (e) => {
+  const speed = parseInt(e.target.value, 10);
+  setWalkingSpeed(speed);
+  speedValueDisplay.textContent = speed;
+});
 
 // 4. Load Content (async)
 let letterObjects = [];
@@ -133,6 +144,9 @@ function animate() {
 
   // Update Controls
   updateControls(delta);
+  
+  // Update debug speed display
+  currentSpeedDisplay.textContent = getVelocity().toFixed(2);
 
   // Check Proximity
   let activeLetterId = null;
