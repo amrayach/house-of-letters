@@ -3,13 +3,29 @@ import { initScene } from '@renderer/sceneSetup.js';
 import { initLighting } from '@renderer/lighting.js';
 import { initControls, setWalkingSpeed, getWalkingSpeed } from '@renderer/controls.js';
 import { loadLetters } from '@renderer/letters.js';
+import { LoadingScene } from '@renderer/loadingScene.js';
 import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
 import { ProximityManager } from '@interaction/proximityManager.js';
 import { AUDIO, ASSETS } from '@config/constants.js';
 import lettersData from '@data/letters.json';
 
-// 1. Initialize Scene
+// Loading Scene Elements
+const loadingSceneContainer = document.getElementById('loading-scene-container');
+const loadingOverlay = document.getElementById('loading-overlay');
+const loadingProgress = document.getElementById('loading-progress');
+const loadingStatus = document.getElementById('loading-status');
+const skipBtn = document.getElementById('skip-intro-btn');
+
+// Create the 3D loading scene
+const loadingScene = new LoadingScene(loadingSceneContainer);
+
+// Main game state
+let gameInitialized = false;
+let assetsLoaded = false;
+let loadingSceneComplete = false;
+
+// 1. Initialize Scene (hidden until loading complete)
 const { scene, camera, renderer } = initScene();
 
 // 2. Lighting
@@ -34,11 +50,47 @@ let letterObjects = [];
 let proximityManager = null;
 
 const loadingScreen = document.getElementById('loading-screen');
-const loadingProgress = document.getElementById('loading-progress');
 const startScreen = document.getElementById('start-screen');
 const startBtn = document.getElementById('start-btn');
 const pauseScreen = document.getElementById('pause-screen');
 const resumeBtn = document.getElementById('resume-btn');
+
+// Function to transition from loading to game
+function transitionToGame() {
+  if (!assetsLoaded || !loadingSceneComplete) return;
+  
+  // Fade out loading scene
+  loadingScreen.style.opacity = '0';
+  
+  setTimeout(() => {
+    loadingScreen.style.display = 'none';
+    
+    // Clean up loading scene
+    loadingScene.dispose();
+    
+    // Show start screen
+    startScreen.style.display = 'flex';
+    gameInitialized = true;
+  }, 800);
+}
+
+// Skip button handler
+if (skipBtn) {
+  skipBtn.addEventListener('click', () => {
+    if (loadingScene) {
+      loadingScene.skipTransition();
+    }
+  });
+}
+
+// Start the loading scene animation
+loadingScene.start(() => {
+  loadingSceneComplete = true;
+  if (loadingStatus) {
+    loadingStatus.textContent = 'Ready to enter...';
+  }
+  transitionToGame();
+});
 
 (async () => {
   try {
@@ -47,7 +99,10 @@ const resumeBtn = document.getElementById('resume-btn');
     // Progress callback to update UI
     const updateProgress = (loaded, total) => {
       if (loadingProgress) {
-        loadingProgress.textContent = `Loading models: ${loaded}/${total}`;
+        loadingProgress.textContent = `${loaded}/${total} models`;
+      }
+      if (loadingStatus) {
+        loadingStatus.textContent = `Loading experience... ${Math.round((loaded/total) * 100)}%`;
       }
     };
     
@@ -66,12 +121,11 @@ const resumeBtn = document.getElementById('resume-btn');
     // 5. Interaction
     proximityManager = new ProximityManager(camera, letterObjects);
 
-    // UI Transition: Loading -> Start
-    loadingScreen.style.opacity = 0;
-    setTimeout(() => {
-      loadingScreen.style.display = 'none';
-      startScreen.style.display = 'flex';
-    }, 500);
+    // Mark assets as loaded
+    assetsLoaded = true;
+    
+    // Try to transition (will wait for loading scene to complete)
+    transitionToGame();
 
     // Handle Pause/Resume
     controls.addEventListener('lock', () => {

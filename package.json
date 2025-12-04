@@ -12,10 +12,16 @@
     "compress": "node scripts/compress-glb.js",
     "clean": "rm -rf dist node_modules/.vite"
   },
-  "keywords": ["threejs", "3d", "interactive", "gallery"],
+  "keywords": [
+    "threejs",
+    "3d",
+    "interactive",
+    "gallery"
+  ],
   "dependencies": {
     "cannon-es": "^0.20.0",
     "howler": "^2.2.4",
+    "postprocessing": "^6.38.0",
     "three": "^0.181.2",
     "vite-plugin-glsl": "^1.5.4"
   },

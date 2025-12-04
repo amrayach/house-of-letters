@@ -14,22 +14,103 @@ body {
   user-select: none;
 }
 
-/* Loading Screen */
+/* Loading Screen with 3D Scene */
 #loading-screen {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   background: var(--bg-color);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
   z-index: 2000;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.8s ease;
 }
 
+#loading-scene-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+#loading-scene-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding-bottom: 80px;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 60%,
+    rgba(0, 0, 0, 0.4) 80%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+}
+
+#loading-content {
+  text-align: center;
+  pointer-events: auto;
+}
+
+.loading-title {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.8);
+  animation: titlePulse 3s ease-in-out infinite;
+}
+
+@keyframes titlePulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+
+#loading-status {
+  font-size: 1rem;
+  opacity: 0.8;
+  margin-bottom: 0.5rem;
+  letter-spacing: 2px;
+}
+
+#loading-progress {
+  font-size: 0.9rem;
+  opacity: 0.6;
+  margin-bottom: 1.5rem;
+}
+
+.btn-skip {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 8px 20px;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.btn-skip:hover {
+  opacity: 1;
+  border-color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Legacy loader (hidden but kept for fallback) */
 .loader {
   border: 4px solid #333;
   border-top: 4px solid var(--primary-color);
@@ -38,6 +119,7 @@ body {
   height: 40px;
   animation: spin 1s linear infinite;
   margin-bottom: 20px;
+  display: none;
 }
 
 @keyframes spin {

@@ -7,11 +7,20 @@
     <link rel="stylesheet" href="/src/styles/main.css">
   </head>
   <body>
-    <!-- Loading Screen -->
+    <!-- Loading Screen with 3D Building Scene -->
     <div id="loading-screen">
-      <div class="loader"></div>
-      <div id="loading-text">Loading Experience...</div>
-      <div id="loading-progress" style="font-size: 12px; margin-top: 10px; opacity: 0.7;"></div>
+      <!-- 3D Scene Container -->
+      <div id="loading-scene-container"></div>
+      
+      <!-- Loading Overlay with text -->
+      <div id="loading-overlay">
+        <div id="loading-content">
+          <h1 class="loading-title">House of Dreams</h1>
+          <div id="loading-status">Entering the archive...</div>
+          <div id="loading-progress"></div>
+          <button id="skip-intro-btn" class="btn btn-skip">Skip Intro</button>
+        </div>
+      </div>
     </div>
 
     <!-- Start Screen -->
