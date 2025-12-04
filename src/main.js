@@ -7,7 +7,7 @@ import { LoadingScene } from '@renderer/loadingScene.js';
 import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
 import { ProximityManager } from '@interaction/proximityManager.js';
-import { AUDIO, ASSETS } from '@config/constants.js';
+import { AUDIO, ASSETS, ANIMATION } from '@config/constants.js';
 import lettersData from '@data/letters.json';
 
 // Loading Scene Elements
@@ -32,7 +32,7 @@ const { scene, camera, renderer } = initScene();
 const { pointLight, pointLight2 } = initLighting(scene);
 
 // 3. Controls
-const { controls, update: updateControls, getVelocity } = initControls(camera, document.body);
+const { controls, touchControls, isTouchDevice, update: updateControls, getVelocity, activate: activateControls, deactivate: deactivateControls, isActive: isControlsActive } = initControls(camera, document.body);
 
 // Debug: Speed slider setup
 const speedSlider = document.getElementById('speed-slider');
@@ -127,25 +127,36 @@ loadingScene.start(() => {
     // Try to transition (will wait for loading scene to complete)
     transitionToGame();
 
-    // Handle Pause/Resume
-    controls.addEventListener('lock', () => {
-      startScreen.style.display = 'none';
-      pauseScreen.style.display = 'none';
-      // Resume audio when controls are locked (game resumed)
-      audioEngine.resume();
-    });
+    // Handle Pause/Resume - Different handling for touch vs desktop
+    if (isTouchDevice) {
+      // For touch devices, we don't use pointer lock events
+      // Instead, we'll handle this through UI buttons
+    } else {
+      controls.addEventListener('lock', () => {
+        startScreen.style.display = 'none';
+        pauseScreen.style.display = 'none';
+        // Resume audio when controls are locked (game resumed)
+        audioEngine.resume();
+      });
 
-    controls.addEventListener('unlock', () => {
-      // Only show pause screen if we are not in the start screen
-      if (startScreen.style.display === 'none') {
-        pauseScreen.style.display = 'flex';
-        // Pause audio when controls are unlocked (game paused)
-        audioEngine.pause();
-      }
-    });
+      controls.addEventListener('unlock', () => {
+        // Only show pause screen if we are not in the start screen
+        if (startScreen.style.display === 'none') {
+          pauseScreen.style.display = 'flex';
+          // Pause audio when controls are unlocked (game paused)
+          audioEngine.pause();
+        }
+      });
+    }
 
     resumeBtn.addEventListener('click', () => {
-      controls.lock();
+      if (isTouchDevice) {
+        activateControls();
+        pauseScreen.style.display = 'none';
+        audioEngine.resume();
+      } else {
+        controls.lock();
+      }
     });
 
   } catch (error) {
@@ -168,6 +179,9 @@ startBtn.addEventListener('click', () => {
   // Initialize Audio Context
   audioEngine.init();
 
+  // Setup visibility handler for tab switching
+  audioEngine.setupVisibilityHandler();
+
   // Play background theme music
   audioEngine.playBackgroundTheme(AUDIO.THEME_PATH);
 
@@ -178,8 +192,8 @@ startBtn.addEventListener('click', () => {
     }
   });
 
-  // Lock Controls (Enter FPS mode)
-  controls.lock();
+  // Activate Controls (Enter FPS mode)
+  activateControls();
 
   // Hide Start Screen
   startScreen.style.opacity = 0;
@@ -187,6 +201,16 @@ startBtn.addEventListener('click', () => {
     startScreen.style.display = 'none';
   }, 500);
 });
+
+// Mobile pause button handler
+const pauseBtn = document.getElementById('mobile-pause-btn');
+if (pauseBtn) {
+  pauseBtn.addEventListener('click', () => {
+    deactivateControls();
+    pauseScreen.style.display = 'flex';
+    audioEngine.pause();
+  });
+}
 
 // 7. Animation Loop
 const clock = new THREE.Clock();
@@ -254,7 +278,7 @@ function animate() {
 
   if (letterObjects.length > 0) {
     // Optimization: Only animate letters within view distance
-    const animationRadiusSq = 15.0 * 15.0; // Reduced radius for better performance
+    const animationRadiusSq = ANIMATION.LETTER_ANIMATION_RADIUS * ANIMATION.LETTER_ANIMATION_RADIUS;
 
     letterObjects.forEach((letter, i) => {
       const distSq = camera.position.distanceToSquared(letter.position);
@@ -264,14 +288,14 @@ function animate() {
 
       const offset = i * 2; // Phase offset
 
-      // Gentle rotation (torsion) - reduced frequency and amplitude
-      letter.rotation.y = Math.sin(time * 0.1 + offset) * 0.15;
+      // Gentle rotation (torsion)
+      letter.rotation.y = Math.sin(time * ANIMATION.ROTATION_SPEED + offset) * ANIMATION.ROTATION_AMPLITUDE;
 
-      // Swaying (wind) - simplified to only z-axis rotation
-      letter.rotation.z = Math.sin(time * 0.2 + offset) * 0.03;
+      // Swaying (wind)
+      letter.rotation.z = Math.sin(time * ANIMATION.SWAY_SPEED + offset) * ANIMATION.SWAY_AMPLITUDE;
 
-      // Vertical bobbing (air currents) - reduced frequency and amplitude
-      letter.position.y = letter.userData.position.y + Math.sin(time * 0.3 + offset) * 0.08;
+      // Vertical bobbing (air currents)
+      letter.position.y = letter.userData.position.y + Math.sin(time * ANIMATION.BOB_SPEED + offset) * ANIMATION.BOB_AMPLITUDE;
     });
 
     // Update Audio Theme
@@ -283,3 +307,34 @@ function animate() {
 }
 
 animate();
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  // Dispose audio resources
+  audioEngine.dispose();
+  
+  // Dispose Three.js resources
+  letterObjects.forEach(letter => {
+    letter.traverse((child) => {
+      if (child.geometry) {
+        child.geometry.dispose();
+      }
+      if (child.material) {
+        if (Array.isArray(child.material)) {
+          child.material.forEach(mat => {
+            if (mat.map) mat.map.dispose();
+            mat.dispose();
+          });
+        } else {
+          if (child.material.map) child.material.map.dispose();
+          child.material.dispose();
+        }
+      }
+    });
+  });
+  
+  // Dispose renderer
+  renderer.dispose();
+  
+  console.log('Resources cleaned up on page unload');
+});

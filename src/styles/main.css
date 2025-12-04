@@ -3,6 +3,11 @@
   --bg-color: #000000;
   --overlay-bg: rgba(0, 0, 0, 0.85);
   --font-family: 'Courier New', Courier, monospace;
+  /* Safe area insets for notched phones */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
 body {
@@ -338,4 +343,250 @@ body {
   line-height: 1.5;
   display: inline-block;
   text-shadow: 0 1px 2px black;
+}
+
+/* ==================== */
+/* MOBILE TOUCH CONTROLS */
+/* ==================== */
+
+/* Virtual Joystick */
+#touch-joystick-container {
+  display: none;
+  position: fixed;
+  bottom: calc(40px + var(--safe-area-bottom));
+  left: calc(40px + var(--safe-area-left));
+  z-index: 1000;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#joystick-base {
+  width: 120px;
+  height: 120px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+#joystick-knob {
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  position: absolute;
+  transition: transform 0.05s ease-out;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Look Area (right side of screen) */
+#touch-look-area {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 50%;
+  height: 100%;
+  z-index: 999;
+  pointer-events: auto;
+  touch-action: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.look-hint {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+/* Mobile Action Button */
+#touch-action-btn {
+  display: none;
+  position: fixed;
+  bottom: 50px;
+  right: 50px;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  color: white;
+  font-size: 2rem;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#touch-action-btn:active {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(0.95);
+}
+
+/* Mobile Pause Button */
+#mobile-pause-btn {
+  display: none;
+  position: fixed;
+  top: calc(20px + var(--safe-area-top));
+  right: calc(20px + var(--safe-area-right));
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+}
+
+#mobile-pause-btn:active {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* ==================== */
+/* RESPONSIVE / MOBILE  */
+/* ==================== */
+
+@media (max-width: 768px) {
+  /* Show touch controls on mobile */
+  #touch-joystick-container,
+  #touch-look-area,
+  #mobile-pause-btn {
+    display: flex;
+  }
+  
+  /* Hide desktop-only elements */
+  #controls-hint {
+    display: none;
+  }
+  
+  #debug-panel {
+    display: none;
+  }
+  
+  #reticle {
+    width: 4px;
+    height: 4px;
+  }
+  
+  /* Adjust loading screen */
+  .loading-title {
+    font-size: 1.8rem;
+    letter-spacing: 4px;
+  }
+  
+  #loading-overlay {
+    padding-bottom: 60px;
+  }
+  
+  /* Adjust start screen */
+  #start-screen h1 {
+    font-size: 2rem;
+    letter-spacing: 3px;
+  }
+  
+  #start-screen p {
+    font-size: 1rem;
+    padding: 0 20px;
+  }
+  
+  .btn {
+    padding: 12px 30px;
+    font-size: 1rem;
+  }
+  
+  /* Adjust letter preview for mobile */
+  #letter-preview {
+    bottom: 160px;
+    right: 20px;
+    left: 20px;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  .preview-card {
+    padding: 10px;
+  }
+  
+  .preview-card img {
+    max-width: 120px;
+  }
+  
+  /* Adjust subtitles for mobile */
+  #subtitle-container {
+    bottom: 25%;
+    width: 80%;
+  }
+  
+  .subtitle {
+    font-size: 1rem;
+    padding: 8px 15px;
+  }
+  
+  /* Pause screen adjustments */
+  #pause-screen h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* Smaller phones */
+@media (max-width: 480px) {
+  #joystick-base {
+    width: 100px;
+    height: 100px;
+  }
+  
+  #joystick-knob {
+    width: 40px;
+    height: 40px;
+  }
+  
+  #touch-joystick-container {
+    bottom: 30px;
+    left: 30px;
+  }
+  
+  .loading-title {
+    font-size: 1.5rem;
+    letter-spacing: 3px;
+  }
+  
+  #start-screen h1 {
+    font-size: 1.5rem;
+  }
+  
+  .preview-card img {
+    max-width: 80px;
+  }
+  
+  #letter-preview {
+    bottom: 150px;
+  }
+}
+
+/* Touch device detection via media query */
+@media (hover: none) and (pointer: coarse) {
+  #touch-joystick-container,
+  #touch-look-area,
+  #mobile-pause-btn {
+    display: flex;
+  }
+  
+  #controls-hint,
+  #debug-panel {
+    display: none;
+  }
 }

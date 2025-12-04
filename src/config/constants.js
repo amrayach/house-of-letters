@@ -35,7 +35,19 @@ export const AUDIO = {
 // Interaction
 export const INTERACTION = {
   PROXIMITY_THRESHOLD: 5,
-  ACTIVATION_DISTANCE: 3
+  ACTIVATION_DISTANCE: 3,
+  CHECK_RADIUS: 15.0 // Only check letters within this radius
+};
+
+// Animation
+export const ANIMATION = {
+  LETTER_ANIMATION_RADIUS: 15.0, // Only animate letters within this distance
+  ROTATION_SPEED: 0.1,
+  ROTATION_AMPLITUDE: 0.15,
+  SWAY_SPEED: 0.2,
+  SWAY_AMPLITUDE: 0.03,
+  BOB_SPEED: 0.3,
+  BOB_AMPLITUDE: 0.08
 };
 
 // Asset Paths

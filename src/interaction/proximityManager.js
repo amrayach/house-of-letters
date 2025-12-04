@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { audioEngine } from '../audio/audioEngine.js';
+import { INTERACTION } from '../config/constants.js';
 
 export class ProximityManager {
   constructor(camera, letters) {
     this.camera = camera;
     this.letters = letters;
-    this.threshold = 5.0; // Distance to trigger interaction
+    this.threshold = INTERACTION.PROXIMITY_THRESHOLD;
     this.activeLetter = null;
-    this.checkRadius = 15.0; // Only check letters within this radius
+    this.checkRadius = INTERACTION.CHECK_RADIUS;
   }
 
   update() {

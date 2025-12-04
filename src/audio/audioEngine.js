@@ -131,6 +131,43 @@ export class AudioEngine {
 
     console.log('Audio resumed');
   }
+
+  /**
+   * Setup visibility change listener to pause/resume audio when tab is hidden/visible
+   */
+  setupVisibilityHandler() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        this.pause();
+      } else {
+        this.resume();
+      }
+    });
+  }
+
+  /**
+   * Dispose all audio resources
+   */
+  dispose() {
+    if (this.backgroundTheme) {
+      this.backgroundTheme.unload();
+      this.backgroundTheme = null;
+    }
+
+    if (this.currentNarration) {
+      this.currentNarration.unload();
+      this.currentNarration = null;
+    }
+
+    // Unload all cached narrations
+    Object.values(this.narrations).forEach(narration => {
+      narration.unload();
+    });
+    this.narrations = {};
+    this.narrationUrls = {};
+
+    console.log('Audio engine disposed');
+  }
 }
 
 export const audioEngine = new AudioEngine();
