@@ -58,3 +58,6 @@ export const ASSETS = {
   AUDIO: '/assets/audio',
   LETTERS: '/assets/letters'
 };
+
+// Timeout for loading assets (milliseconds). Increase if clients have slow connections.
+export const LOADING_TIMEOUT_MS = 180000; // 3 minutes

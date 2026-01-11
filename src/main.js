@@ -7,7 +7,7 @@ import { LoadingScene } from '@renderer/loadingScene.js';
 import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
 import { ProximityManager } from '@interaction/proximityManager.js';
-import { AUDIO, ASSETS, ANIMATION } from '@config/constants.js';
+import { AUDIO, ASSETS, ANIMATION, LOADING_TIMEOUT_MS } from '@config/constants.js';
 import lettersData from '@data/letters.json';
 
 // Loading Scene Elements
@@ -106,9 +106,9 @@ loadingScene.start(() => {
       }
     };
     
-    // Add a timeout to prevent infinite loading
+    // Add a timeout to prevent infinite loading (configurable)
     const loadingTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Loading timeout - assets took too long to load')), 60000);
+      setTimeout(() => reject(new Error('Loading timeout - assets took too long to load')), LOADING_TIMEOUT_MS);
     });
     
     letterObjects = await Promise.race([

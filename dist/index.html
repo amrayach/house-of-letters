@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>House of Dreams</title>
+    <script type="module" crossorigin src="/assets/index-DdeaDFQP.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/three-DqCvsn8F.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-XoXwaMyI.css">
+  </head>
+  <body>
+    <!-- Loading Screen with 3D Building Scene -->
+    <div id="loading-screen">
+      <!-- 3D Scene Container -->
+      <div id="loading-scene-container"></div>
+      
+      <!-- Loading Overlay with text -->
+      <div id="loading-overlay">
+        <div id="loading-content">
+          <h1 class="loading-title">House of Dreams</h1>
+          <div id="loading-status">Entering the archive...</div>
+          <div id="loading-progress"></div>
+          <button id="skip-intro-btn" class="btn btn-skip">Skip Intro</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" style="display: none;"> <!-- Initially hidden, shown after load -->
+      <h1>House of Dreams</h1>
+      <p>Explore the archive. Listen to the stories.</p>
+      <button id="start-btn" class="btn">Enter Archive</button>
+    </div>
+
+    <!-- Pause Screen -->
+    <div id="pause-screen" style="display: none;">
+      <h2>Paused</h2>
+      <button id="resume-btn" class="btn">Resume</button>
+    </div>
+
+    <!-- HUD -->
+    <div id="reticle"></div>
+    <div id="controls-hint">WASD to Move • Mouse to Look • B: Bird's Eye View</div>
+    
+    <!-- Bird's Eye View Indicator -->
+    <div id="bird-eye-indicator" style="display: none;">
+      <div class="bird-eye-title">🦅 BIRD'S EYE VIEW</div>
+      <div class="bird-eye-controls">
+        WASD: Pan • Q/E: Zoom • B: Exit
+      </div>
+      <div class="bird-eye-legend">
+        <span class="legend-item"><span class="dot zone1"></span> Zone 1 (z: -60 to -55)</span>
+        <span class="legend-item"><span class="dot zone2"></span> Zone 2 (z: -35 to -20)</span>
+        <span class="legend-item"><span class="dot zone3"></span> Zone 3 (z: 0 to 25)</span>
+        <span class="legend-item"><span class="dot zone4"></span> Zone 4 (z: 45 to 90)</span>
+      </div>
+    </div>
+    
+    <!-- Mobile Pause Button -->
+    <button id="mobile-pause-btn" aria-label="Pause">⏸</button>
+    
+    <!-- Debug Panel -->
+    <div id="debug-panel">
+      <div class="debug-title">Debug Controls</div>
+      <div class="debug-row">
+        <label for="speed-slider">Walking Speed:</label>
+        <input type="range" id="speed-slider" min="5" max="300" value="100" step="5">
+        <span id="speed-value">100</span>
+      </div>
+      <div class="debug-row">
+        <span>Current Speed:</span>
+        <span id="current-speed">0.00</span>
+      </div>
+      <div class="debug-row">
+        <span>Position:</span>
+        <span id="debug-position">X: 0.00 Y: 0.00 Z: 0.00</span>
+      </div>
+    </div>
+    
+    <!-- Subtitles -->
+    <div id="subtitle-container"></div>
+
+    <!-- Letter Preview -->
+    <div id="letter-preview">
+      <div class="preview-card">
+        <img id="preview-front" src="" alt="Front">
+        <div class="preview-label">Front</div>
+      </div>
+      <div class="preview-card">
+        <img id="preview-back" src="" alt="Back">
+        <div class="preview-label">Back</div>
+      </div>
+    </div>
+
+  </body>
+</html>
