@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { initScene } from '@renderer/sceneSetup.js';
 import { initLighting } from '@renderer/lighting.js';
-import { initControls, setWalkingSpeed, getWalkingSpeed } from '@renderer/controls.js';
+import { initControls, setWalkingSpeed, getWalkingSpeed, isBirdEyeView } from '@renderer/controls.js';
 import { loadLetters } from '@renderer/letters.js';
 import { LoadingScene } from '@renderer/loadingScene.js';
 import { audioEngine } from '@audio/audioEngine.js';
@@ -214,6 +214,8 @@ if (pauseBtn) {
 
 // 7. Animation Loop
 const clock = new THREE.Clock();
+const birdEyeIndicator = document.getElementById('bird-eye-indicator');
+const debugPositionDisplay = document.getElementById('debug-position');
 
 function animate() {
   requestAnimationFrame(animate);
@@ -223,8 +225,18 @@ function animate() {
   // Update Controls
   updateControls(delta);
   
+  // Update bird's eye view indicator
+  if (birdEyeIndicator) {
+    birdEyeIndicator.style.display = isBirdEyeView() ? 'block' : 'none';
+  }
+  
   // Update debug speed display
   currentSpeedDisplay.textContent = getVelocity().toFixed(2);
+  
+  // Update debug position display
+  if (debugPositionDisplay) {
+    debugPositionDisplay.textContent = `X: ${camera.position.x.toFixed(1)} Y: ${camera.position.y.toFixed(1)} Z: ${camera.position.z.toFixed(1)}`;
+  }
 
   // Check Proximity
   let activeLetterId = null;

@@ -14,7 +14,7 @@ export const CAMERA = {
   FOV: 75,
   NEAR: 0.1,
   FAR: 1000,
-  INITIAL_POSITION: { x: 0, y: 1.6, z: 0 }
+  INITIAL_POSITION: { x: 0, y: 1.6, z: -155 } // Start 5 units behind letter 1 (at z: -150)
 };
 
 // Models
@@ -25,16 +25,17 @@ export const MODEL = {
 
 // Audio
 export const AUDIO = {
-  THEME_PATH: '/assets/audio/theme_1.wav',
+  THEME_PATH: '/assets/audio/theme_1.mp3',
   THEME_VOLUME: 1.0,
   NARRATION_VOLUME: 1.0,
   FADE_DURATION: 500,
-  DUCKING_VOLUME: 0.3
+  DUCKING_VOLUME: 0.3,
+  MAX_DISTANCE: 10 // Spatial audio falloff distance
 };
 
 // Interaction
 export const INTERACTION = {
-  PROXIMITY_THRESHOLD: 5,
+  PROXIMITY_THRESHOLD: 3, // Trigger radius for proximity activation
   ACTIVATION_DISTANCE: 3,
   CHECK_RADIUS: 15.0 // Only check letters within this radius
 };

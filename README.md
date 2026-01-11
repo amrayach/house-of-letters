@@ -31,6 +31,19 @@ A dark interactive 3D environment where JPEG-scanned letters converted into 3d o
 -   `/src/data`: JSON metadata for letters.
 -   `/assets`: Raw assets (audio, textures, models).
 
+## Deployment
+
+### Cloudflare Pages
+
+This project is configured to deploy on Cloudflare Pages:
+
+1. **Build Command**: `npm run build`
+2. **Output Directory**: `dist`
+3. **Routing**: SPA behavior is configured via `public/_redirects` — all routes resolve to `index.html`.
+4. **Headers**: MIME types and CORS headers for `.glb` and `.mp3` files are configured via `public/_headers`.
+
+These configuration files are automatically copied to the build output and applied by Cloudflare Pages.
+
 ## Next Steps
 
 -   Replace placeholder boxes with actual `.glb` letter models in `src/renderer/letters.js`.

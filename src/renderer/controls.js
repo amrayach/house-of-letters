@@ -5,6 +5,10 @@ import { TouchControls } from '../interaction/touchControls.js';
 // Debug: Walking speed configuration
 let walkingSpeed = 100.0;
 
+// Bird's eye view state
+let birdEyeViewEnabled = false;
+let savedCameraState = null;
+
 // Detect if device is touch-capable
 const isTouchDevice = () => {
   return (
@@ -22,6 +26,40 @@ export function getWalkingSpeed() {
   return walkingSpeed;
 }
 
+// Bird's eye view functions
+export function isBirdEyeView() {
+  return birdEyeViewEnabled;
+}
+
+export function toggleBirdEyeView(camera) {
+  birdEyeViewEnabled = !birdEyeViewEnabled;
+  
+  if (birdEyeViewEnabled) {
+    // Save current camera state
+    savedCameraState = {
+      position: camera.position.clone(),
+      rotation: camera.rotation.clone()
+    };
+    
+    // Move camera to bird's eye view position (above the center of all zones)
+    // Center of zones is approximately z = 0, looking down at the entire layout
+    camera.position.set(0, 100, 0);
+    camera.rotation.set(-Math.PI / 2, 0, 0); // Look straight down
+    
+    console.log('Bird\'s eye view ENABLED - Press B to return to normal view');
+    console.log('Use WASD to pan, Q/E to zoom in/out');
+  } else {
+    // Restore camera state
+    if (savedCameraState) {
+      camera.position.copy(savedCameraState.position);
+      camera.rotation.copy(savedCameraState.rotation);
+    }
+    console.log('Bird\'s eye view DISABLED - Normal view restored');
+  }
+  
+  return birdEyeViewEnabled;
+}
+
 export function initControls(camera, domElement) {
   const controls = new PointerLockControls(camera, domElement);
   const useTouchControls = isTouchDevice();
@@ -37,9 +75,17 @@ export function initControls(camera, domElement) {
     backward: false,
     left: false,
     right: false,
+    up: false,
+    down: false,
   };
 
   const onKeyDown = (event) => {
+    // Toggle bird's eye view with B key
+    if (event.code === 'KeyB') {
+      toggleBirdEyeView(camera);
+      return;
+    }
+    
     switch (event.code) {
       case 'ArrowUp':
       case 'KeyW':
@@ -56,6 +102,12 @@ export function initControls(camera, domElement) {
       case 'ArrowRight':
       case 'KeyD':
         moveState.right = true;
+        break;
+      case 'KeyQ':
+        moveState.up = true;
+        break;
+      case 'KeyE':
+        moveState.down = true;
         break;
     }
   };
@@ -77,6 +129,12 @@ export function initControls(camera, domElement) {
       case 'ArrowRight':
       case 'KeyD':
         moveState.right = false;
+        break;
+      case 'KeyQ':
+        moveState.up = false;
+        break;
+      case 'KeyE':
+        moveState.down = false;
         break;
     }
   };
@@ -125,6 +183,24 @@ export function initControls(camera, domElement) {
     update: (delta) => {
       // Clamp delta to prevent physics explosions during lag spikes
       const timeStep = Math.min(delta, 0.05);
+
+      // Bird's eye view mode - different controls
+      if (birdEyeViewEnabled) {
+        const panSpeed = 50.0;
+        const zoomSpeed = 30.0;
+        
+        // WASD to pan in X/Z plane (inverted for natural drag-style movement)
+        if (moveState.forward) camera.position.z += panSpeed * timeStep;
+        if (moveState.backward) camera.position.z -= panSpeed * timeStep;
+        if (moveState.left) camera.position.x += panSpeed * timeStep;
+        if (moveState.right) camera.position.x -= panSpeed * timeStep;
+        
+        // Q/E to zoom (Q = zoom out/up, E = zoom in/down)
+        if (moveState.up) camera.position.y += zoomSpeed * timeStep;
+        if (moveState.down) camera.position.y = Math.max(20, camera.position.y - zoomSpeed * timeStep);
+        
+        return;
+      }
 
       // Determine active move state (keyboard or touch)
       let activeMoveState = moveState;

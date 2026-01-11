@@ -10,13 +10,25 @@
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
+html {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
 body {
   margin: 0;
+  padding: 0;
   overflow: hidden;
   background: var(--bg-color);
   font-family: var(--font-family);
   color: var(--primary-color);
   user-select: none;
+  height: 100%;
+  width: 100%;
+  position: fixed;
 }
 
 /* Loading Screen with 3D Scene */
@@ -589,4 +601,71 @@ body {
   #debug-panel {
     display: none;
   }
+}
+
+/* Bird's Eye View Indicator */
+#bird-eye-indicator {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  background: rgba(0, 0, 0, 0.85);
+  border: 2px solid #4CAF50;
+  border-radius: 10px;
+  padding: 15px 25px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
+}
+
+.bird-eye-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #4CAF50;
+  margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+
+.bird-eye-controls {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 12px;
+}
+
+.bird-eye-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  font-size: 0.75rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.legend-item .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-item .dot.zone1 {
+  background: #64B5F6; /* Light Blue */
+}
+
+.legend-item .dot.zone2 {
+  background: #81C784; /* Light Green */
+}
+
+.legend-item .dot.zone3 {
+  background: #FFB74D; /* Orange */
+}
+
+.legend-item .dot.zone4 {
+  background: #E57373; /* Light Red */
 }

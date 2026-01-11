@@ -41,7 +41,21 @@
 
     <!-- HUD -->
     <div id="reticle"></div>
-    <div id="controls-hint">WASD to Move • Mouse to Look</div>
+    <div id="controls-hint">WASD to Move • Mouse to Look • B: Bird's Eye View</div>
+    
+    <!-- Bird's Eye View Indicator -->
+    <div id="bird-eye-indicator" style="display: none;">
+      <div class="bird-eye-title">🦅 BIRD'S EYE VIEW</div>
+      <div class="bird-eye-controls">
+        WASD: Pan • Q/E: Zoom • B: Exit
+      </div>
+      <div class="bird-eye-legend">
+        <span class="legend-item"><span class="dot zone1"></span> Zone 1 (z: -60 to -55)</span>
+        <span class="legend-item"><span class="dot zone2"></span> Zone 2 (z: -35 to -20)</span>
+        <span class="legend-item"><span class="dot zone3"></span> Zone 3 (z: 0 to 25)</span>
+        <span class="legend-item"><span class="dot zone4"></span> Zone 4 (z: 45 to 90)</span>
+      </div>
+    </div>
     
     <!-- Mobile Pause Button -->
     <button id="mobile-pause-btn" aria-label="Pause">⏸</button>
@@ -57,6 +71,10 @@
       <div class="debug-row">
         <span>Current Speed:</span>
         <span id="current-speed">0.00</span>
+      </div>
+      <div class="debug-row">
+        <span>Position:</span>
+        <span id="debug-position">X: 0.00 Y: 0.00 Z: 0.00</span>
       </div>
     </div>
     

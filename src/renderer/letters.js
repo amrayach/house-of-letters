@@ -3,7 +3,12 @@ import { getGLTFLoader } from '@utils/loaders.js';
 import { MODEL, ASSETS } from '@config/constants.js';
 
 const gltfLoader = getGLTFLoader();
-const sharedStringMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+const sharedStringMaterial = new THREE.LineBasicMaterial({ 
+  color: 0xffffff, 
+  linewidth: 1,
+  transparent: true,
+  opacity: 0.15
+});
 
 export async function loadLetters(scene, lettersData, onProgress = null) {
   const letterObjects = [];
@@ -169,6 +174,10 @@ export async function loadLetters(scene, lettersData, onProgress = null) {
             id: data.id,
             ...data
           };
+
+          const finalX = data.position.x * MODEL.GRID_SCALE;
+          const finalZ = data.position.z * MODEL.GRID_SCALE;
+          console.log(`✓ Model ${data.id} added to scene at position: X=${finalX.toFixed(2)}, Z=${finalZ.toFixed(2)}, userData.id=${model.userData.id}`);
 
           scene.add(model);
           letterObjects.push(model);

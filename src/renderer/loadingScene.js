@@ -249,16 +249,31 @@ export class LoadingScene {
     this.cameraTransition = {
       active: false,
       progress: 0,
-      duration: 18000, // Slightly longer for more dramatic effect
+      duration: 22000, // Extended for more dramatic drone-style flight
       startTime: 0,
       lookAtTarget: new THREE.Vector3(0, 0, 0),
       currentLookAt: new THREE.Vector3(0, 0, 0),
       currentPosition: new THREE.Vector3(),
-      velocity: new THREE.Vector3()
+      velocity: new THREE.Vector3(),
+      // Drone-style camera effects
+      currentFOV: 75,
+      targetFOV: 75,
+      currentRoll: 0,
+      targetRoll: 0
     };
     
     this.cameraSpline = null;
+    this.lookAtSpline = null; // Separate spline for look-at targets
     this.lastTime = performance.now();
+    
+    // Fade overlay element
+    this.fadeOverlay = null;
+    
+    // Initial camera settings
+    this.initialFOV = 65;
+    this.finalFOV = 85;
+    this.initialFogDensity = 0.003;
+    this.finalFogDensity = 0.025;
     
     this.init();
   }
@@ -269,15 +284,18 @@ export class LoadingScene {
     this.scene.background = new THREE.Color(0x0a0a15);
     
     // Add fog for atmosphere - denser, more mysterious
-    this.scene.fog = new THREE.FogExp2(0x0a0a15, 0.008);
+    this.scene.fog = new THREE.FogExp2(0x0a0a15, this.initialFogDensity);
 
     this.camera = new THREE.PerspectiveCamera(
-      75, 
+      this.initialFOV, 
       window.innerWidth / window.innerHeight, 
       0.1, 
       1000
     );
     this.camera.position.set(-100.93, 200.32, 66.46);
+    
+    // Create fade overlay for transition to archive scene
+    this.createFadeOverlay();
 
     this.renderer = new THREE.WebGLRenderer({ 
       antialias: true,
@@ -305,6 +323,24 @@ export class LoadingScene {
 
     // Load assets
     this.loadAssets();
+  }
+
+  createFadeOverlay() {
+    // Create a full-screen fade overlay for the final transition
+    this.fadeOverlay = document.createElement('div');
+    this.fadeOverlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(to bottom, #000000, #0a0a15);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 999;
+      transition: none;
+    `;
+    this.container.appendChild(this.fadeOverlay);
   }
 
   setupPostProcessing() {
@@ -702,80 +738,118 @@ export class LoadingScene {
   }
 
   startCameraTransition() {
-    // Camera transition waypoints - flying into the building (expanded for smoother motion)
+    // Google Earth / Drone-style camera path waypoints
+    // Designed for smooth aerial descent with cinematic sweeps
     const cameraWaypoints = [
-      // High aerial view - establishing shot
-      new THREE.Vector3(-100.93, 200.32, 66.46),
-      new THREE.Vector3(-98.50, 192.00, 64.50),
-      new THREE.Vector3(-96.00, 183.50, 62.80),
-      new THREE.Vector3(-94.20, 177.60, 61.40),
-      new THREE.Vector3(-92.40, 171.75, 60.08),
+      // Phase 1: High altitude establishing shot - slow orbit
+      new THREE.Vector3(-100.93, 220.00, 80.00),
+      new THREE.Vector3(-95.00, 210.00, 90.00),
+      new THREE.Vector3(-85.00, 195.00, 100.00),
+      new THREE.Vector3(-70.00, 180.00, 95.00),
       
-      // Descending arc
-      new THREE.Vector3(-89.50, 162.00, 57.80),
-      new THREE.Vector3(-87.00, 154.50, 56.00),
-      new THREE.Vector3(-85.09, 147.25, 54.61),
+      // Phase 2: Dramatic descending spiral around building
+      new THREE.Vector3(-55.00, 160.00, 80.00),
+      new THREE.Vector3(-40.00, 140.00, 60.00),
+      new THREE.Vector3(-30.00, 120.00, 40.00),
+      new THREE.Vector3(-25.00, 100.00, 25.00),
       
-      // Wide sweep around building
-      new THREE.Vector3(-95.00, 135.00, 62.00),
-      new THREE.Vector3(-110.00, 120.00, 75.00),
-      new THREE.Vector3(-128.00, 108.00, 85.00),
-      new THREE.Vector3(-141.73, 97.58, 92.82),
+      // Phase 3: Low sweep past building exterior
+      new THREE.Vector3(-35.00, 80.00, 15.00),
+      new THREE.Vector3(-55.00, 65.00, 20.00),
+      new THREE.Vector3(-80.00, 55.00, 35.00),
+      new THREE.Vector3(-100.00, 50.00, 55.00),
       
-      // Coming back toward entrance
-      new THREE.Vector3(-135.00, 88.00, 88.00),
-      new THREE.Vector3(-125.00, 78.00, 80.00),
-      new THREE.Vector3(-115.00, 70.00, 74.00),
-      new THREE.Vector3(-107.87, 64.74, 68.88),
+      // Phase 4: Pull back and align with entrance
+      new THREE.Vector3(-110.00, 45.00, 70.00),
+      new THREE.Vector3(-105.00, 38.00, 65.00),
+      new THREE.Vector3(-95.00, 30.00, 55.00),
+      new THREE.Vector3(-85.00, 22.00, 48.00),
       
-      // Descending toward ground level
-      new THREE.Vector3(-98.00, 55.00, 62.00),
-      new THREE.Vector3(-90.00, 47.00, 56.00),
-      new THREE.Vector3(-84.00, 41.00, 52.00),
-      new THREE.Vector3(-79.09, 36.82, 48.54),
+      // Phase 5: Final approach - low and dramatic
+      new THREE.Vector3(-78.00, 15.00, 45.00),
+      new THREE.Vector3(-72.00, 11.00, 42.00),
+      new THREE.Vector3(-66.00, 8.00, 38.00),
+      new THREE.Vector3(-60.00, 6.00, 34.00),
       
-      // Low approach
-      new THREE.Vector3(-80.00, 28.00, 52.00),
-      new THREE.Vector3(-80.50, 21.00, 53.50),
-      new THREE.Vector3(-80.77, 13.86, 54.89),
+      // Phase 6: Entering the main entrance
+      new THREE.Vector3(-54.00, 4.50, 30.00),
+      new THREE.Vector3(-50.00, 3.50, 26.00),
+      new THREE.Vector3(-46.00, 2.50, 22.00),
+      new THREE.Vector3(-43.00, 1.50, 19.00),
       
-      // Final corridor approach
-      new THREE.Vector3(-76.50, 12.00, 51.00),
-      new THREE.Vector3(-73.00, 11.00, 48.50),
-      new THREE.Vector3(-70.27, 10.19, 46.09),
+      // Phase 7: Into the darkness - fade begins
+      new THREE.Vector3(-41.00, 0.80, 17.00),
+      new THREE.Vector3(-40.00, 0.40, 16.00),
+      new THREE.Vector3(-39.50, 0.10, 15.50)
+    ];
+    
+    // Separate look-at target waypoints for cinematic camera movement
+    const lookAtWaypoints = [
+      // Looking at building from afar
+      new THREE.Vector3(0, 50, 0),
+      new THREE.Vector3(0, 40, 0),
+      new THREE.Vector3(-10, 30, 5),
+      new THREE.Vector3(-20, 20, 10),
       
-      // Entering the building
-      new THREE.Vector3(-66.50, 8.80, 43.00),
-      new THREE.Vector3(-64.00, 8.00, 41.00),
-      new THREE.Vector3(-61.48, 7.11, 38.74),
+      // Tracking building during spiral
+      new THREE.Vector3(-30, 15, 15),
+      new THREE.Vector3(-35, 10, 18),
+      new THREE.Vector3(-38, 8, 20),
+      new THREE.Vector3(-40, 5, 22),
       
-      // Through the entrance
-      new THREE.Vector3(-58.00, 6.50, 35.50),
-      new THREE.Vector3(-55.50, 6.00, 33.00),
-      new THREE.Vector3(-52.80, 5.66, 30.43),
+      // Focus shifts to entrance
+      new THREE.Vector3(-42, 3, 20),
+      new THREE.Vector3(-42, 2, 19),
+      new THREE.Vector3(-42, 1, 18),
+      new THREE.Vector3(-42, 0, 17),
       
-      // Final approach - slow and dramatic
-      new THREE.Vector3(-49.50, 4.00, 27.00),
-      new THREE.Vector3(-47.00, 2.80, 24.50),
-      new THREE.Vector3(-44.17, 1.28, 21.45),
+      // Locked on entrance
+      new THREE.Vector3(-42, 0, 16),
+      new THREE.Vector3(-41, 0, 15),
+      new THREE.Vector3(-40, 0, 15),
+      new THREE.Vector3(-40, 0, 15),
       
-      // Into the darkness
-      new THREE.Vector3(-43.00, 0.60, 20.40),
-      new THREE.Vector3(-42.50, 0.30, 19.90),
-      new THREE.Vector3(-41.99, 0.04, 19.38)
+      // Final approach targets
+      new THREE.Vector3(-39, 0, 14),
+      new THREE.Vector3(-38, 0, 13),
+      new THREE.Vector3(-37, 0, 12),
+      new THREE.Vector3(-36, 0, 11),
+      
+      // Into the void
+      new THREE.Vector3(-35, 0, 10),
+      new THREE.Vector3(-34, 0, 9),
+      new THREE.Vector3(-33, 0, 8),
+      new THREE.Vector3(-32, 0, 7),
+      
+      // Final darkness
+      new THREE.Vector3(-30, 0, 5),
+      new THREE.Vector3(-28, 0, 3),
+      new THREE.Vector3(-25, 0, 0)
     ];
 
-    // Create smooth spline
+    // Create smooth splines with centripetal parameterization for even speed
     this.cameraSpline = new THREE.CatmullRomCurve3(cameraWaypoints);
     this.cameraSpline.curveType = 'centripetal';
+    this.cameraSpline.tension = 0.3; // Slightly tighter curves
     
+    this.lookAtSpline = new THREE.CatmullRomCurve3(lookAtWaypoints);
+    this.lookAtSpline.curveType = 'centripetal';
+    this.lookAtSpline.tension = 0.2;
+    
+    // Initialize transition state
     this.cameraTransition.active = true;
     this.cameraTransition.progress = 0;
     this.cameraTransition.startTime = performance.now();
     this.cameraTransition.currentPosition.copy(cameraWaypoints[0]);
-    this.cameraTransition.currentLookAt.copy(this.cameraTransition.lookAtTarget);
+    this.cameraTransition.currentLookAt.copy(lookAtWaypoints[0]);
+    this.cameraTransition.currentFOV = this.initialFOV;
+    this.cameraTransition.currentRoll = 0;
     
-    console.log('Camera transition started');
+    // Set initial camera state
+    this.camera.fov = this.initialFOV;
+    this.camera.updateProjectionMatrix();
+    
+    console.log('Camera transition started - Google Earth style drone flight');
   }
 
   // Ultra smooth easing
@@ -815,60 +889,202 @@ export class LoadingScene {
       
       console.log('Camera transition completed');
       
+      // Ensure full fade to black
+      if (this.fadeOverlay) {
+        this.fadeOverlay.style.opacity = '1';
+      }
+      
       // Notify completion
       if (this.onComplete) {
         this.onComplete();
       }
     }
 
-    // Variable speed - slow start, faster middle, slow dramatic end
-    const speedCurve = this.variableSpeedEase(rawProgress);
+    // Variable speed curve - Google Earth style (slow start, smooth middle, slow dramatic end)
+    const speedCurve = this.droneSpeedEase(rawProgress);
     const targetPosition = this.cameraSpline.getPointAt(Math.min(speedCurve, 1));
 
-    const smoothingFactor = 2.5;
-    this.dampVector3(this.cameraTransition.currentPosition, targetPosition, smoothingFactor, deltaTime);
-
+    // Smooth camera position interpolation
+    const positionSmoothing = this.getAdaptiveSmoothing(rawProgress);
+    this.dampVector3(this.cameraTransition.currentPosition, targetPosition, positionSmoothing, deltaTime);
     this.camera.position.copy(this.cameraTransition.currentPosition);
     
-    // Dynamic look-at target - shifts slightly during journey
-    const lookAtOffset = new THREE.Vector3(
-      Math.sin(rawProgress * Math.PI * 2) * 5,
-      -rawProgress * 10,
-      Math.cos(rawProgress * Math.PI * 2) * 5
-    );
-    const dynamicLookAt = this.cameraTransition.lookAtTarget.clone().add(lookAtOffset);
+    // Get look-at target from spline
+    if (this.lookAtSpline) {
+      const targetLookAt = this.lookAtSpline.getPointAt(Math.min(speedCurve, 1));
+      const lookAtSmoothing = positionSmoothing * 0.8; // Slightly faster look-at response
+      this.dampVector3(this.cameraTransition.currentLookAt, targetLookAt, lookAtSmoothing, deltaTime);
+    }
     
-    this.dampVector3(this.cameraTransition.currentLookAt, dynamicLookAt, smoothingFactor, deltaTime);
     this.camera.lookAt(this.cameraTransition.currentLookAt);
+    
+    // Apply drone-style camera banking/roll based on turn rate
+    this.updateCameraRoll(speedCurve, deltaTime);
+    
+    // Dynamic FOV - starts wide (establishing shot), narrows during descent, widens at entrance
+    this.updateDynamicFOV(rawProgress, deltaTime);
+    
+    // Dynamic fog density - increases as we descend into the building
+    this.updateDynamicFog(rawProgress);
+    
+    // Update fade overlay for final transition
+    this.updateFadeTransition(rawProgress);
 
     this.cameraTransition.progress = rawProgress;
     
     // Update visual effects based on progress
     this.updateVisualEffects(rawProgress, deltaTime);
     
-    // Subtle camera shake near the end for tension
-    if (rawProgress > 0.7) {
-      const shakeIntensity = (rawProgress - 0.7) * 0.5;
-      this.camera.position.x += (Math.random() - 0.5) * shakeIntensity;
-      this.camera.position.y += (Math.random() - 0.5) * shakeIntensity * 0.5;
+    // Subtle atmospheric camera movement (wind effect)
+    if (rawProgress < 0.85) {
+      const windIntensity = 0.3 * (1 - rawProgress);
+      const windFreq = currentTime * 0.001;
+      this.camera.position.x += Math.sin(windFreq * 1.3) * windIntensity * deltaTime;
+      this.camera.position.y += Math.sin(windFreq * 0.8) * windIntensity * 0.5 * deltaTime;
     }
   }
   
-  // Variable speed easing - slow, fast, slow
-  variableSpeedEase(t) {
-    // Slow at start (0-20%), fast in middle (20-80%), slow at end (80-100%)
-    if (t < 0.2) {
-      // Slow start - ease in
-      return this.easeInQuad(t / 0.2) * 0.15;
-    } else if (t < 0.8) {
-      // Fast middle - linear with slight curve
-      const middleT = (t - 0.2) / 0.6;
-      return 0.15 + middleT * 0.7;
+  updateCameraRoll(progress, deltaTime) {
+    // Calculate turn rate to determine banking angle
+    const epsilon = 0.001;
+    const currentPos = this.cameraSpline.getPointAt(Math.min(progress, 1));
+    const nextPos = this.cameraSpline.getPointAt(Math.min(progress + epsilon, 1));
+    
+    const direction = nextPos.clone().sub(currentPos).normalize();
+    
+    // Calculate lateral acceleration (turning)
+    const prevProgress = Math.max(progress - epsilon, 0);
+    const prevPos = this.cameraSpline.getPointAt(prevProgress);
+    const prevDirection = currentPos.clone().sub(prevPos).normalize();
+    
+    // Cross product gives us the turn direction
+    const turnAxis = new THREE.Vector3().crossVectors(prevDirection, direction);
+    const turnRate = turnAxis.y; // Positive = turning right, negative = turning left
+    
+    // Bank angle based on turn rate (max 15 degrees)
+    const maxBankAngle = Math.PI / 12;
+    this.cameraTransition.targetRoll = -turnRate * maxBankAngle * 50;
+    
+    // Clamp and smooth the roll
+    this.cameraTransition.targetRoll = Math.max(-maxBankAngle, Math.min(maxBankAngle, this.cameraTransition.targetRoll));
+    this.cameraTransition.currentRoll = this.damp(
+      this.cameraTransition.currentRoll,
+      this.cameraTransition.targetRoll,
+      3,
+      deltaTime
+    );
+    
+    // Apply roll to camera
+    this.camera.rotation.z = this.cameraTransition.currentRoll;
+  }
+  
+  updateDynamicFOV(progress, deltaTime) {
+    // FOV progression:
+    // 0-20%: Wide establishing (65°)
+    // 20-60%: Narrow during descent (55°)
+    // 60-85%: Gradually widen approaching entrance (70°)
+    // 85-100%: Dramatic wide for entrance (85°)
+    
+    let targetFOV;
+    if (progress < 0.2) {
+      targetFOV = this.initialFOV;
+    } else if (progress < 0.6) {
+      const t = (progress - 0.2) / 0.4;
+      targetFOV = this.lerp(this.initialFOV, 55, this.easeInOutCubic(t));
+    } else if (progress < 0.85) {
+      const t = (progress - 0.6) / 0.25;
+      targetFOV = this.lerp(55, 70, this.easeInOutCubic(t));
     } else {
-      // Slow end - ease out
-      const endT = (t - 0.8) / 0.2;
-      return 0.85 + this.easeOutQuad(endT) * 0.15;
+      const t = (progress - 0.85) / 0.15;
+      targetFOV = this.lerp(70, this.finalFOV, this.easeInCubic(t));
     }
+    
+    this.cameraTransition.targetFOV = targetFOV;
+    this.cameraTransition.currentFOV = this.damp(
+      this.cameraTransition.currentFOV,
+      this.cameraTransition.targetFOV,
+      4,
+      deltaTime
+    );
+    
+    this.camera.fov = this.cameraTransition.currentFOV;
+    this.camera.updateProjectionMatrix();
+  }
+  
+  updateDynamicFog(progress) {
+    // Fog density increases as we enter the building
+    // Creates the feeling of descending into darkness
+    let fogDensity;
+    
+    if (progress < 0.7) {
+      // Light fog during aerial portion
+      fogDensity = this.lerp(this.initialFogDensity, 0.008, progress / 0.7);
+    } else {
+      // Dramatically increase fog as we enter
+      const t = (progress - 0.7) / 0.3;
+      fogDensity = this.lerp(0.008, this.finalFogDensity, this.easeInCubic(t));
+    }
+    
+    if (this.scene.fog) {
+      this.scene.fog.density = fogDensity;
+    }
+  }
+  
+  updateFadeTransition(progress) {
+    // Start fade to black at 85% progress
+    if (progress > 0.85 && this.fadeOverlay) {
+      const fadeProgress = (progress - 0.85) / 0.15;
+      const fadeOpacity = this.easeInCubic(fadeProgress);
+      this.fadeOverlay.style.opacity = fadeOpacity.toString();
+    }
+  }
+  
+  getAdaptiveSmoothing(progress) {
+    // Vary smoothing based on flight phase
+    // Higher values = snappier response, lower = smoother
+    if (progress < 0.2) {
+      return 2.0; // Smooth establishing shot
+    } else if (progress < 0.6) {
+      return 3.0; // More responsive during active flight
+    } else {
+      return 2.5; // Smooth final approach
+    }
+  }
+  
+  droneSpeedEase(t) {
+    // Google Earth style easing:
+    // Very slow start for dramatic effect
+    // Accelerate through middle
+    // Slow and deliberate for final approach
+    if (t < 0.15) {
+      // Slow majestic start
+      return this.easeInQuad(t / 0.15) * 0.1;
+    } else if (t < 0.7) {
+      // Smooth acceleration through middle
+      const middleT = (t - 0.15) / 0.55;
+      return 0.1 + this.easeInOutCubic(middleT) * 0.6;
+    } else {
+      // Slow dramatic approach to entrance
+      const endT = (t - 0.7) / 0.3;
+      return 0.7 + this.easeOutQuart(endT) * 0.3;
+    }
+  }
+  
+  easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+  
+  easeInCubic(t) {
+    return t * t * t;
+  }
+  
+  easeOutQuart(t) {
+    return 1 - Math.pow(1 - t, 4);
+  }
+  
+  // Legacy variable speed easing - kept for compatibility
+  variableSpeedEase(t) {
+    return this.droneSpeedEase(t);
   }
   
   easeInQuad(t) {
@@ -939,6 +1155,11 @@ export class LoadingScene {
     
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
+    }
+    
+    // Remove fade overlay
+    if (this.fadeOverlay && this.fadeOverlay.parentNode) {
+      this.fadeOverlay.parentNode.removeChild(this.fadeOverlay);
     }
 
     window.removeEventListener('resize', this.boundResize);

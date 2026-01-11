@@ -39,7 +39,9 @@ export class ProximityManager {
 
         this.activeLetter = closestLetter;
         const dist = Math.sqrt(closestDistSq);
-        console.log(`Entered proximity of Letter ${this.activeLetter.userData.id} (Distance: ${dist.toFixed(2)})`);
+        const pos = closestLetter.position;
+        console.log(`Entered proximity of Letter ${this.activeLetter.userData.id} at position X=${pos.x.toFixed(2)}, Y=${pos.y.toFixed(2)}, Z=${pos.z.toFixed(2)} (Distance: ${dist.toFixed(2)})`);
+        console.log('  userData.id:', this.activeLetter.userData.id, '| model path:', this.activeLetter.userData.model);
         
         // Activate visual and audio
         this.activateLetter(this.activeLetter);

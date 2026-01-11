@@ -1,0 +1,15 @@
+/*.glb
+  Content-Type: model/gltf-binary
+  Access-Control-Allow-Origin: *
+
+/assets/models/*.glb
+  Content-Type: model/gltf-binary
+  Access-Control-Allow-Origin: *
+
+/*.mp3
+  Content-Type: audio/mpeg
+  Access-Control-Allow-Origin: *
+
+/assets/audio/*.mp3
+  Content-Type: audio/mpeg
+  Access-Control-Allow-Origin: *

@@ -1,0 +1,1 @@
+I want to sort the letters chronologically. The letters distributions is as following: from 11/10/1988 until 01/01/1990 I have one letter, then I have 5 letters from 01/01/1990 until 05/01/1991, Then I have 12 letters from 12/02/1991 until 01/01/1992, Then I have 28 from 01/01/1992 until 21/07/1992

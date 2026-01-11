@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CAMERA } from '@config/constants.js';
 
 export function initScene() {
   const scene = new THREE.Scene();
@@ -11,8 +12,10 @@ export function initScene() {
     0.1,
     500 // Increased to ensure proper rendering distance
   );
-  // Adjusted camera start position for larger grid (2x spread)
-  camera.position.set(0, 1.6, 50);
+  // Camera starts at position from constants (near letter 1)
+  camera.position.set(CAMERA.INITIAL_POSITION.x, CAMERA.INITIAL_POSITION.y, CAMERA.INITIAL_POSITION.z);
+  // Look forward along the Z axis
+  camera.lookAt(CAMERA.INITIAL_POSITION.x, CAMERA.INITIAL_POSITION.y, CAMERA.INITIAL_POSITION.z + 10);
 
   const renderer = new THREE.WebGLRenderer({
     antialias: false, // Disable antialiasing for better performance
