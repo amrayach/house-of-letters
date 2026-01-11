@@ -45,13 +45,25 @@ export class AudioEngine {
   }
 
   loadNarration(letterId, url) {
-    if (!this.narrations[letterId]) {
-      this.narrations[letterId] = new Howl({
+    return new Promise((resolve, reject) => {
+      if (this.narrations[letterId]) {
+        // Already loaded
+        resolve(this.narrations[letterId]);
+        return;
+      }
+      
+      const howl = new Howl({
         src: [url],
         loop: false,
         volume: AUDIO.NARRATION_VOLUME,
-        onload: () => console.log(`Narration ${letterId} loaded`),
-        onloaderror: (id, error) => console.error(`Error loading narration ${letterId}:`, error),
+        onload: () => {
+          console.log(`Narration ${letterId} loaded`);
+          resolve(howl);
+        },
+        onloaderror: (id, error) => {
+          console.error(`Error loading narration ${letterId}:`, error);
+          reject(error);
+        },
         onend: () => {
           console.log(`Narration ${letterId} ended`);
           // Restore theme volume when narration ends
@@ -60,10 +72,12 @@ export class AudioEngine {
           }
         }
       });
-    }
+      
+      this.narrations[letterId] = howl;
+    });
   }
 
-  playNarration(letterId) {
+  async playNarration(letterId) {
     // Stop current narration if playing
     if (this.currentNarration) {
       this.currentNarration.stop();
@@ -72,13 +86,27 @@ export class AudioEngine {
     // Lazy load if not already loaded
     if (!this.narrations[letterId] && this.narrationUrls[letterId]) {
       console.log(`Lazy loading narration for letter ${letterId}...`);
-      this.loadNarration(letterId, this.narrationUrls[letterId]);
+      try {
+        await this.loadNarration(letterId, this.narrationUrls[letterId]);
+      } catch (error) {
+        console.error(`Failed to load narration for letter ${letterId}:`, error);
+        return;
+      }
     }
 
     const narration = this.narrations[letterId];
     if (!narration) {
       console.warn(`Narration for letter ${letterId} not loaded (and no URL registered)`);
       return;
+    }
+
+    // Wait for narration to be ready if still loading
+    if (narration.state() === 'loading') {
+      console.log(`Waiting for narration ${letterId} to finish loading...`);
+      await new Promise((resolve, reject) => {
+        narration.once('load', resolve);
+        narration.once('loaderror', reject);
+      });
     }
 
     // Duck the background theme
