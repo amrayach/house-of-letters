@@ -96,17 +96,33 @@ loadingScene.start(() => {
   try {
     console.log('Loading letter models...');
     
+    // Track loading start time for slow connection detection
+    const loadingStartTime = Date.now();
+    let slowConnectionWarningShown = false;
+    
     // Progress callback to update UI
     const updateProgress = (loaded, total) => {
       if (loadingProgress) {
         loadingProgress.textContent = `${loaded}/${total} models`;
       }
       if (loadingStatus) {
-        loadingStatus.textContent = `Loading experience... ${Math.round((loaded/total) * 100)}%`;
+        const elapsedSeconds = Math.floor((Date.now() - loadingStartTime) / 1000);
+        
+        // Show slow connection message after 30 seconds
+        if (elapsedSeconds > 30 && !slowConnectionWarningShown) {
+          slowConnectionWarningShown = true;
+          console.log('Slow connection detected, showing patience message');
+        }
+        
+        if (slowConnectionWarningShown) {
+          loadingStatus.textContent = `Loading... ${Math.round((loaded/total) * 100)}% (slow connection detected - please be patient)`;
+        } else {
+          loadingStatus.textContent = `Loading experience... ${Math.round((loaded/total) * 100)}%`;
+        }
       }
     };
     
-    // Add a timeout to prevent infinite loading (configurable)
+    // Add a timeout to prevent infinite loading (configurable - now 10 minutes)
     const loadingTimeout = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Loading timeout - assets took too long to load')), LOADING_TIMEOUT_MS);
     });
@@ -116,7 +132,8 @@ loadingScene.start(() => {
       loadingTimeout
     ]);
     
-    console.log(`Loaded ${letterObjects.length} letters successfully!`);
+    const loadingDuration = Math.floor((Date.now() - loadingStartTime) / 1000);
+    console.log(`Loaded ${letterObjects.length} letters successfully in ${loadingDuration}s!`);
 
     // 5. Interaction
     proximityManager = new ProximityManager(camera, letterObjects);
@@ -161,13 +178,25 @@ loadingScene.start(() => {
 
   } catch (error) {
     console.error('Error loading letters:', error);
+    const isTimeoutError = error.message?.includes('timeout');
+    
     loadingScreen.innerHTML = `
-      <div style="color: #ff6b6b; text-align: center; padding: 20px;">
-        <h2>Error Loading Experience</h2>
-        <p style="margin: 10px 0;">${error.message || 'Failed to load assets'}</p>
-        <p style="font-size: 12px; opacity: 0.7;">Check the browser console for details (F12)</p>
-        <button onclick="location.reload()" style="margin-top: 15px; padding: 10px 20px; cursor: pointer;">
-          Retry
+      <div style="color: #ff6b6b; text-align: center; padding: 20px; max-width: 400px; margin: 0 auto;">
+        <h2 style="margin-bottom: 15px;">Error Loading Experience</h2>
+        <p style="margin: 10px 0; font-size: 16px;">${error.message || 'Failed to load assets'}</p>
+        ${isTimeoutError ? `
+          <p style="font-size: 14px; opacity: 0.9; margin: 15px 0; color: #ffd93d;">
+            Your internet connection appears to be slow. Please try:
+          </p>
+          <ul style="text-align: left; font-size: 13px; opacity: 0.8; padding-left: 20px;">
+            <li>Refreshing the page and waiting longer</li>
+            <li>Connecting to a faster network if available</li>
+            <li>Trying again at a different time</li>
+          </ul>
+        ` : ''}
+        <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">Check the browser console for details (F12)</p>
+        <button onclick="location.reload()" style="margin-top: 20px; padding: 12px 30px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 16px;">
+          Try Again
         </button>
       </div>
     `;

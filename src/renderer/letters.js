@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { getGLTFLoader } from '@utils/loaders.js';
-import { MODEL, ASSETS } from '@config/constants.js';
+import { MODEL, ASSETS, LOADING_RETRY } from '@config/constants.js';
 
 const gltfLoader = getGLTFLoader();
 const sharedStringMaterial = new THREE.LineBasicMaterial({ 
@@ -10,11 +10,43 @@ const sharedStringMaterial = new THREE.LineBasicMaterial({
   opacity: 0.15
 });
 
+/**
+ * Load a single model with retry logic for slow connections
+ */
+function loadModelWithRetry(path, retryCount = 0, onDownloadProgress = null) {
+  return new Promise((resolve, reject) => {
+    gltfLoader.load(
+      path,
+      (gltf) => resolve(gltf),
+      (progress) => {
+        if (onDownloadProgress && progress.total > 0) {
+          onDownloadProgress(progress.loaded, progress.total);
+        }
+      },
+      (error) => {
+        if (retryCount < LOADING_RETRY.MAX_RETRIES) {
+          console.warn(`Retrying ${path} (attempt ${retryCount + 2}/${LOADING_RETRY.MAX_RETRIES + 1})...`);
+          setTimeout(() => {
+            loadModelWithRetry(path, retryCount + 1, onDownloadProgress)
+              .then(resolve)
+              .catch(reject);
+          }, LOADING_RETRY.RETRY_DELAY_MS);
+        } else {
+          reject(error);
+        }
+      }
+    );
+  });
+}
+
 export async function loadLetters(scene, lettersData, onProgress = null) {
   const letterObjects = [];
   const loadPromises = [];
   let loadedCount = 0;
   const totalCount = lettersData.length;
+  
+  // Track download progress for better UX on slow connections
+  const downloadProgress = new Map(); // modelId -> { loaded, total }
 
   console.log(`Attempting to load ${lettersData.length} GLB files...`);
 
@@ -23,9 +55,15 @@ export async function loadLetters(scene, lettersData, onProgress = null) {
     console.log(`Queueing: ${path}`);
 
     const loadPromise = new Promise((resolve, reject) => {
-      gltfLoader.load(
-        path,
-        (gltf) => {
+      // Track per-model download progress
+      const onDownloadProgress = (loaded, total) => {
+        downloadProgress.set(data.id, { loaded, total });
+        const percent = (loaded / total) * 100;
+        console.log(`Downloading model ${data.id}: ${percent.toFixed(0)}%`);
+      };
+
+      loadModelWithRetry(path, 0, onDownloadProgress)
+        .then((gltf) => {
           const model = gltf.scene;
 
           console.log(`Model ${data.id} loaded successfully!`, model);
@@ -184,21 +222,13 @@ export async function loadLetters(scene, lettersData, onProgress = null) {
           loadedCount++;
           if (onProgress) onProgress(loadedCount, totalCount);
           resolve(model);
-        },
-        (progress) => {
-          // Optional: handle loading progress
-          if (progress.total > 0) {
-            const percent = (progress.loaded / progress.total) * 100;
-            console.log(`Loading model ${data.id}: ${percent.toFixed(0)}%`);
-          }
-        },
-        (error) => {
-          console.error(`Error loading model ${data.id} from ${path}:`, error);
+        })
+        .catch((error) => {
+          console.error(`Error loading model ${data.id} from ${path} (after ${LOADING_RETRY.MAX_RETRIES + 1} attempts):`, error);
           loadedCount++;
           if (onProgress) onProgress(loadedCount, totalCount);
           reject(error);
-        }
-      );
+        });
     });
 
     loadPromises.push(loadPromise);

@@ -60,4 +60,11 @@ export const ASSETS = {
 };
 
 // Timeout for loading assets (milliseconds). Increase if clients have slow connections.
-export const LOADING_TIMEOUT_MS = 180000; // 3 minutes
+// 10 minutes for slow connections (e.g., Lebanon)
+export const LOADING_TIMEOUT_MS = 600000; // 10 minutes
+
+// Retry configuration for slow connections
+export const LOADING_RETRY = {
+  MAX_RETRIES: 3,
+  RETRY_DELAY_MS: 2000
+};
