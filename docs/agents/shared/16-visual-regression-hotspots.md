@@ -6,8 +6,8 @@ Use this as the watchlist for shell-state and overlay regressions after UI edits
 
 | State | Failure pattern | Why fragile | Primary trigger | Regression check |
 | --- | --- | --- | --- | --- |
-| loading screen | HUD, debug, pause, or touch controls visible under loading overlay | renderer and overlay DOM mount before the loading handoff completes | boot, slow loads, skip intro | confirm only loading scene and loading overlay are visible before transition |
-| start screen | reticle, controls hint, bird's-eye, debug, or touch HUD leak into the shell | shell visibility is split between HTML defaults, CSS, and runtime gating | loading completion, resize, refresh on mobile | confirm start shell is visually exclusive on desktop and mobile |
+| loading screen | HUD/debug leaks under the overlay, or the new panel loses hierarchy/crops at narrow widths | renderer and overlay DOM mount before the loading handoff completes, and the panel now depends on responsive spacing | boot, slow loads, skip intro, narrow viewport reload | confirm only loading scene and loading overlay are visible before transition and that the loading panel remains centered/readable |
+| start screen | reticle/controls/bird's-eye/touch HUD leak into the shell, or the entry panel collapses into a flat full-screen veil | shell visibility is split between HTML defaults, CSS, and runtime gating, and the shell now relies on a single focal panel | loading completion, resize, refresh on mobile | confirm start shell is visually exclusive on desktop/mobile and that the entry panel keeps clear title-copy-CTA hierarchy |
 | pause screen | active HUD remains visible behind the pause shell | pause depends on different desktop and mobile control branches, but shell gating should now own all overlay visibility | desktop unlock, mobile pause tap, resume failure | confirm pause shell is exclusive and recoverable in both input modes |
 | subtitle layer | subtitle obscures the focal scene or sits too close to preview cards | active-letter UI depends on runtime state plus responsive positioning | entering letter proximity on narrow screens | check subtitle spacing at desktop and mobile widths near the first letter cluster |
 | letter preview | preview cards cover too much scene area or remain mounted when inactive | preview visibility combines shell gating, proximity, and CSS transitions | active-letter enter and exit, pause, resize | confirm preview is absent outside active immersive letter focus and returns cleanly on re-entry |
@@ -25,6 +25,7 @@ Run these after any shell, HUD, pointer-lock, or responsive overlay change:
 3. Desktop bird's-eye entry, pause exit, and normal resume.
 4. Mobile loading -> start -> active -> pause -> resume.
 5. Mobile active-letter proximity with subtitle and preview visible.
+6. Loading/start panel hierarchy at a narrow mobile width after resize or refresh.
 
 ## Current evidence set
 
@@ -37,3 +38,9 @@ The baseline walkthrough that informed this watchlist used local Playwright capt
 - `uiux-mobile-active.png`
 - `uiux-mobile-pause-screen.png`
 - `uiux-mobile-preview-subtitle.png`
+
+The current loading/start composition pass also captured:
+
+- `output/playwright/loading-after.png`
+- `output/playwright/start-after-desktop.png`
+- `output/playwright/start-after-mobile.png`

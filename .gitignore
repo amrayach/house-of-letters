@@ -35,3 +35,4 @@ __pycache__/
 tmp-*.png
 uiux-*.png
 uiux-*.txt
+output/playwright/

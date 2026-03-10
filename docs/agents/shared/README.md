@@ -41,12 +41,14 @@ Use this directory as the local-first briefing set for future sessions.
 ### Agent workflow or tool routing
 
 1. `07-agent-workflow.md`
-2. `09-validation-checklist.md`
-3. `08-deepwiki-integration.md`
-4. `11-tool-routing.md`
-5. `12-cross-agent-handoffs.md`
-6. `13-skill-activation-matrix.md`
-7. `14-agent-tool-conventions.md`
+2. `17-how-to-run-this-workflow.md`
+3. `18-agent-task-template.md`
+4. `09-validation-checklist.md`
+5. `08-deepwiki-integration.md`
+6. `11-tool-routing.md`
+7. `12-cross-agent-handoffs.md`
+8. `13-skill-activation-matrix.md`
+9. `14-agent-tool-conventions.md`
 
 ## File index
 
@@ -66,6 +68,8 @@ Use this directory as the local-first briefing set for future sessions.
 | `12-cross-agent-handoffs.md` | handing work between agents | handoff contract and evidence expectations |
 | `13-skill-activation-matrix.md` | deciding which skills to activate | active vs conditional vs parked skills |
 | `14-agent-tool-conventions.md` | choosing MCPs, skills, and escalation paths | task-based tool order and fallbacks |
+| `17-how-to-run-this-workflow.md` | running the repo as a controlled agent loop | one-page operator manual for orchestration, validation, and checkpoints |
+| `18-agent-task-template.md` | drafting a scoped agent prompt | copy-paste template for task framing, tool routing, validation, and reporting |
 | `99-repo-inventory.md` | locating files quickly | compact path map |
 
 ## Operating rule

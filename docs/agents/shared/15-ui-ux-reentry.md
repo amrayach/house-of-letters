@@ -13,10 +13,12 @@ Baseline for this document:
   - desktop pointer-lock recovery
   - pause/resume messaging
   - subtitle and preview layout cleanup
+  - loading/start composition polish
 
 ## Current UI state summary
 
 - The archive opens with a cinematic loading scene, then hands off to a dedicated start shell.
+- Loading and start now share a restrained panel treatment, so title, status, and CTA read as one focal system instead of loose text on a flat veil.
 - Desktop now keeps HUD, controls hint, bird's-eye panel, and debug UI out of loading and start states.
 - Mobile now keeps joystick, look area, and pause affordances out of loading, start, and pause shells until the archive is active.
 - Touch HUD visibility is now shell-owned in `main.js` rather than toggled independently inside touch-control activation.
@@ -24,12 +26,13 @@ Baseline for this document:
 - Desktop pause now exits bird's-eye instead of resuming into a leaked top-down camera state.
 - Subtitle and letter preview overlays remain tied to active-letter proximity, but their visibility is now shell-gated in one place and their desktop/mobile layouts are less obstructive than the initial baseline.
 - Active-letter narration and emphasis are now evaluated only during active runtime, not behind the start or pause shells.
-- Bird's-eye mode remains part of the same runtime, but it still wants stronger visual-system integration in a later polish pass.
+- Bird's-eye mode remains part of the same runtime, but it now feels more obviously like the next visual mismatch after loading/start were tightened.
 
 ## Strongest strengths already present
 
-- The loading sequence gives the archive an authored tone before interaction begins.
+- The loading sequence now has a clearer composition anchor instead of relying on loose bottom-aligned text.
 - The sparse monochrome shell fits the project mood and does not compete with the scene by default.
+- The start shell now has one obvious focal block, which makes entry feel more intentional without changing the interaction model.
 - The direct DOM overlay model is workable for additive UX polish.
 - Proximity-driven subtitle plus preview remains the clearest non-verbal cue for letter focus.
 - Mobile and desktop already branch cleanly at the control layer, which makes targeted shell fixes feasible without architectural churn.
@@ -47,15 +50,14 @@ Baseline for this document:
 | `bird-eye` | bird's-eye indicator | scene navigation | start, pause, reticle, controls hint, mobile controls | desktop today | `B` while active | `B` again or pause | panel/system mismatch, keyboard state persistence |
 | `active-letter emphasis` | subtitle + preview | none today | unrelated shells | desktop or touch | proximity threshold enter | proximity threshold exit | layout overlap, missing copy fallback quality |
 
-## Top 7 UI/UX issues
+## Top 6 UI/UX issues
 
 1. Bird's-eye mode still feels like a tool overlay rather than a first-class archive view.
 2. Subtitle fallback copy remains generic when letter text is missing.
 3. Preview and subtitle layout are improved but still scene-obstructive on smaller phones.
-4. Loading and start shells now behave correctly, but their composition is still functional rather than fully intentional.
-5. Pause messaging is clearer, but shell copy overall still under-orients first-time users.
-6. Debug UI policy is now enforced in shell states, but it still depends on a runtime flag rather than a stricter environment boundary.
-7. Overlay behavior is now explicit, but regression risk remains high because the runtime still combines DOM shell logic with an always-running render loop.
+4. Pause messaging is clearer, but shell copy overall still under-orients first-time users.
+5. Debug UI policy is now enforced in shell states, but it still depends on a runtime flag rather than a stricter environment boundary.
+6. Overlay behavior is now explicit, but regression risk remains high because the runtime still combines DOM shell logic with an always-running render loop.
 
 ## Pain points by severity
 
@@ -115,17 +117,17 @@ Validation:
 Figma:
 - no
 
-### P2. Recompose loading and start shells
+### P2. Loading/start composition follow-through
 
-- Strengthen typography rhythm, spacing, and masking around the scene.
-- Clarify hierarchy between title, orientation copy, and CTA.
-- Preserve current DOM structure.
+- The narrow panel-based composition pass is now in place.
+- Keep future changes limited to copy refinement or minor responsive tuning.
+- Do not reopen shell ownership or re-center this track around a larger redesign.
 
 Validation:
-- Before/after screenshot comparison plus performance sanity check during load.
+- Before/after screenshot comparison plus shell-exclusivity checks at desktop and narrow mobile widths.
 
 Figma:
-- preferred, not required
+- not required for incremental follow-through
 
 ### P2. Unify bird's-eye and active-letter visual language
 
@@ -144,8 +146,7 @@ Figma:
 1. Keep the current shell-state matrix stable and extend from it instead of bypassing it.
 2. Improve copy and fallback text.
 3. Continue mobile active-letter layout tuning.
-4. Recompose loading and start shells.
-5. Rework bird's-eye into the same visual system as the rest of the archive.
+4. Rework bird's-eye into the same visual system as the rest of the archive.
 
 ## First-pass acceptance criteria
 
@@ -184,7 +185,6 @@ The first UX pass is complete only if:
 
 ### Better with Figma, but not blocked on it
 
-- loading/start shell composition
 - bird's-eye visual-system redesign
 - future typography or spacing-system refreshes
 
@@ -202,5 +202,5 @@ The first UX pass is complete only if:
 
 ## Top 2 medium-risk visual improvements
 
-1. Refine loading/start composition without changing the DOM architecture.
-2. Unify bird's-eye and active-letter panels into a more coherent overlay language.
+1. Unify bird's-eye and active-letter panels into a more coherent overlay language.
+2. Refine first-time orientation copy/layout without changing the DOM architecture.

@@ -17,10 +17,14 @@
       
       <!-- Loading Overlay with text -->
       <div id="loading-overlay">
-        <div id="loading-content">
+        <div id="loading-content" class="shell-panel shell-panel-loading">
+          <p class="shell-kicker">Archive Loading</p>
           <h1 class="loading-title">House of Dreams</h1>
-          <div id="loading-status">Entering the archive...</div>
-          <div id="loading-progress"></div>
+          <p class="shell-lede loading-lede">The archive is resolving the route before entry.</p>
+          <div class="loading-meta">
+            <div id="loading-status">Entering the archive...</div>
+            <div id="loading-progress"></div>
+          </div>
           <button id="skip-intro-btn" class="btn btn-skip">Skip Intro</button>
         </div>
       </div>
@@ -28,10 +32,13 @@
 
     <!-- Start Screen -->
     <div id="start-screen" hidden> <!-- Initially hidden, shown after load -->
-      <h1>House of Dreams</h1>
-      <p>Explore the archive. Listen to the stories.</p>
-      <p id="start-status" class="screen-status" aria-live="polite">Click to enter. The archive will take control of your pointer.</p>
-      <button id="start-btn" class="btn">Enter Archive</button>
+      <div class="shell-panel shell-panel-start">
+        <p class="shell-kicker">Archive Entry</p>
+        <h1>House of Dreams</h1>
+        <p class="shell-lede">Explore the archive. Listen to the stories.</p>
+        <p id="start-status" class="screen-status" aria-live="polite">Click to enter. The archive will take control of your pointer.</p>
+        <button id="start-btn" class="btn">Enter Archive</button>
+      </div>
     </div>
 
     <!-- Pause Screen -->

@@ -26,6 +26,10 @@
   - `audioEngine.js` owns playback, but only resumes automatically when the shell is active
   - active-letter side effects now evaluate only while the archive is in active play
   - desktop pause/unlock now exits bird's-eye before the paused shell takes over
+- The loading and start shells now share a small composition polish pass:
+  - both shells use the same panel language and spacing rhythm
+  - loading now anchors status/progress inside a deliberate content block instead of loose bottom text
+  - start now reads as a single focal entry card without changing the underlying state model
 - The runtime still has deferred work in theme switching, subtitle content, and asset-pipeline clarity.
 
 ## What appears already working
@@ -163,6 +167,35 @@ Notes:
 Suggested MCPs/skills:
 - `project-health`
 
+### 2A. Loading/start composition polish
+
+Status:
+- Implemented in this pass
+
+Scope:
+- improve loading/start composition only
+- preserve `main.js` shell ownership and existing start/pause behavior
+- avoid bird's-eye redesign, copy rewrite, or control/state refactors
+
+Validation:
+- `npm run build`
+- Playwright before/after screenshots for loading and start shells
+- confirm loading and start remain visually exclusive with reticle, controls hint, bird's-eye, and mobile pause hidden
+- confirm the start shell still scales cleanly at a narrow mobile viewport
+
+Docs to update:
+- `PLANS.md`
+- `docs/agents/shared/15-ui-ux-reentry.md`
+- `docs/agents/shared/16-visual-regression-hotspots.md`
+
+Notes:
+- `index.html` keeps the same shell nodes and runtime hooks; only a small wrapper structure was added for composition.
+- `src/styles/main.css` now uses a shared shell-panel treatment for loading and start, with no changes to pause ownership or bird's-eye state.
+
+Suggested MCPs/skills:
+- `playwright`
+- `frontend-design-codex`
+
 ### 3. Subtitle/content maintainability pass
 
 Status:
@@ -293,7 +326,8 @@ Why this order minimizes rework:
 
 ### Safe UX/runtime improvements
 
-1. Workstream 3: Subtitle/content maintainability pass
+1. Bird's-eye shell clarity
+2. Workstream 3: Subtitle/content maintainability pass
 
 ### Medium-risk architecture work
 
@@ -308,15 +342,20 @@ Why this order minimizes rework:
 
 ## Recommended next workstream
 
-Workstream 3: Subtitle/content maintainability pass.
+Bird's-eye shell clarity.
 
-Why this is next after Workstream 2:
-- the repo truth and validator contract are now explicit, so content work can happen against a stable baseline
-- all 46 `text` fields still fall back to placeholder subtitle copy, which is the most visible remaining content gap
-- the validator is already in place to keep subtitle/data edits low-risk
-- if position regeneration becomes part of that pass, review `scripts/generate-letter-positions.cjs` first because its bounds/defaults lag the live dataset
+Why this is next after the loading/start composition pass:
+- it stays inside the same UI polish lane without reopening runtime ownership work
+- bird's-eye is still the most visibly mismatched shell in the current visual system
+- the recent panel language gives a concrete styling direction to extend rather than inventing a second overlay style
+- it is narrower and lower-risk than subtitle data work or theme-policy decisions
 
-**Workstream 3: Subtitle/content maintainability pass**
+Keep the scope tight:
+- restyle the bird's-eye indicator only
+- do not redesign the camera model or controls
+- validate toggle, pause exit, and overlap with active-letter UI
+
+**Next narrow task: Bird's-eye shell clarity**
 
 Why:
 - highest visible content impact without reopening the runtime hot path
