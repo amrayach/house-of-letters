@@ -1,0 +1,95 @@
+# 05. Constraints
+
+## Hard runtime boundaries
+
+- Keep `src/main.js` as the orchestrator.
+  - It may coordinate subsystems and DOM.
+  - It should not absorb loader internals, audio internals, or touch-control internals.
+  - It is the source of truth for shell/UI state and overlay visibility.
+- Keep `src/renderer/loadingScene.js` isolated from archive gameplay logic.
+  - It owns the intro renderer/composer only.
+- Keep `src/renderer/controls.js` and `src/interaction/touchControls.js` as the only movement/input owners.
+  - They may enable or disable input.
+  - They should not become the primary owners of start/pause shell visibility or active-letter HUD visibility.
+- Keep `src/interaction/proximityManager.js` responsible for active-letter detection.
+  - It may trigger highlight and narration handoff.
+  - It should not manage DOM preview or subtitle visibility.
+  - It should not start new active-letter side effects behind non-active shell states.
+- Keep `src/audio/audioEngine.js` as the only real audio backend.
+  - It may react to visibility changes.
+  - It should not decide on its own that paused or start-shell runtime states are allowed to resume.
+- Treat `src/audio/themeMixer.js` as placeholder until it actually controls playback.
+- Treat `src/data/letters.json` as declarative content, not a runtime state cache.
+
+## Performance-sensitive areas
+
+- `src/main.js` `animate()`
+  - already does control updates, DOM writes, proximity checks, per-letter motion, and rendering every frame
+  - do not add expensive allocations, extra scene traversals, or broad DOM queries here without a measured reason
+- `src/renderer/letters.js`
+  - initial model traversal/material replacement happens for every loaded GLB
+  - changes here affect boot time and runtime memory
+- `src/renderer/loadingScene.js`
+  - postprocessing, particles, dynamic lights, and a second render loop already make load-time GPU pressure high
+- Asset weight
+  - GLBs, MP3s, and JPGs dominate bandwidth and startup cost more than the JS bundle does
+- Touch UI
+  - injected DOM + per-touch handlers should stay lightweight
+
+## Likely regressions
+
+- Breaking the `assetsLoaded && loadingSceneComplete` gate and trapping the user on loading/start screens
+- Starting audio before a user gesture and losing playback on mobile/Chrome/Safari
+- Regressing pointer-lock pause/resume while fixing mobile controls, or vice versa
+- Letting bird's-eye survive pause/unlock and re-enter the archive in the wrong camera mode
+- Reintroducing split ownership where touch controls toggle joystick/look visibility independently of shell state
+- Letting `visibilitychange` resume audio while the runtime is in `start` or `paused`
+- Letting proximity evaluation trigger narration or letter activation behind loading, start, or pause shells
+- Renaming asset paths without updating `letters.json` and intro paths
+- Assuming `theme` changes affect audible behavior today
+- Breaking the non-glass active-state cue while changing letter materials or mesh naming
+- Forgetting that `animate()` should sway around stored base rotation/height instead of overwriting them absolutely
+
+## Asset-heavy path handling
+
+- Never mass-edit `dist/**`.
+- Prefer in-place asset replacement over file renames.
+- If you must rename or move assets:
+  1. update `src/data/letters.json`
+  2. update any hard-coded intro paths under `src/renderer/loadingScene.js`
+  3. re-check `public/_headers`
+  4. verify existence paths before browser testing
+- Treat `public/assets/textures/` as workflow-ambiguous until the compression script is fixed.
+
+## When docs must be updated with code
+
+Update the shared docs when any of these change:
+
+- `src/main.js` import graph or orchestration order
+- ownership of rendering, controls, loading, audio, or proximity
+- `letters.json` schema, asset naming conventions, or zone layout assumptions
+- Vite aliases, `publicDir`, build output, or script behavior
+- Cloudflare Pages routing/header files
+- tool-routing expectations in `docs/agents/shared/11-tool-routing.md`
+- validation or peer-review guidance in `docs/agents/shared/09-validation-checklist.md`
+
+Minimum doc targets:
+
+- boundary change -> `01-architecture.md`
+- sequencing/state change -> `02-runtime-flow.md`
+- data/path/schema change -> `03-data-assets.md`
+- build/deploy change -> `04-build-deploy.md`
+- new guardrail or regression pattern -> `05-constraints.md`
+- unresolved gap introduced -> `06-open-questions.md`
+- validation/process change -> `09-validation-checklist.md`
+- tool/handoff/skill routing change -> `11-tool-routing.md`, `12-cross-agent-handoffs.md`, `13-skill-activation-matrix.md`, or `14-agent-tool-conventions.md`
+
+## Validation additions for this repo
+
+Use `docs/agents/shared/09-validation-checklist.md` as the default checklist. For this repo, add these task-specific checks:
+
+- After data/config edits: verify import/path usage with `rg`, check asset existence against `letters.json`, and inspect for stale README/shared-doc claims.
+- After renderer/audio/input changes: run `npm run dev` when feasible and smoke-test intro skip/completion, start/pause handoff, the affected desktop or mobile control path, proximity-driven narration/preview behavior, and tab hide/show audio gating.
+- After shell/control changes that touch bird's-eye or active-letter flow: verify pause/unlock exits bird's-eye and that new narration does not start until the runtime is active.
+- After Vite or Pages changes: run `npm run build`, confirm `dist/_headers` and `dist/_redirects`, and smoke-test SPA fallback plus GLB/MP3 responses.
+- Use Playwright only when the behavior is browser-only, such as overlay flow, pointer lock, touch HUD layout, or deployed routing/header behavior that needs console or network evidence.

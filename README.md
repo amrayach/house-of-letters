@@ -1,51 +1,78 @@
 # House of Dreams
 
-A dark interactive 3D environment where JPEG-scanned letters converted into 3d objects hang in space.
+Interactive 3D letter archive built with `Vite`, `Three.js`, and `Howler`. The in-app title is `House of Dreams`; the repo/package name remains `house-of-letters`.
+
+## Current Runtime
+
+- Boots from `index.html` into `src/main.js`
+- Plays a cinematic loading intro before handing off to the archive scene
+- Loads 46 GLB letter models from `src/data/letters.json`
+- Supports desktop pointer-lock controls and mobile touch controls
+- Shows front/back letter scans plus subtitle fallback UI for the active letter
+- Plays a looping background theme and lazy-loads narration with ducking
+- Deploys as a static site to Cloudflare Pages
 
 ## Setup
 
-1.  Install dependencies:
-    ```bash
-    npm install
-    ```
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Run the dev server:
+   ```bash
+   npm run dev
+   ```
+3. Vite usually opens the local URL automatically. If it does not, open the URL it prints, usually `http://localhost:5173`.
 
-2.  Run development server:
-    ```bash
-    npm run dev
-    ```
+## Commands
 
-3.  Open the local URL provided (usually `http://localhost:5173`).
+- `npm run dev`: start the Vite dev server
+- `npm run validate:letters`: validate `src/data/letters.json` plus referenced assets under `public/assets/**`
+- `npm run validate:letters -- --strict`: run the same validator, but fail on warnings for CI or release gates
+- `npm run build`: create the production build in `dist/`
+- `npm run preview`: preview the built output locally
+- `npm run compress`: run the GLB compression helper; verify its input-path assumptions before using it
 
 ## Controls
 
--   **Click** to start and lock mouse pointer.
--   **W / A / S / D** to move.
--   **Mouse** to look around.
--   **ESC** to unlock cursor.
+Desktop:
+- Click `Enter Archive` to start and capture the pointer
+- `W / A / S / D` to move
+- Mouse to look around
+- `ESC` to release pointer lock and pause
 
-## Project Structure
+Mobile:
+- Tap `Enter Archive` to start
+- Use the on-screen joystick and look area to move
+- Use the pause button to return to the shell
 
--   `/src/renderer`: Three.js scene, lighting, and controls.
--   `/src/audio`: Web Audio API logic (placeholder).
--   `/src/interaction`: Proximity detection logic.
--   `/src/data`: JSON metadata for letters.
--   `/assets`: Raw assets (audio, textures, models).
+## Content Pipeline
+
+- Runtime source of truth: `src/data/letters.json`
+- Runtime assets: `public/assets/models`, `public/assets/letters`, `public/assets/audio`
+- Data paths are root-absolute public URLs such as `/assets/models/1.glb`
+- `npm run validate:letters` is non-destructive and reports:
+  - malformed records or duplicate IDs
+  - invalid/missing required model paths
+  - invalid zone values
+  - missing image/audio/model files
+  - optional-field gaps that fall back at runtime
+  - orphaned image/audio/model assets not referenced by `letters.json`
 
 ## Deployment
 
-### Cloudflare Pages
+Cloudflare Pages expects:
 
-This project is configured to deploy on Cloudflare Pages:
+- build command: `npm run build`
+- output directory: `dist`
+- SPA fallback from `public/_redirects`
+- static asset header rules from `public/_headers`
 
-1. **Build Command**: `npm run build`
-2. **Output Directory**: `dist`
-3. **Routing**: SPA behavior is configured via `public/_redirects` — all routes resolve to `index.html`.
-4. **Headers**: MIME types and CORS headers for `.glb` and `.mp3` files are configured via `public/_headers`.
+Files under `public/` are served at the site root in dev and copied into `dist/` on build, so asset strings like `/assets/models/1.glb` must continue to match the `public/` tree.
 
-These configuration files are automatically copied to the build output and applied by Cloudflare Pages.
+## Current Known Gaps
 
-## Next Steps
-
--   Replace placeholder boxes with actual `.glb` letter models in `src/renderer/letters.js`.
--   Implement `AudioEngine` to use `PannerNode` for spatial audio.
--   Add logic in `themeMixer.js` to crossfade tracks using Howler or Tone.js.
+- `src/audio/themeMixer.js` is still placeholder-only, so per-letter `theme` metadata is informational rather than audible behavior
+- All `letters.json.text` values are empty, so subtitle UI falls back to `Listening to Letter X...`
+- `public/assets/models/47.glb` plus `public/assets/letters/47.jpg` and `47-47.jpg` exist but are not currently referenced by runtime data
+- `scripts/compress-glb.js` still needs its source-path assumptions verified before it should be part of a routine asset workflow

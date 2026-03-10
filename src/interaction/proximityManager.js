@@ -2,6 +2,35 @@ import * as THREE from 'three';
 import { audioEngine } from '../audio/audioEngine.js';
 import { INTERACTION } from '../config/constants.js';
 
+const ACTIVE_CUE_COLOR = 0xffd86b;
+
+function ensureActiveCue(mesh) {
+  if (mesh.userData.isGlass || mesh.userData.activeCue || !mesh.geometry) {
+    return;
+  }
+
+  const outline = new THREE.LineSegments(
+    new THREE.EdgesGeometry(mesh.geometry, 20),
+    new THREE.LineBasicMaterial({
+      color: ACTIVE_CUE_COLOR,
+      transparent: true,
+      opacity: 0.9,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+  );
+
+  outline.name = 'active-letter-cue';
+  outline.visible = false;
+  outline.renderOrder = 10;
+  outline.scale.setScalar(1.015);
+  outline.raycast = () => null;
+
+  mesh.add(outline);
+  mesh.userData.activeCue = outline;
+}
+
 export class ProximityManager {
   constructor(camera, letters) {
     this.camera = camera;
@@ -70,13 +99,20 @@ export class ProximityManager {
     // 2. Visual Feedback (Highlight)
     letter.traverse((child) => {
       if (child.isMesh && child.material) {
+        ensureActiveCue(child);
+
+        if (child.userData.activeCue) {
+          child.userData.activeCue.visible = true;
+        }
+
         // Store original emissive if not already stored
         if (!child.userData.originalEmissive) {
           child.userData.originalEmissive = child.material.emissive ? child.material.emissive.clone() : new THREE.Color(0x000000);
         }
+
         // Make it glow slightly
         if (child.material.emissive) {
-            child.material.emissive.setHex(0x333333);
+          child.material.emissive.setHex(0x333333);
         }
       }
     });
@@ -90,10 +126,14 @@ export class ProximityManager {
 
     // 2. Visual Feedback (Restore)
     letter.traverse((child) => {
+      if (child.isMesh && child.userData.activeCue) {
+        child.userData.activeCue.visible = false;
+      }
+
       if (child.isMesh && child.material && child.userData.originalEmissive) {
         // Only try to copy if the material supports emissive
         if (child.material.emissive) {
-            child.material.emissive.copy(child.userData.originalEmissive);
+          child.material.emissive.copy(child.userData.originalEmissive);
         }
       }
     });

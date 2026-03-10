@@ -27,24 +27,26 @@
     </div>
 
     <!-- Start Screen -->
-    <div id="start-screen" style="display: none;"> <!-- Initially hidden, shown after load -->
+    <div id="start-screen" hidden> <!-- Initially hidden, shown after load -->
       <h1>House of Dreams</h1>
       <p>Explore the archive. Listen to the stories.</p>
+      <p id="start-status" class="screen-status" aria-live="polite">Click to enter. The archive will take control of your pointer.</p>
       <button id="start-btn" class="btn">Enter Archive</button>
     </div>
 
     <!-- Pause Screen -->
-    <div id="pause-screen" style="display: none;">
+    <div id="pause-screen" hidden>
       <h2>Paused</h2>
+      <p id="pause-status" class="screen-status" aria-live="polite">Resume when you are ready to return to the archive.</p>
       <button id="resume-btn" class="btn">Resume</button>
     </div>
 
     <!-- HUD -->
-    <div id="reticle"></div>
-    <div id="controls-hint">WASD to Move • Mouse to Look • B: Bird's Eye View</div>
+    <div id="reticle" hidden></div>
+    <div id="controls-hint" hidden>WASD to Move • Mouse to Look • B: Bird's Eye View</div>
     
     <!-- Bird's Eye View Indicator -->
-    <div id="bird-eye-indicator" style="display: none;">
+    <div id="bird-eye-indicator" hidden>
       <div class="bird-eye-title">🦅 BIRD'S EYE VIEW</div>
       <div class="bird-eye-controls">
         WASD: Pan • Q/E: Zoom • B: Exit
@@ -58,10 +60,10 @@
     </div>
     
     <!-- Mobile Pause Button -->
-    <button id="mobile-pause-btn" aria-label="Pause">⏸</button>
+    <button id="mobile-pause-btn" aria-label="Pause" hidden>⏸</button>
     
     <!-- Debug Panel -->
-    <div id="debug-panel">
+    <div id="debug-panel" hidden>
       <div class="debug-title">Debug Controls</div>
       <div class="debug-row">
         <label for="speed-slider">Walking Speed:</label>
@@ -79,10 +81,10 @@
     </div>
     
     <!-- Subtitles -->
-    <div id="subtitle-container"></div>
+    <div id="subtitle-container" aria-live="polite" aria-atomic="true"></div>
 
     <!-- Letter Preview -->
-    <div id="letter-preview">
+    <div id="letter-preview" hidden>
       <div class="preview-card">
         <img id="preview-front" src="" alt="Front">
         <div class="preview-label">Front</div>

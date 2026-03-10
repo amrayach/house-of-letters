@@ -1,0 +1,206 @@
+# 15. UI/UX Re-entry
+
+## Scope
+
+This track is grounded in the current direct-DOM + Three.js runtime. It does not propose a framework rewrite, a React/Tailwind migration, or a broad scene redesign.
+
+Baseline for this document:
+
+- source of truth is the checked-out repo plus local Playwright walkthroughs
+- no Figma frame/node is currently in scope
+- the first safe-win pass now covers:
+  - shell-state gating
+  - desktop pointer-lock recovery
+  - pause/resume messaging
+  - subtitle and preview layout cleanup
+
+## Current UI state summary
+
+- The archive opens with a cinematic loading scene, then hands off to a dedicated start shell.
+- Desktop now keeps HUD, controls hint, bird's-eye panel, and debug UI out of loading and start states.
+- Mobile now keeps joystick, look area, and pause affordances out of loading, start, and pause shells until the archive is active.
+- Touch HUD visibility is now shell-owned in `main.js` rather than toggled independently inside touch-control activation.
+- Pointer-lock entry and re-entry now keep the user in a recoverable shell if pointer capture is denied or interrupted.
+- Desktop pause now exits bird's-eye instead of resuming into a leaked top-down camera state.
+- Subtitle and letter preview overlays remain tied to active-letter proximity, but their visibility is now shell-gated in one place and their desktop/mobile layouts are less obstructive than the initial baseline.
+- Active-letter narration and emphasis are now evaluated only during active runtime, not behind the start or pause shells.
+- Bird's-eye mode remains part of the same runtime, but it still wants stronger visual-system integration in a later polish pass.
+
+## Strongest strengths already present
+
+- The loading sequence gives the archive an authored tone before interaction begins.
+- The sparse monochrome shell fits the project mood and does not compete with the scene by default.
+- The direct DOM overlay model is workable for additive UX polish.
+- Proximity-driven subtitle plus preview remains the clearest non-verbal cue for letter focus.
+- Mobile and desktop already branch cleanly at the control layer, which makes targeted shell fixes feasible without architectural churn.
+
+## UI state matrix
+
+| State | Visible overlays | Interactive overlays | Hidden overlays | Input mode | Entry trigger | Exit trigger | Known fragile transitions |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `loading` | loading scene, loading overlay, skip intro | skip intro | start, pause, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, debug | none | initial boot | intro complete + assets loaded | double transition scheduling, timeout/error path |
+| `start` | start shell | start button | pause, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, debug | desktop or touch | loading handoff | successful activation | desktop pointer-lock denial, mobile shell leakage |
+| `active desktop` | reticle, controls hint, subtitle/preview when letter is active | scene, pointer lock | start, pause, mobile controls | keyboard + mouse | pointer lock acquired | unlock, bird's-eye toggle | pointer-lock interruption, preview collision near scene focal point |
+| `active mobile` | pause button, joystick, look area, subtitle/preview when letter is active | touch controls, scene | start, pause, desktop HUD, debug | touch | start tap or resume tap | mobile pause | safe-area overlap, preview/subtitle collision |
+| `paused desktop` | pause shell | resume button | start, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, debug | keyboard + mouse | pointer unlock | pointer lock reacquired | resume failure, stale movement state |
+| `paused mobile` | pause shell | resume button | start, pause button, joystick, look area, desktop HUD, debug, preview, subtitle | touch | mobile pause button | resume tap | touch controls leaking under pause shell |
+| `bird-eye` | bird's-eye indicator | scene navigation | start, pause, reticle, controls hint, mobile controls | desktop today | `B` while active | `B` again or pause | panel/system mismatch, keyboard state persistence |
+| `active-letter emphasis` | subtitle + preview | none today | unrelated shells | desktop or touch | proximity threshold enter | proximity threshold exit | layout overlap, missing copy fallback quality |
+
+## Top 7 UI/UX issues
+
+1. Bird's-eye mode still feels like a tool overlay rather than a first-class archive view.
+2. Subtitle fallback copy remains generic when letter text is missing.
+3. Preview and subtitle layout are improved but still scene-obstructive on smaller phones.
+4. Loading and start shells now behave correctly, but their composition is still functional rather than fully intentional.
+5. Pause messaging is clearer, but shell copy overall still under-orients first-time users.
+6. Debug UI policy is now enforced in shell states, but it still depends on a runtime flag rather than a stricter environment boundary.
+7. Overlay behavior is now explicit, but regression risk remains high because the runtime still combines DOM shell logic with an always-running render loop.
+
+## Pain points by severity
+
+### High
+
+- Bird's-eye presentation is visually detached from the rest of the archive shell.
+- Mobile overlay density is still tight in active-letter moments on small screens.
+- Placeholder subtitle fallback weakens narrative credibility.
+
+### Medium
+
+- Start and pause copy still explain controls more than atmosphere or intent.
+- Letter preview cards remain visually heavier than the subtitle layer they support.
+- Overlay logic is correct now, but fragile because it spans HTML, CSS, `src/main.js`, and control-layer events.
+
+### Low
+
+- Desktop HUD typography can be tuned once the next visual pass begins.
+- The debug panel still looks like a dev overlay even when explicitly enabled.
+
+## Prioritized improvement opportunities
+
+### P0. Keep shell-state gating as the source of truth
+
+- Preserve explicit `loading`, `start`, `active`, and `paused` shell states.
+- Keep HUD, touch controls, bird's-eye indicator, debug UI, and active-letter overlays state-gated.
+- Keep `syncUiChrome()` as the only visibility owner for those overlays.
+- Do not reintroduce inline `display` toggles scattered across handlers.
+
+Validation:
+- Playwright smoke for loading, start, active, pause, and mobile resume flows.
+
+Figma:
+- no
+
+### P1. Improve content clarity without changing architecture
+
+- Replace generic subtitle fallback content where real text is unavailable.
+- Refine start/pause copy for orientation, recovery, and emotional tone.
+- Add clearer microcopy for bird's-eye entry and exit.
+
+Validation:
+- Desktop and mobile first-run walkthroughs with copy review in-context.
+
+Figma:
+- no
+
+### P1. Reduce active-letter obstruction further on mobile
+
+- Keep subtitle width narrow enough to preserve focal context.
+- Make preview cards slightly lighter and more subordinate to the scene.
+- Preserve safe-area spacing for pause and control affordances.
+
+Validation:
+- Proximity test at mobile widths around the first active letter cluster.
+
+Figma:
+- no
+
+### P2. Recompose loading and start shells
+
+- Strengthen typography rhythm, spacing, and masking around the scene.
+- Clarify hierarchy between title, orientation copy, and CTA.
+- Preserve current DOM structure.
+
+Validation:
+- Before/after screenshot comparison plus performance sanity check during load.
+
+Figma:
+- preferred, not required
+
+### P2. Unify bird's-eye and active-letter visual language
+
+- Bring bird's-eye panel styling closer to the archive shell.
+- Reduce the feeling of switching into a debug-like mode.
+- Align accent use, panel density, and information hierarchy.
+
+Validation:
+- Desktop toggle checks plus overlap review with the active-letter layer.
+
+Figma:
+- preferred
+
+## Recommended order of implementation
+
+1. Keep the current shell-state matrix stable and extend from it instead of bypassing it.
+2. Improve copy and fallback text.
+3. Continue mobile active-letter layout tuning.
+4. Recompose loading and start shells.
+5. Rework bird's-eye into the same visual system as the rest of the archive.
+
+## First-pass acceptance criteria
+
+The first UX pass is complete only if:
+
+- no HUD, debug UI, or touch controls leak into loading or start shells
+- pause state is visually exclusive on desktop and mobile
+- pointer-lock denial or interruption leaves the user in a recoverable shell
+- subtitle and preview remain readable without excessively blocking the focal scene
+- no new z-index or overlap regressions appear in tested desktop/mobile flows
+
+## Desktop vs mobile notes
+
+### Desktop
+
+- Pointer-lock recovery is the main UX risk and must stay explicit.
+- The controls hint should appear only in active immersive mode.
+- Bird's-eye currently belongs to desktop-first review and should not be treated as a mobile parity gap yet.
+
+### Mobile
+
+- Touch controls must stay absent until active play begins.
+- Safe-area spacing is part of the UX contract, not polish.
+- Active-letter overlays need conservative sizing because the scene already shares space with joystick, look zone, and pause affordances.
+
+## Improvements that need Figma vs do not
+
+### Does not need Figma
+
+- shell-state gating
+- pointer-lock recovery
+- touch HUD visibility rules
+- subtitle/preview positioning
+- copy improvements
+- debug UI policy
+
+### Better with Figma, but not blocked on it
+
+- loading/start shell composition
+- bird's-eye visual-system redesign
+- future typography or spacing-system refreshes
+
+## Debug UI policy
+
+- Debug UI is hidden by default in user-facing flows.
+- Debug UI should never be visible during loading, start, pause, or other shell states.
+- If used, it should be enabled only through an explicit debug flag or debug session rule.
+
+## Top 3 safe wins
+
+1. State-gate overlays and touch HUD by mode.
+2. Repair pointer-lock re-entry and pause/resume messaging.
+3. Reposition and resize subtitle and preview layers, especially on mobile.
+
+## Top 2 medium-risk visual improvements
+
+1. Refine loading/start composition without changing the DOM architecture.
+2. Unify bird's-eye and active-letter panels into a more coherent overlay language.

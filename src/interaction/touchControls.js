@@ -71,6 +71,7 @@ export class TouchControls {
         <div id="joystick-knob"></div>
       </div>
     `;
+    this.joystickContainer.hidden = true;
     document.body.appendChild(this.joystickContainer);
     
     this.joystickBase = document.getElementById('joystick-base');
@@ -80,12 +81,14 @@ export class TouchControls {
     this.lookArea = document.createElement('div');
     this.lookArea.id = 'touch-look-area';
     this.lookArea.innerHTML = '<span class="look-hint">Drag to look</span>';
+    this.lookArea.hidden = true;
     document.body.appendChild(this.lookArea);
     
     // Create action button (for interactions)
     this.actionButton = document.createElement('button');
     this.actionButton.id = 'touch-action-btn';
     this.actionButton.textContent = '●';
+    this.actionButton.hidden = true;
     this.actionButton.style.display = 'none'; // Show when near interactive objects
     document.body.appendChild(this.actionButton);
   }
@@ -238,23 +241,23 @@ export class TouchControls {
   
   enable() {
     this.enabled = true;
-    if (this.joystickContainer) {
-      this.joystickContainer.style.display = 'flex';
-      this.lookArea.style.display = 'flex';
-    }
   }
   
   disable() {
     this.enabled = false;
+    this.joystickTouch = null;
+    this.lookTouch = null;
     this.resetJoystick();
-    if (this.joystickContainer) {
-      this.joystickContainer.style.display = 'none';
-      this.lookArea.style.display = 'none';
+
+    if (this.actionButton) {
+      this.actionButton.hidden = true;
+      this.actionButton.style.display = 'none';
     }
   }
   
   showActionButton(show) {
     if (this.actionButton) {
+      this.actionButton.hidden = !show;
       this.actionButton.style.display = show ? 'flex' : 'none';
     }
   }

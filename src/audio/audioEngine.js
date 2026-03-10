@@ -8,6 +8,8 @@ export class AudioEngine {
     this.narrations = {};
     this.narrationUrls = {};
     this.isInitialized = false;
+    this.visibilityHandler = null;
+    this.shouldResumeOnVisibility = null;
   }
 
   init() {
@@ -25,6 +27,7 @@ export class AudioEngine {
   playBackgroundTheme(url) {
     if (this.backgroundTheme) {
       this.backgroundTheme.stop();
+      this.backgroundTheme.unload();
     }
     
     this.backgroundTheme = new Howl({
@@ -66,6 +69,9 @@ export class AudioEngine {
         },
         onend: () => {
           console.log(`Narration ${letterId} ended`);
+          if (this.currentNarration === howl) {
+            this.currentNarration = null;
+          }
           // Restore theme volume when narration ends
           if (this.backgroundTheme) {
             this.backgroundTheme.fade(this.backgroundTheme.volume(), AUDIO.THEME_VOLUME, AUDIO.FADE_DURATION);
@@ -163,36 +169,48 @@ export class AudioEngine {
   /**
    * Setup visibility change listener to pause/resume audio when tab is hidden/visible
    */
-  setupVisibilityHandler() {
-    document.addEventListener('visibilitychange', () => {
+  setupVisibilityHandler(options = {}) {
+    if (this.visibilityHandler) {
+      return;
+    }
+
+    this.shouldResumeOnVisibility = options.shouldResume ?? null;
+
+    this.visibilityHandler = () => {
       if (document.hidden) {
         this.pause();
-      } else {
+      } else if (!this.shouldResumeOnVisibility || this.shouldResumeOnVisibility()) {
         this.resume();
       }
-    });
+    };
+
+    document.addEventListener('visibilitychange', this.visibilityHandler);
   }
 
   /**
    * Dispose all audio resources
    */
   dispose() {
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
+
+    this.shouldResumeOnVisibility = null;
+
     if (this.backgroundTheme) {
       this.backgroundTheme.unload();
       this.backgroundTheme = null;
     }
 
-    if (this.currentNarration) {
-      this.currentNarration.unload();
-      this.currentNarration = null;
-    }
-
     // Unload all cached narrations
-    Object.values(this.narrations).forEach(narration => {
+    Object.values(this.narrations).forEach((narration) => {
       narration.unload();
     });
+    this.currentNarration = null;
     this.narrations = {};
     this.narrationUrls = {};
+    this.isInitialized = false;
 
     console.log('Audio engine disposed');
   }

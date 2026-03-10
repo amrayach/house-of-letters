@@ -9,6 +9,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "validate:letters": "node scripts/validate-letters.js",
     "compress": "node scripts/compress-glb.js",
     "clean": "rm -rf dist node_modules/.vite"
   },

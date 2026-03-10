@@ -3,6 +3,7 @@ node_modules/
 
 # Build output (Vite)
 build/
+dist/
 
 # Logs
 npm-debug.log*
@@ -29,3 +30,8 @@ Thumbs.db
 # Python / script cache (if you use any)
 __pycache__/
 *.pyc
+
+# Local validation artifacts
+tmp-*.png
+uiux-*.png
+uiux-*.txt

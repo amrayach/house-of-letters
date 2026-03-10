@@ -10,6 +10,10 @@
   --safe-area-right: env(safe-area-inset-right, 0px);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   margin: 0;
   padding: 0;
@@ -156,6 +160,9 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 1rem;
+  padding: 32px 24px;
+  box-sizing: border-box;
   z-index: 1000;
   text-align: center;
   transition: opacity 0.5s ease;
@@ -170,7 +177,7 @@ body {
 
 #start-screen p {
   font-size: 1.2rem;
-  margin-bottom: 2rem;
+  margin: 0;
   opacity: 0.8;
 }
 
@@ -186,6 +193,9 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 1rem;
+  padding: 32px 24px;
+  box-sizing: border-box;
   z-index: 1000;
   backdrop-filter: blur(5px);
 }
@@ -215,6 +225,18 @@ body {
   color: var(--bg-color);
 }
 
+.btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.screen-status {
+  max-width: 34rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  opacity: 0.68;
+}
+
 /* HUD */
 #reticle {
   position: absolute;
@@ -231,9 +253,11 @@ body {
 
 #controls-hint {
   position: absolute;
-  bottom: 20px;
-  left: 20px;
+  bottom: 24px;
+  left: 24px;
+  max-width: 22rem;
   font-size: 0.9rem;
+  line-height: 1.5;
   opacity: 0.6;
   pointer-events: none;
   z-index: 100;
@@ -241,6 +265,7 @@ body {
 
 /* Debug Panel */
 #debug-panel {
+  display: none;
   position: absolute;
   top: 20px;
   left: 20px;
@@ -291,14 +316,18 @@ body {
   color: #00ff88;
 }
 
+body.debug-enabled[data-ui-state="active"][data-view-mode="immersive"][data-input-mode="desktop"] #debug-panel:not([hidden]) {
+  display: block;
+}
+
 /* Letter Preview */
 #letter-preview {
   position: absolute;
-  bottom: 40px;
-  right: 40px;
+  right: 28px;
+  bottom: calc(28px + var(--safe-area-bottom));
   z-index: 100;
   display: flex;
-  gap: 20px;
+  gap: 14px;
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -311,25 +340,26 @@ body {
 }
 
 .preview-card {
-  background: rgba(20, 20, 20, 0.9);
-  padding: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  min-width: clamp(112px, 12vw, 148px);
+  background: rgba(14, 14, 14, 0.84);
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   text-align: center;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(8px);
 }
 
 .preview-card img {
   display: block;
-  max-width: 200px;
+  max-width: clamp(112px, 12vw, 148px);
   height: auto;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .preview-label {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 2px;
   opacity: 0.7;
@@ -338,23 +368,27 @@ body {
 /* Subtitles */
 #subtitle-container {
   position: absolute;
-  bottom: 20%; /* Positioned above the preview area */
+  bottom: clamp(132px, 18vh, 180px);
   left: 50%;
   transform: translateX(-50%);
-  width: 60%;
+  width: min(62vw, 760px);
   text-align: center;
   z-index: 600;
   pointer-events: none;
 }
 
 .subtitle {
-  background: rgba(0, 0, 0, 0.6);
-  padding: 10px 20px;
-  border-radius: 20px;
-  font-size: 1.2rem;
-  line-height: 1.5;
+  max-width: 100%;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 12px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 1.05rem;
+  line-height: 1.55;
   display: inline-block;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   text-shadow: 0 1px 2px black;
+  backdrop-filter: blur(8px);
 }
 
 /* ==================== */
@@ -463,6 +497,10 @@ body {
   backdrop-filter: blur(5px);
 }
 
+#mobile-pause-btn:not([hidden]) {
+  display: flex;
+}
+
 #mobile-pause-btn:active {
   background: rgba(0, 0, 0, 0.7);
 }
@@ -472,13 +510,6 @@ body {
 /* ==================== */
 
 @media (max-width: 768px) {
-  /* Show touch controls on mobile */
-  #touch-joystick-container,
-  #touch-look-area,
-  #mobile-pause-btn {
-    display: flex;
-  }
-  
   /* Hide desktop-only elements */
   #controls-hint {
     display: none;
@@ -513,6 +544,11 @@ body {
     font-size: 1rem;
     padding: 0 20px;
   }
+
+  .screen-status {
+    font-size: 0.88rem;
+    max-width: 19rem;
+  }
   
   .btn {
     padding: 12px 30px;
@@ -521,36 +557,46 @@ body {
   
   /* Adjust letter preview for mobile */
   #letter-preview {
-    bottom: 160px;
-    right: 20px;
-    left: 20px;
+    bottom: calc(100px + var(--safe-area-bottom));
+    right: 16px;
+    left: 16px;
     flex-direction: row;
     justify-content: center;
-    gap: 10px;
+    gap: 12px;
   }
   
   .preview-card {
+    min-width: 0;
+    width: min(40vw, 132px);
     padding: 10px;
   }
   
   .preview-card img {
-    max-width: 120px;
+    max-width: 100%;
   }
   
   /* Adjust subtitles for mobile */
   #subtitle-container {
-    bottom: 25%;
-    width: 80%;
+    bottom: calc(214px + var(--safe-area-bottom));
+    width: min(88vw, 34rem);
   }
   
   .subtitle {
-    font-size: 1rem;
-    padding: 8px 15px;
+    font-size: 0.96rem;
+    padding: 10px 14px;
   }
   
   /* Pause screen adjustments */
   #pause-screen h2 {
     font-size: 1.5rem;
+  }
+
+  #bird-eye-indicator {
+    top: calc(12px + var(--safe-area-top));
+    left: 12px;
+    right: 12px;
+    transform: none;
+    padding: 12px 16px;
   }
 }
 
@@ -579,24 +625,24 @@ body {
   #start-screen h1 {
     font-size: 1.5rem;
   }
-  
-  .preview-card img {
-    max-width: 80px;
-  }
-  
+
   #letter-preview {
-    bottom: 150px;
+    bottom: calc(92px + var(--safe-area-bottom));
+    gap: 8px;
+  }
+
+  .preview-card {
+    width: min(42vw, 116px);
+    padding: 8px;
+  }
+
+  #subtitle-container {
+    bottom: calc(184px + var(--safe-area-bottom));
   }
 }
 
 /* Touch device detection via media query */
 @media (hover: none) and (pointer: coarse) {
-  #touch-joystick-container,
-  #touch-look-area,
-  #mobile-pause-btn {
-    display: flex;
-  }
-  
   #controls-hint,
   #debug-panel {
     display: none;
@@ -606,7 +652,7 @@ body {
 /* Bird's Eye View Indicator */
 #bird-eye-indicator {
   position: fixed;
-  top: 20px;
+  top: calc(16px + var(--safe-area-top));
   left: 50%;
   transform: translateX(-50%);
   z-index: 500;
@@ -614,8 +660,10 @@ body {
   border: 2px solid #4CAF50;
   border-radius: 10px;
   padding: 15px 25px;
+  max-width: min(560px, calc(100vw - 48px));
   text-align: center;
   box-shadow: 0 4px 20px rgba(76, 175, 80, 0.3);
+  pointer-events: none;
 }
 
 .bird-eye-title {

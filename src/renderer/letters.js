@@ -126,6 +126,7 @@ export async function loadLetters(scene, lettersData, onProgress = null) {
                 // Identify glass by material name
                 const materialName = child.material.name?.toLowerCase() || '';
                 const isGlass = materialName.includes('glass') || materialName.includes('plexi');
+                child.userData.isGlass = isGlass;
 
                 console.log(`Processing ${child.name} (${child.material.name}) - Is Glass? ${isGlass}, Material Type: ${child.material.type}`);
 
@@ -210,6 +211,8 @@ export async function loadLetters(scene, lettersData, onProgress = null) {
           // Store metadata
           model.userData = {
             id: data.id,
+            basePositionY: data.position.y,
+            baseRotationY: angle,
             ...data
           };
 

@@ -60,6 +60,23 @@ export function toggleBirdEyeView(camera) {
   return birdEyeViewEnabled;
 }
 
+export function exitBirdEyeView(camera) {
+  if (!birdEyeViewEnabled) {
+    return false;
+  }
+
+  birdEyeViewEnabled = false;
+
+  if (savedCameraState) {
+    camera.position.copy(savedCameraState.position);
+    camera.rotation.copy(savedCameraState.rotation);
+    savedCameraState = null;
+  }
+
+  console.log('Bird\'s eye view DISABLED - Normal view restored');
+  return false;
+}
+
 export function initControls(camera, domElement) {
   const controls = new PointerLockControls(camera, domElement);
   const useTouchControls = isTouchDevice();
@@ -80,6 +97,10 @@ export function initControls(camera, domElement) {
   };
 
   const onKeyDown = (event) => {
+    if (!useTouchControls && !controls.isLocked) {
+      return;
+    }
+
     // Toggle bird's eye view with B key
     if (event.code === 'KeyB') {
       toggleBirdEyeView(camera);
@@ -149,6 +170,20 @@ export function initControls(camera, domElement) {
   // Track if controls are active (for both desktop and mobile)
   let isActive = false;
 
+  const resetMovementState = () => {
+    velocity.set(0, 0, 0);
+    direction.set(0, 0, 0);
+    currentSpeed = 0;
+    moveState.forward = false;
+    moveState.backward = false;
+    moveState.left = false;
+    moveState.right = false;
+    moveState.up = false;
+    moveState.down = false;
+  };
+
+  controls.addEventListener('unlock', resetMovementState);
+
   return {
     controls,
     touchControls,
@@ -167,6 +202,8 @@ export function initControls(camera, domElement) {
     
     // Deactivate controls
     deactivate: () => {
+      resetMovementState();
+
       if (useTouchControls) {
         isActive = false;
         touchControls.disable();
@@ -252,7 +289,7 @@ export function initControls(camera, domElement) {
         
         // Debug: Log position occasionally
         if (Math.random() < 0.01) {
-          console.log('Camera position:', useTouchControls ? camera.position : controls.getObject().position);
+          console.log('Camera position:', camera.position);
         }
       } else {
         currentSpeed = 0;
@@ -262,6 +299,7 @@ export function initControls(camera, domElement) {
     dispose: () => {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('keyup', onKeyUp);
+      controls.removeEventListener('unlock', resetMovementState);
       if (touchControls) {
         touchControls.dispose();
       }

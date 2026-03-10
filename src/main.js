@@ -1,18 +1,17 @@
 import * as THREE from 'three';
 import { initScene } from '@renderer/sceneSetup.js';
 import { initLighting } from '@renderer/lighting.js';
-import { initControls, setWalkingSpeed, getWalkingSpeed, isBirdEyeView } from '@renderer/controls.js';
+import { initControls, setWalkingSpeed, isBirdEyeView, exitBirdEyeView } from '@renderer/controls.js';
 import { loadLetters } from '@renderer/letters.js';
 import { LoadingScene } from '@renderer/loadingScene.js';
 import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
 import { ProximityManager } from '@interaction/proximityManager.js';
-import { AUDIO, ASSETS, ANIMATION, LOADING_TIMEOUT_MS } from '@config/constants.js';
+import { AUDIO, ANIMATION, LOADING_TIMEOUT_MS } from '@config/constants.js';
 import lettersData from '@data/letters.json';
 
 // Loading Scene Elements
 const loadingSceneContainer = document.getElementById('loading-scene-container');
-const loadingOverlay = document.getElementById('loading-overlay');
 const loadingProgress = document.getElementById('loading-progress');
 const loadingStatus = document.getElementById('loading-status');
 const skipBtn = document.getElementById('skip-intro-btn');
@@ -21,7 +20,6 @@ const skipBtn = document.getElementById('skip-intro-btn');
 const loadingScene = new LoadingScene(loadingSceneContainer);
 
 // Main game state
-let gameInitialized = false;
 let assetsLoaded = false;
 let loadingSceneComplete = false;
 
@@ -29,59 +27,431 @@ let loadingSceneComplete = false;
 const { scene, camera, renderer } = initScene();
 
 // 2. Lighting
-const { pointLight, pointLight2 } = initLighting(scene);
+initLighting(scene);
 
 // 3. Controls
-const { controls, touchControls, isTouchDevice, update: updateControls, getVelocity, activate: activateControls, deactivate: deactivateControls, isActive: isControlsActive } = initControls(camera, document.body);
+const {
+  controls,
+  isTouchDevice,
+  update: updateControls,
+  getVelocity,
+  activate: activateControls,
+  deactivate: deactivateControls,
+  dispose: disposeControls,
+} = initControls(camera, document.body);
 
 // Debug: Speed slider setup
 const speedSlider = document.getElementById('speed-slider');
 const speedValueDisplay = document.getElementById('speed-value');
 const currentSpeedDisplay = document.getElementById('current-speed');
+const debugPositionDisplay = document.getElementById('debug-position');
 
-speedSlider.addEventListener('input', (e) => {
+function handleSpeedSliderInput(e) {
   const speed = parseInt(e.target.value, 10);
   setWalkingSpeed(speed);
   speedValueDisplay.textContent = speed;
-});
+}
+
+speedSlider.addEventListener('input', handleSpeedSliderInput);
 
 // 4. Load Content (async)
 let letterObjects = [];
 let proximityManager = null;
+let displayedActiveLetterId = null;
+
+const UI_STATE = Object.freeze({
+  LOADING: 'loading',
+  START: 'start',
+  ACTIVE: 'active',
+  PAUSED: 'paused',
+});
+
+const VIEW_MODE = Object.freeze({
+  IMMERSIVE: 'immersive',
+  BIRD_EYE: 'bird-eye',
+});
+
+const POINTER_LOCK_FALLBACK_MS = 1800;
 
 const loadingScreen = document.getElementById('loading-screen');
 const startScreen = document.getElementById('start-screen');
 const startBtn = document.getElementById('start-btn');
+const startStatus = document.getElementById('start-status');
 const pauseScreen = document.getElementById('pause-screen');
 const resumeBtn = document.getElementById('resume-btn');
+const pauseStatus = document.getElementById('pause-status');
+const pauseBtn = document.getElementById('mobile-pause-btn');
+const reticle = document.getElementById('reticle');
+const controlsHint = document.getElementById('controls-hint');
+const debugPanel = document.getElementById('debug-panel');
+const previewContainer = document.getElementById('letter-preview');
+const frontImage = document.getElementById('preview-front');
+const backImage = document.getElementById('preview-back');
+const subtitleContainer = document.getElementById('subtitle-container');
+const birdEyeIndicator = document.getElementById('bird-eye-indicator');
+const touchJoystickContainer = document.getElementById('touch-joystick-container');
+const touchLookArea = document.getElementById('touch-look-area');
+const letterDataById = new Map(lettersData.map((letter) => [letter.id, letter]));
+const subtitleElement = document.createElement('div');
+subtitleElement.className = 'subtitle';
+subtitleElement.hidden = true;
+subtitleContainer.appendChild(subtitleElement);
+
+let uiState = UI_STATE.LOADING;
+let viewMode = VIEW_MODE.IMMERSIVE;
+let hasBootstrappedExperience = false;
+let pendingDesktopState = UI_STATE.START;
+let pointerLockFallbackTimer = null;
+let isTransitioningOutOfLoading = false;
+
+const debugQuery = new URLSearchParams(window.location.search).get('debug');
+const storedDebugPreference = (() => {
+  try {
+    return window.localStorage.getItem('hod:debug');
+  } catch {
+    return null;
+  }
+})();
+const debugUiEnabled = !isTouchDevice && (debugQuery === '1' || (debugQuery !== '0' && storedDebugPreference === '1'));
+const DEFAULT_START_STATUS = isTouchDevice
+  ? 'Tap to enter. Touch controls appear once the archive is active.'
+  : 'Click to enter. The archive will take control of your pointer.';
+const DEFAULT_PAUSE_STATUS = isTouchDevice
+  ? 'Tap Resume to return to the archive.'
+  : 'Click Resume to recapture your pointer and return to the archive.';
+
+document.body.dataset.inputMode = isTouchDevice ? 'touch' : 'desktop';
+document.body.dataset.uiState = uiState;
+document.body.dataset.viewMode = viewMode;
+
+if (debugUiEnabled) {
+  document.body.classList.add('debug-enabled');
+}
+
+function getSubtitleText(letterData) {
+  return letterData.text || `Listening to Letter ${letterData.id}...`;
+}
+
+function setElementHidden(element, hidden) {
+  if (element) {
+    element.hidden = hidden;
+  }
+}
+
+function setStartStatus(message = DEFAULT_START_STATUS) {
+  if (startStatus) {
+    startStatus.textContent = message;
+  }
+}
+
+function setPauseStatus(message = DEFAULT_PAUSE_STATUS) {
+  if (pauseStatus) {
+    pauseStatus.textContent = message;
+  }
+}
+
+function setStartPendingState(isPending, message = DEFAULT_START_STATUS) {
+  startBtn.disabled = isPending;
+  startBtn.textContent = isPending ? 'Entering...' : 'Enter Archive';
+  startBtn.setAttribute('aria-busy', String(isPending));
+  setStartStatus(message);
+}
+
+function setPausePendingState(isPending, message = DEFAULT_PAUSE_STATUS) {
+  resumeBtn.disabled = isPending;
+  resumeBtn.textContent = isPending ? 'Re-entering...' : 'Resume';
+  resumeBtn.setAttribute('aria-busy', String(isPending));
+  setPauseStatus(message);
+}
+
+function setTouchOverlayVisibility(show) {
+  if (touchJoystickContainer) {
+    touchJoystickContainer.hidden = !show;
+    touchJoystickContainer.style.display = show ? 'flex' : 'none';
+  }
+
+  if (touchLookArea) {
+    touchLookArea.hidden = !show;
+    touchLookArea.style.display = show ? 'flex' : 'none';
+  }
+}
+
+function syncUiChrome() {
+  const isActive = uiState === UI_STATE.ACTIVE;
+  const immersiveActive = isActive && viewMode === VIEW_MODE.IMMERSIVE;
+  const birdEyeActive = isActive && viewMode === VIEW_MODE.BIRD_EYE;
+  const desktopImmersive = immersiveActive && !isTouchDevice;
+  const mobileImmersive = immersiveActive && isTouchDevice;
+  const shouldShowLetterUi = immersiveActive && Boolean(displayedActiveLetterId);
+  const shouldShowDebug = debugUiEnabled && desktopImmersive;
+
+  document.body.dataset.uiState = uiState;
+  document.body.dataset.viewMode = viewMode;
+
+  setElementHidden(startScreen, uiState !== UI_STATE.START);
+  setElementHidden(pauseScreen, uiState !== UI_STATE.PAUSED);
+  setElementHidden(reticle, !desktopImmersive);
+  setElementHidden(controlsHint, !desktopImmersive);
+  setElementHidden(birdEyeIndicator, !birdEyeActive);
+  setElementHidden(pauseBtn, !mobileImmersive);
+  setElementHidden(debugPanel, !shouldShowDebug);
+
+  setTouchOverlayVisibility(mobileImmersive);
+
+  previewContainer.hidden = !shouldShowLetterUi;
+  previewContainer.classList.toggle('visible', shouldShowLetterUi);
+  subtitleElement.hidden = !shouldShowLetterUi || !subtitleElement.textContent;
+}
+
+function setUiState(nextState) {
+  if (uiState !== nextState) {
+    uiState = nextState;
+  }
+
+  syncUiChrome();
+}
+
+function setViewMode(nextMode) {
+  if (viewMode !== nextMode) {
+    viewMode = nextMode;
+  }
+
+  syncUiChrome();
+}
+
+function clearPointerLockFallbackTimer() {
+  if (pointerLockFallbackTimer !== null) {
+    window.clearTimeout(pointerLockFallbackTimer);
+    pointerLockFallbackTimer = null;
+  }
+}
+
+function bootstrapExperience() {
+  if (hasBootstrappedExperience) {
+    return;
+  }
+
+  audioEngine.init();
+  audioEngine.setupVisibilityHandler({
+    shouldResume: () => uiState === UI_STATE.ACTIVE,
+  });
+  audioEngine.playBackgroundTheme(AUDIO.THEME_PATH);
+
+  lettersData.forEach((letter) => {
+    if (letter.narration) {
+      audioEngine.registerNarration(letter.id, letter.narration);
+    }
+  });
+
+  hasBootstrappedExperience = true;
+}
+
+function handlePointerLockFailure(message) {
+  clearPointerLockFallbackTimer();
+  setStartPendingState(false);
+  setPausePendingState(false);
+
+  if (pendingDesktopState === UI_STATE.PAUSED) {
+    setPauseStatus(message || 'Pointer lock was unavailable. Click Resume to try again.');
+    setUiState(UI_STATE.PAUSED);
+  } else {
+    setStartStatus(message || 'Pointer lock was unavailable. Click Enter Archive to try again.');
+    setUiState(UI_STATE.START);
+  }
+
+  audioEngine.pause();
+}
+
+function requestDesktopPointerLock(sourceState, waitingMessage, failureMessage) {
+  pendingDesktopState = sourceState;
+  clearPointerLockFallbackTimer();
+
+  if (sourceState === UI_STATE.PAUSED) {
+    setPausePendingState(true, waitingMessage);
+  } else {
+    setStartPendingState(true, waitingMessage);
+  }
+
+  controls.lock();
+
+  pointerLockFallbackTimer = window.setTimeout(() => {
+    if (!controls.isLocked) {
+      handlePointerLockFailure(failureMessage);
+    }
+  }, POINTER_LOCK_FALLBACK_MS);
+}
+
+function clearActiveLetterUI() {
+  subtitleElement.textContent = '';
+  syncUiChrome();
+}
+
+function showActiveLetterUI(letterData) {
+  const frontPath = letterData.frontImage || `/assets/letters/${letterData.id}.jpg`;
+  const backPath = letterData.backImage || `/assets/letters/${letterData.id}-${letterData.id}.jpg`;
+
+  if (frontImage.src !== new URL(frontPath, window.location.href).href) {
+    frontImage.src = frontPath;
+  }
+
+  if (backImage.src !== new URL(backPath, window.location.href).href) {
+    backImage.src = backPath;
+  }
+
+  subtitleElement.textContent = getSubtitleText(letterData);
+  syncUiChrome();
+}
+
+function updateActiveLetterUI(activeLetterId) {
+  if (displayedActiveLetterId === activeLetterId) {
+    return;
+  }
+
+  displayedActiveLetterId = activeLetterId;
+  themeMixer.update(activeLetterId);
+
+  if (!activeLetterId) {
+    clearActiveLetterUI();
+    return;
+  }
+
+  const letterData = letterDataById.get(activeLetterId);
+
+  if (!letterData) {
+    clearActiveLetterUI();
+    return;
+  }
+
+  showActiveLetterUI(letterData);
+}
 
 // Function to transition from loading to game
 function transitionToGame() {
-  if (!assetsLoaded || !loadingSceneComplete) return;
-  
+  if (!assetsLoaded || !loadingSceneComplete || isTransitioningOutOfLoading) return;
+
+  isTransitioningOutOfLoading = true;
+
   // Fade out loading scene
   loadingScreen.style.opacity = '0';
-  
+
   setTimeout(() => {
-    loadingScreen.style.display = 'none';
-    
+    loadingScreen.hidden = true;
+
     // Clean up loading scene
     loadingScene.dispose();
-    
-    // Show start screen
-    startScreen.style.display = 'flex';
-    gameInitialized = true;
+
+    setStartPendingState(false);
+    setUiState(UI_STATE.START);
   }, 800);
 }
 
-// Skip button handler
-if (skipBtn) {
-  skipBtn.addEventListener('click', () => {
-    if (loadingScene) {
-      loadingScene.skipTransition();
-    }
-  });
+function handleSkipIntro() {
+  if (loadingScene) {
+    loadingScene.skipTransition();
+  }
 }
+
+function handleDesktopLock() {
+  clearPointerLockFallbackTimer();
+  setStartPendingState(false);
+  setPausePendingState(false);
+  setUiState(UI_STATE.ACTIVE);
+  audioEngine.resume();
+}
+
+function handleDesktopUnlock() {
+  clearPointerLockFallbackTimer();
+  setStartPendingState(false);
+  setPausePendingState(false);
+
+  if (uiState === UI_STATE.LOADING || uiState === UI_STATE.START) {
+    return;
+  }
+
+  if (isBirdEyeView()) {
+    exitBirdEyeView(camera);
+    setViewMode(VIEW_MODE.IMMERSIVE);
+  }
+
+  setPauseStatus('Pointer released. Click Resume to return to the archive.');
+  setUiState(UI_STATE.PAUSED);
+  audioEngine.pause();
+}
+
+function handleResume() {
+  if (isTouchDevice) {
+    activateControls();
+    setPausePendingState(false);
+    setUiState(UI_STATE.ACTIVE);
+    audioEngine.resume();
+    return;
+  }
+
+  requestDesktopPointerLock(
+    UI_STATE.PAUSED,
+    'Waiting for pointer capture...',
+    'Pointer lock was unavailable. Click Resume to try again.',
+  );
+}
+
+function handleMobilePause() {
+  deactivateControls();
+  setPausePendingState(false, 'Paused. Tap Resume to continue exploring.');
+  setUiState(UI_STATE.PAUSED);
+  audioEngine.pause();
+}
+
+function handleStartExperience() {
+  bootstrapExperience();
+
+  if (isTouchDevice) {
+    activateControls();
+    setStartPendingState(false);
+    setUiState(UI_STATE.ACTIVE);
+    audioEngine.resume();
+    return;
+  }
+
+  audioEngine.pause();
+  requestDesktopPointerLock(
+    UI_STATE.START,
+    'Waiting for pointer capture...',
+    'Pointer lock was unavailable. Click Enter Archive to try again.',
+  );
+}
+
+function handlePointerLockError() {
+  if (pointerLockFallbackTimer === null && !startBtn.disabled && !resumeBtn.disabled) {
+    return;
+  }
+
+  const failureMessage = pendingDesktopState === UI_STATE.PAUSED
+    ? 'Pointer lock was blocked by the browser. Click Resume to try again.'
+    : 'Pointer lock was blocked by the browser. Click Enter Archive to try again.';
+
+  handlePointerLockFailure(failureMessage);
+}
+
+if (skipBtn) {
+  skipBtn.addEventListener('click', handleSkipIntro);
+}
+
+if (!isTouchDevice) {
+  controls.addEventListener('lock', handleDesktopLock);
+  controls.addEventListener('unlock', handleDesktopUnlock);
+  document.addEventListener('pointerlockerror', handlePointerLockError);
+}
+
+resumeBtn.addEventListener('click', handleResume);
+startBtn.addEventListener('click', handleStartExperience);
+
+if (pauseBtn) {
+  pauseBtn.addEventListener('click', handleMobilePause);
+}
+
+setStartPendingState(false);
+setPausePendingState(false);
+syncUiChrome();
 
 // Start the loading scene animation
 loadingScene.start(() => {
@@ -144,38 +514,6 @@ loadingScene.start(() => {
     // Try to transition (will wait for loading scene to complete)
     transitionToGame();
 
-    // Handle Pause/Resume - Different handling for touch vs desktop
-    if (isTouchDevice) {
-      // For touch devices, we don't use pointer lock events
-      // Instead, we'll handle this through UI buttons
-    } else {
-      controls.addEventListener('lock', () => {
-        startScreen.style.display = 'none';
-        pauseScreen.style.display = 'none';
-        // Resume audio when controls are locked (game resumed)
-        audioEngine.resume();
-      });
-
-      controls.addEventListener('unlock', () => {
-        // Only show pause screen if we are not in the start screen
-        if (startScreen.style.display === 'none') {
-          pauseScreen.style.display = 'flex';
-          // Pause audio when controls are unlocked (game paused)
-          audioEngine.pause();
-        }
-      });
-    }
-
-    resumeBtn.addEventListener('click', () => {
-      if (isTouchDevice) {
-        activateControls();
-        pauseScreen.style.display = 'none';
-        audioEngine.resume();
-      } else {
-        controls.lock();
-      }
-    });
-
   } catch (error) {
     console.error('Error loading letters:', error);
     const isTimeoutError = error.message?.includes('timeout');
@@ -203,64 +541,30 @@ loadingScene.start(() => {
   }
 })();
 
-// 6. Start Experience
-startBtn.addEventListener('click', () => {
-  // Initialize Audio Context
-  audioEngine.init();
-
-  // Setup visibility handler for tab switching
-  audioEngine.setupVisibilityHandler();
-
-  // Play background theme music
-  audioEngine.playBackgroundTheme(AUDIO.THEME_PATH);
-
-  // Preload all narrations
-  lettersData.forEach(letter => {
-    if (letter.narration) {
-      audioEngine.registerNarration(letter.id, letter.narration);
-    }
-  });
-
-  // Activate Controls (Enter FPS mode)
-  activateControls();
-
-  // Hide Start Screen
-  startScreen.style.opacity = 0;
-  setTimeout(() => {
-    startScreen.style.display = 'none';
-  }, 500);
-});
-
-// Mobile pause button handler
-const pauseBtn = document.getElementById('mobile-pause-btn');
-if (pauseBtn) {
-  pauseBtn.addEventListener('click', () => {
-    deactivateControls();
-    pauseScreen.style.display = 'flex';
-    audioEngine.pause();
-  });
-}
-
 // 7. Animation Loop
 const clock = new THREE.Clock();
-const birdEyeIndicator = document.getElementById('bird-eye-indicator');
-const debugPositionDisplay = document.getElementById('debug-position');
 
 function animate() {
   requestAnimationFrame(animate);
 
   const delta = clock.getDelta();
+  const nextViewMode = isBirdEyeView() ? VIEW_MODE.BIRD_EYE : VIEW_MODE.IMMERSIVE;
+
+  if (viewMode !== nextViewMode) {
+    setViewMode(nextViewMode);
+  }
 
   // Update Controls
-  updateControls(delta);
-  
-  // Update bird's eye view indicator
-  if (birdEyeIndicator) {
-    birdEyeIndicator.style.display = isBirdEyeView() ? 'block' : 'none';
+  if (uiState === UI_STATE.ACTIVE) {
+    updateControls(delta);
+  } else if (currentSpeedDisplay) {
+    currentSpeedDisplay.textContent = '0.00';
   }
   
   // Update debug speed display
-  currentSpeedDisplay.textContent = getVelocity().toFixed(2);
+  if (uiState === UI_STATE.ACTIVE) {
+    currentSpeedDisplay.textContent = getVelocity().toFixed(2);
+  }
   
   // Update debug position display
   if (debugPositionDisplay) {
@@ -268,47 +572,12 @@ function animate() {
   }
 
   // Check Proximity
-  let activeLetterId = null;
+  const activeLetterId = uiState === UI_STATE.ACTIVE && proximityManager
+    ? proximityManager.update()
+    : null;
+
   if (proximityManager) {
-    activeLetterId = proximityManager.update();
-
-    // Update Audio Theme
-    themeMixer.update(activeLetterId);
-
-    // Update UI
-    const previewContainer = document.getElementById('letter-preview');
-    const frontImage = document.getElementById('preview-front');
-    const backImage = document.getElementById('preview-back');
-    const subtitleContainer = document.getElementById('subtitle-container');
-
-    if (activeLetterId) {
-      const letterData = lettersData.find(l => l.id === activeLetterId);
-      if (letterData) {
-        // Update Images
-        const frontPath = letterData.frontImage || `/assets/letters/${activeLetterId}.jpg`;
-        const backPath = letterData.backImage || `/assets/letters/${activeLetterId}-${activeLetterId}.jpg`;
-
-        if (frontImage.src !== new URL(frontPath, window.location.href).href) {
-          frontImage.src = frontPath;
-        }
-        if (backImage.src !== new URL(backPath, window.location.href).href) {
-          backImage.src = backPath;
-        }
-
-        // Show Preview
-        previewContainer.classList.add('visible');
-
-        // Update Subtitle (Mocking text for now as it's not in JSON)
-        // In a real scenario, we would read letterData.text or letterData.subtitle
-        const subtitleText = letterData.text || `Listening to Letter ${activeLetterId}...`;
-        subtitleContainer.innerHTML = `<div class="subtitle">${subtitleText}</div>`;
-      }
-    } else {
-      // Hide Preview
-      previewContainer.classList.remove('visible');
-      // Clear Subtitle
-      subtitleContainer.innerHTML = '';
-    }
+    updateActiveLetterUI(activeLetterId);
   }
 
   // Animate Letters (Slight airflow)
@@ -330,17 +599,16 @@ function animate() {
       const offset = i * 2; // Phase offset
 
       // Gentle rotation (torsion)
-      letter.rotation.y = Math.sin(time * ANIMATION.ROTATION_SPEED + offset) * ANIMATION.ROTATION_AMPLITUDE;
+      const baseRotationY = letter.userData.baseRotationY ?? 0;
+      letter.rotation.y = baseRotationY + Math.sin(time * ANIMATION.ROTATION_SPEED + offset) * ANIMATION.ROTATION_AMPLITUDE;
 
       // Swaying (wind)
       letter.rotation.z = Math.sin(time * ANIMATION.SWAY_SPEED + offset) * ANIMATION.SWAY_AMPLITUDE;
 
       // Vertical bobbing (air currents)
-      letter.position.y = letter.userData.position.y + Math.sin(time * ANIMATION.BOB_SPEED + offset) * ANIMATION.BOB_AMPLITUDE;
+      const basePositionY = letter.userData.basePositionY ?? letter.userData.position.y;
+      letter.position.y = basePositionY + Math.sin(time * ANIMATION.BOB_SPEED + offset) * ANIMATION.BOB_AMPLITUDE;
     });
-
-    // Update Audio Theme
-    // themeMixer.update(activeLetterId) is already called above
   }
 
   // Render
@@ -349,13 +617,43 @@ function animate() {
 
 animate();
 
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
+let hasCleanedUp = false;
+
+function cleanupRuntime() {
+  if (hasCleanedUp) {
+    return;
+  }
+
+  hasCleanedUp = true;
+  clearPointerLockFallbackTimer();
+
+  speedSlider.removeEventListener('input', handleSpeedSliderInput);
+  startBtn.removeEventListener('click', handleStartExperience);
+  resumeBtn.removeEventListener('click', handleResume);
+
+  if (skipBtn) {
+    skipBtn.removeEventListener('click', handleSkipIntro);
+  }
+
+  if (pauseBtn) {
+    pauseBtn.removeEventListener('click', handleMobilePause);
+  }
+
+  if (!isTouchDevice) {
+    controls.removeEventListener('lock', handleDesktopLock);
+    controls.removeEventListener('unlock', handleDesktopUnlock);
+    document.removeEventListener('pointerlockerror', handlePointerLockError);
+  }
+
+  disposeControls();
+
   // Dispose audio resources
   audioEngine.dispose();
   
+  updateActiveLetterUI(null);
+
   // Dispose Three.js resources
-  letterObjects.forEach(letter => {
+  letterObjects.forEach((letter) => {
     letter.traverse((child) => {
       if (child.geometry) {
         child.geometry.dispose();
@@ -373,9 +671,15 @@ window.addEventListener('beforeunload', () => {
       }
     });
   });
+
+  if (!loadingScene.isDisposed) {
+    loadingScene.dispose();
+  }
   
   // Dispose renderer
   renderer.dispose();
   
   console.log('Resources cleaned up on page unload');
-});
+}
+
+window.addEventListener('beforeunload', cleanupRuntime);
