@@ -50,6 +50,9 @@ const letterLoadStageData = (() => {
     [LETTER_LOAD_STAGE.DEFERRED]: Object.freeze([...stagedLetters[LETTER_LOAD_STAGE.DEFERRED]]),
   });
 })();
+const timelineRequiredLetterIds = validatedProvisionalChronology
+  ? new Set(validatedProvisionalChronology.flatMap((group) => group.letterIds))
+  : null;
 
 // Loading Scene Elements
 const loadingSceneContainer = document.getElementById('loading-scene-container');
@@ -113,6 +116,8 @@ let groundTimeline = null;
 let displayedActiveLetterId = null;
 let currentTargetState = null;
 const letterObjectById = new Map();
+let deferredLetterLoadPromise = null;
+let hasTriggeredDeferredLetterLoad = false;
 
 const UI_STATE = Object.freeze({
   LOADING: 'loading',
@@ -281,6 +286,117 @@ function resetInspectState() {
 
 function getLetterObjectById(letterId) {
   return letterObjectById.get(letterId) || null;
+}
+
+function hasRequiredGroundTimelineCoverage() {
+  if (!timelineRequiredLetterIds) {
+    return false;
+  }
+
+  for (const letterId of timelineRequiredLetterIds) {
+    if (!letterObjectById.has(letterId)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function tryInitializeGroundTimeline() {
+  if (groundTimeline || !validatedProvisionalChronology || !hasRequiredGroundTimelineCoverage()) {
+    return false;
+  }
+
+  groundTimeline = createGroundTimeline({
+    scene,
+    letters: letterObjects,
+    chronology: validatedProvisionalChronology,
+    constants: TIMELINE,
+  });
+
+  console.log('[ground-timeline] Initialized after full chronology coverage became available.');
+  return true;
+}
+
+function integrateLateLoadedLetters(loadedLetters) {
+  if (!Array.isArray(loadedLetters) || loadedLetters.length === 0) {
+    tryInitializeGroundTimeline();
+    return [];
+  }
+
+  const integratedLetters = [];
+
+  loadedLetters.forEach((letter) => {
+    const letterId = letter?.userData?.id;
+
+    if (!letter || !letterId || letterObjectById.has(letterId)) {
+      return;
+    }
+
+    letterObjectById.set(letterId, letter);
+    integratedLetters.push(letter);
+  });
+
+  if (integratedLetters.length === 0) {
+    tryInitializeGroundTimeline();
+    return integratedLetters;
+  }
+
+  if (proximityManager) {
+    proximityManager.addLetters(integratedLetters);
+  } else {
+    letterObjects.push(...integratedLetters);
+    proximityManager = new ProximityManager(camera, letterObjects);
+  }
+
+  tryInitializeGroundTimeline();
+  return integratedLetters;
+}
+
+function startDeferredLetterLoad() {
+  if (hasTriggeredDeferredLetterLoad) {
+    return deferredLetterLoadPromise;
+  }
+
+  hasTriggeredDeferredLetterLoad = true;
+
+  const deferredLetters = letterLoadStageData[LETTER_LOAD_STAGE.DEFERRED];
+
+  if (deferredLetters.length === 0) {
+    letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.READY;
+    tryInitializeGroundTimeline();
+    deferredLetterLoadPromise = Promise.resolve([]);
+    return deferredLetterLoadPromise;
+  }
+
+  letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.PENDING;
+  console.log(`Starting deferred background load for ${deferredLetters.length} late letters.`);
+
+  deferredLetterLoadPromise = loadLetters(scene, deferredLetters, renderer)
+    .then((loadedLetters) => {
+      const integratedLetters = integrateLateLoadedLetters(loadedLetters);
+
+      if (integratedLetters.length === deferredLetters.length) {
+        letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.READY;
+      } else if (integratedLetters.length > 0) {
+        letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.DEGRADED;
+      } else {
+        letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.FAILED;
+      }
+
+      console.log(
+        `Deferred background load integrated ${integratedLetters.length}/${deferredLetters.length} letters.`,
+      );
+
+      return integratedLetters;
+    })
+    .catch((error) => {
+      letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.FAILED;
+      console.error('Deferred letter load failed:', error);
+      return [];
+    });
+
+  return deferredLetterLoadPromise;
 }
 
 function resolveInspectSide(letter, requestedSide) {
@@ -927,6 +1043,7 @@ function handleDesktopLock() {
   setPausePendingState(false);
   setUiState(UI_STATE.ACTIVE);
   audioEngine.resume();
+  void startDeferredLetterLoad();
 }
 
 function handleDesktopUnlock() {
@@ -988,6 +1105,7 @@ function handleStartExperience() {
     setStartPendingState(false);
     setUiState(UI_STATE.ACTIVE);
     audioEngine.resume();
+    void startDeferredLetterLoad();
     return;
   }
 
@@ -1245,14 +1363,7 @@ loadingScene.start(() => {
 
     // 5. Interaction
     proximityManager = new ProximityManager(camera, letterObjects);
-    if (validatedProvisionalChronology) {
-      groundTimeline = createGroundTimeline({
-        scene,
-        letters: letterObjects,
-        chronology: validatedProvisionalChronology,
-        constants: TIMELINE,
-      });
-    }
+    tryInitializeGroundTimeline();
 
     letterLoadStageState[LETTER_LOAD_STAGE.CORE].status = LETTER_LOAD_STAGE_STATUS.READY;
 

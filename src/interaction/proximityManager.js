@@ -74,24 +74,55 @@ export class ProximityManager {
     this.sideNormalWorld = new THREE.Vector3();
   }
 
+  collectFocusTargetsForLetter(letter) {
+    const focusTargets = [];
+    const readableSides = letter?.userData?.interaction?.readableSides;
+
+    if (!readableSides) {
+      return focusTargets;
+    }
+
+    Object.values(readableSides).forEach((side) => {
+      if (side.focusTarget) {
+        focusTargets.push(side.focusTarget);
+      }
+    });
+
+    return focusTargets;
+  }
+
   collectFocusTargets(letters) {
     const focusTargets = [];
 
     letters.forEach((letter) => {
-      const readableSides = letter.userData.interaction?.readableSides;
-
-      if (!readableSides) {
-        return;
-      }
-
-      Object.values(readableSides).forEach((side) => {
-        if (side.focusTarget) {
-          focusTargets.push(side.focusTarget);
-        }
-      });
+      focusTargets.push(...this.collectFocusTargetsForLetter(letter));
     });
 
     return focusTargets;
+  }
+
+  addLetters(letters) {
+    if (!Array.isArray(letters) || letters.length === 0) {
+      return 0;
+    }
+
+    const existingIds = new Set(this.letters.map((letter) => letter.userData?.id));
+    let addedCount = 0;
+
+    letters.forEach((letter) => {
+      const letterId = letter?.userData?.id;
+
+      if (!letter || existingIds.has(letterId)) {
+        return;
+      }
+
+      existingIds.add(letterId);
+      this.letters.push(letter);
+      this.focusTargets.push(...this.collectFocusTargetsForLetter(letter));
+      addedCount += 1;
+    });
+
+    return addedCount;
   }
 
   clearTargeting() {
