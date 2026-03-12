@@ -27,6 +27,7 @@ Baseline for this document:
 - Desktop pause now exits bird's-eye instead of resuming into a leaked top-down camera state.
 - Subtitle and letter preview overlays remain tied to active-letter proximity, but their visibility is now shell-gated in one place and their desktop/mobile layouts are less obstructive than the initial baseline.
 - Active immersive play now exposes a candidate-driven inspect prompt and a dedicated inspect overlay for full-size front/back scan viewing.
+- Active immersive play now also reveals a scene-native grouped chronology thread on first letter focus, then keeps it as an ambient floor guide while roaming.
 - Active-letter narration and emphasis are now evaluated only during active runtime, not behind the start or pause shells.
 - Bird's-eye mode remains part of the same runtime, but it now feels more obviously like the next visual mismatch after loading/start were tightened.
 
@@ -37,6 +38,7 @@ Baseline for this document:
 - The start shell now has one obvious focal block, which makes entry feel more intentional without changing the interaction model.
 - The direct DOM overlay model is workable for additive UX polish.
 - Proximity-driven subtitle plus preview remains the clearest non-verbal cue for letter focus.
+- The new ground chronology thread gives the archive a continuous navigational cue without adding new DOM chrome.
 - Readability no longer depends on tiny world-space geometry alone; inspect mode provides a reversible full-scan view without changing archive scale.
 - Mobile and desktop already branch cleanly at the control layer, which makes targeted shell fixes feasible without architectural churn.
 

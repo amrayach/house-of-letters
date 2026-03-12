@@ -3,6 +3,7 @@
 ## Source of truth
 
 - Runtime metadata: `src/data/letters.json`
+- Provisional grouped chronology metadata: `src/data/provisionalChronology.js`
 - Static assets served as-is: `public/assets/**`
 - Generated output only: `dist/**`
 - Backup copy: `src/data/letters_backup.json`
@@ -88,6 +89,25 @@ Observed runtime schema: 46 records, all with the same keys today.
   - zone 4: `29.3 .. 58.5`
 - All current asset references in `letters.json` resolve to existing files under `public/`.
 
+## Provisional grouped chronology mapping
+
+- `src/data/provisionalChronology.js` is the temporary chronology authority for the ground timeline.
+- It does not add per-letter archival dates to `letters.json`.
+- It currently defines four grouped chronology records with:
+  - `zone`
+  - `ambientLabel`
+  - `focusedLabel`
+  - `letterIds`
+- The module validates at import time that:
+  - all 46 runtime letters are covered exactly once
+  - every covered letter's `zone` matches `letters.json`
+- If validation fails, it logs once and exports a falsey validated chronology so timeline setup can disable safely.
+- Current grouped labels are:
+  - zone 1: `1988-1990` / `11/10/1988 - 01/01/1990`
+  - zone 2: `1990-1991` / `01/01/1990 - 05/01/1991`
+  - zone 3: `1991-1992` / `12/02/1991 - 01/01/1992`
+  - zone 4: `1992` / `01/01/1992 - 21/07/1992`
+
 ## Asset path conventions
 
 | Asset kind | Current convention | Notes |
@@ -114,6 +134,7 @@ Observed runtime schema: 46 records, all with the same keys today.
   - preview images read directly from `letters.json`
   - narration is triggered from `model.userData.id`
   - theme data is present but currently informational only
+  - grouped ground chronology reads from `provisionalChronology.js` and loaded letter-object positions; it does not write back into `letters.json`
 
 ## Runtime-derived GLB metadata
 

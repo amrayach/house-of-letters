@@ -18,6 +18,7 @@
 | Archive rendering | `src/renderer/sceneSetup.js`, `src/renderer/lighting.js` | archive `scene`, `camera`, `renderer`, inspect-quality pixel-ratio switching, ground/grid, resize handling, base light rig | GLB loading, audio, DOM flow |
 | Controls + movement | `src/renderer/controls.js`, `src/interaction/touchControls.js` | pointer lock, touch UI, camera movement, bird's-eye mode, inspect suppression seam, key state | narration selection, preview UI, asset loading |
 | Letter loading + scene content | `src/renderer/letters.js`, `src/utils/loaders.js` | GLB fetch/retry, model transforms, material replacement, string geometry, interaction metadata/focus helpers, `userData` attachment | DOM preview/subtitles, audio playback decisions |
+| Ground chronology | `src/renderer/groundTimeline.js`, `src/data/provisionalChronology.js` | grouped chronology spine, per-letter anchors/connectors, cached ground label textures, safe disable when chronology or loaded-letter coverage is incomplete | exact per-letter dates, DOM UI, movement math, target scoring |
 | Loading intro | `src/renderer/loadingScene.js` | Sednaya intro scene, postprocessing, separate renderer lifecycle, skip/completion callbacks | archive gameplay loop, letter data, pause/start UI |
 | Audio | `src/audio/audioEngine.js` | background theme playback, narration lazy loading, ducking, pause/resume, unload | active-letter detection, visual highlighting, theme choice policy |
 | Theme mixing | `src/audio/themeMixer.js` | only current active-letter/theme bookkeeping and logging | actual crossfade or soundtrack switching |
@@ -39,6 +40,8 @@ flowchart LR
   MAIN --> LETTERS["renderer/letters.js"]
   LETTERS --> LOADERS["utils/loaders.js"]
   LETTERS --> CONST["config/constants.js"]
+  MAIN --> GT["renderer/groundTimeline.js"]
+  MAIN --> CHRONO["data/provisionalChronology.js"]
   MAIN --> AUDIO["audio/audioEngine.js"]
   MAIN --> MIXER["audio/themeMixer.js"]
   MAIN --> PROX["interaction/proximityManager.js"]
@@ -56,6 +59,8 @@ flowchart LR
 - `sceneSetup.js` may expose renderer-quality toggles used by inspect mode, but `main.js` still decides when inspect is active.
 - `loadingScene.js` is intentionally separate and should stay separate unless the intro is redesigned end-to-end.
 - `letters.js` may mutate loaded model materials and transforms, but it should not own screen overlays or audio policy.
+- `groundTimeline.js` owns the chronology thread meshes, anchor meshes, connector meshes, and label-plane textures once the scene is active.
+- `groundTimeline.js` should stay scene-native and should not absorb DOM, input, or targeting ownership.
 
 ### Controls
 
@@ -88,6 +93,7 @@ flowchart LR
 ### Metadata
 
 - `letters.json` owns IDs, zones, positions, and asset references.
+- `provisionalChronology.js` owns grouped chronology labels and group coverage only; it is intentionally not the archival source of truth for exact dates.
 - `letters.js` copies those fields into `model.userData`; other modules read from that snapshot at runtime.
 - Treat `letters.json` as declarative data, not as a place for transient runtime state.
 

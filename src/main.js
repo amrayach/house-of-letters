@@ -2,13 +2,15 @@ import * as THREE from 'three';
 import { initScene } from '@renderer/sceneSetup.js';
 import { initLighting } from '@renderer/lighting.js';
 import { initControls, setWalkingSpeed, isBirdEyeView, exitBirdEyeView } from '@renderer/controls.js';
+import { createGroundTimeline } from '@renderer/groundTimeline.js';
 import { loadLetters } from '@renderer/letters.js';
 import { LoadingScene } from '@renderer/loadingScene.js';
 import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
 import { ProximityManager } from '@interaction/proximityManager.js';
-import { AUDIO, ANIMATION, INSPECT, LOADING_TIMEOUT_MS } from '@config/constants.js';
+import { AUDIO, ANIMATION, INSPECT, LOADING_TIMEOUT_MS, TIMELINE } from '@config/constants.js';
 import lettersData from '@data/letters.json';
+import { validatedProvisionalChronology } from '@data/provisionalChronology.js';
 
 // Loading Scene Elements
 const loadingSceneContainer = document.getElementById('loading-scene-container');
@@ -39,7 +41,7 @@ const {
   deactivate: deactivateControls,
   dispose: disposeControls,
   setInspectSuppressed,
-} = initControls(camera, document.body);
+} = initControls(camera, renderer.domElement);
 
 // Debug: Speed slider setup
 const speedSlider = document.getElementById('speed-slider');
@@ -58,6 +60,7 @@ speedSlider.addEventListener('input', handleSpeedSliderInput);
 // 4. Load Content (async)
 let letterObjects = [];
 let proximityManager = null;
+let groundTimeline = null;
 let displayedActiveLetterId = null;
 let currentTargetState = null;
 const letterObjectById = new Map();
@@ -575,6 +578,14 @@ function clearPointerLockFallbackTimer() {
   }
 }
 
+function blurActiveElement() {
+  const activeElement = document.activeElement;
+
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+}
+
 function bootstrapExperience() {
   if (hasBootstrappedExperience) {
     return;
@@ -614,6 +625,7 @@ function handlePointerLockFailure(message) {
 function requestDesktopPointerLock(sourceState, waitingMessage, failureMessage) {
   pendingDesktopState = sourceState;
   clearPointerLockFallbackTimer();
+  blurActiveElement();
 
   if (sourceState === UI_STATE.PAUSED) {
     setPausePendingState(true, waitingMessage);
@@ -861,6 +873,7 @@ function handleSkipIntro() {
 
 function handleDesktopLock() {
   clearPointerLockFallbackTimer();
+  blurActiveElement();
   setStartPendingState(false);
   setPausePendingState(false);
   setUiState(UI_STATE.ACTIVE);
@@ -1180,6 +1193,14 @@ loadingScene.start(() => {
 
     // 5. Interaction
     proximityManager = new ProximityManager(camera, letterObjects);
+    if (validatedProvisionalChronology) {
+      groundTimeline = createGroundTimeline({
+        scene,
+        letters: letterObjects,
+        chronology: validatedProvisionalChronology,
+        constants: TIMELINE,
+      });
+    }
 
     // Mark assets as loaded
     assetsLoaded = true;
@@ -1277,6 +1298,7 @@ function animate() {
   requestAnimationFrame(animate);
 
   const delta = clock.getDelta();
+  const elapsedTime = clock.getElapsedTime();
   const nextViewMode = inspectState.phase !== INSPECT_PHASE.IDLE
     ? VIEW_MODE.INSPECT
     : (isBirdEyeView() ? VIEW_MODE.BIRD_EYE : VIEW_MODE.IMMERSIVE);
@@ -1319,9 +1341,21 @@ function animate() {
 
   updateActiveLetterUI(currentTargetState?.activeId ?? null);
   syncInspectUi();
+  if (groundTimeline) {
+    groundTimeline.update({
+      uiState,
+      viewMode,
+      inspectPhase: inspectState.phase,
+      activeId: currentTargetState?.activeId ?? null,
+      candidateId: currentTargetState?.candidateId ?? null,
+      movementSpeed: getVelocity(),
+      elapsedTime,
+      cameraPosition: camera.position,
+    });
+  }
 
   // Animate Letters (Slight airflow)
-  const time = clock.getElapsedTime();
+  const time = elapsedTime;
 
   // Animate Lights - DISABLED to ensure consistent lighting on front/back
   // No light animation code here anymore
@@ -1436,6 +1470,10 @@ function cleanupRuntime() {
   disposeControls();
 
   clearRuntimeTargeting();
+  if (groundTimeline) {
+    groundTimeline.dispose();
+    groundTimeline = null;
+  }
 
   // Dispose audio resources
   audioEngine.dispose();

@@ -11,6 +11,7 @@ Use this as the watchlist for shell-state and overlay regressions after UI edits
 | pause screen | active HUD remains visible behind the pause shell | pause depends on different desktop and mobile control branches, but shell gating should now own all overlay visibility | desktop unlock, mobile pause tap, resume failure | confirm pause shell is exclusive and recoverable in both input modes |
 | subtitle layer | subtitle obscures the focal scene or sits too close to preview cards | active-letter UI depends on runtime state plus responsive positioning | entering letter proximity on narrow screens | check subtitle spacing at desktop and mobile widths near the first letter cluster |
 | letter preview | preview cards cover too much scene area or remain mounted when inactive | preview visibility combines shell gating, proximity, and CSS transitions | active-letter enter and exit, pause, resize | confirm preview is absent outside active immersive letter focus and returns cleanly on re-entry |
+| ground chronology thread | the floor network never reveals, stays hidden after reveal, leaks into hidden states, or turns zone 4 into a label carpet | it depends on validated grouped chronology data, loaded letter coverage, active shell state, movement speed, and proximity promotion all at once | first target reveal, free-walk movement, later-zone proximity, pause/resume, inspect, bird's-eye | confirm the thread first reveals near a live target, stays ambient while moving, promotes only one readable label at a time, hides in bird's-eye, and stays absent outside active play |
 | inspect prompt | prompt leaks into pause/bird's-eye/inspect, or advertises the wrong side | prompt visibility depends on candidate targeting plus shell/view state | approach letter, rotate away, enter inspect, pause | confirm the prompt appears only for a live immersive candidate and that its front/back copy matches the candidate side |
 | inspect overlay | overlay leaves immersive HUD visible, side/zoom controls desync, or exit restores the wrong pose | inspect couples camera interpolation, input suppression, side metadata, and responsive CSS | enter inspect, switch side, zoom, exit, pause/unlock | confirm the overlay is exclusive, controls gate correctly, and exit or forced exit returns cleanly to immersive play |
 | bird's-eye mode | indicator collides with other overlays, or pause/resume returns in the wrong camera mode | bird's-eye is stateful but stylistically separate from the rest of the archive | `B` toggle, pause from bird's-eye, desktop debug mode | confirm indicator appears only while bird's-eye is active and that pause/resume returns to immersive mode |
@@ -26,9 +27,10 @@ Run these after any shell, HUD, pointer-lock, or responsive overlay change:
 2. Desktop pointer-lock failure path.
 3. Desktop active -> candidate -> inspect -> exit -> unlock -> resume.
 4. Desktop bird's-eye entry, pause exit, and normal resume.
-5. Mobile loading -> start -> active -> touch inspect -> exit -> pause -> resume.
-6. Mobile active-letter proximity with subtitle and preview visible.
-7. Loading/start panel hierarchy at a narrow mobile width after resize or refresh.
+5. Desktop active -> first chronology reveal near Letter 1 -> move -> slow near a later-zone letter -> inspect -> exit -> bird's-eye hide.
+6. Mobile loading -> start -> active -> touch inspect -> exit -> pause -> resume.
+7. Mobile active-letter proximity with subtitle and preview visible.
+8. Loading/start panel hierarchy at a narrow mobile width after resize or refresh.
 
 ## Current evidence set
 

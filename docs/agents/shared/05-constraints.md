@@ -16,11 +16,16 @@
   - It should not manage DOM preview or subtitle visibility.
   - It should not start new active-letter side effects behind non-active shell states.
   - Its public seam should stay minimal: candidate/active IDs, sides, and scores only.
+- Keep `src/renderer/groundTimeline.js` responsible for scene-native chronology rendering only.
+  - It may build grouped floor meshes and labels.
+  - It should not own shell state, movement state, or targeting decisions.
+  - It should consume frame state from `main.js` rather than reading controls or proximity internals directly.
 - Keep `src/audio/audioEngine.js` as the only real audio backend.
   - It may react to visibility changes.
   - It should not decide on its own that paused or start-shell runtime states are allowed to resume.
 - Treat `src/audio/themeMixer.js` as placeholder until it actually controls playback.
 - Treat `src/data/letters.json` as declarative content, not a runtime state cache.
+- Do not back-fill speculative chronology fields into `src/data/letters.json` while exact per-letter dates are still unavailable.
 
 ## Performance-sensitive areas
 
@@ -52,6 +57,9 @@
 - Growing the targeting return shape beyond candidate/active ID, side, and score without a documented consumer and ownership review
 - Letting inspect-mode suppression fail so movement, look, or bird's-eye toggles still mutate the camera while inspect is active
 - Letting pause, unlock, or resume skip the forced inspect exit and restore the wrong camera pose/state
+- Letting the ground chronology thread leak into loading, start, pause, or bird's-eye states
+- Letting dense zone 4 promotion turn into multiple readable floor labels at once
+- Letting chronology rendering imply exact per-letter dates instead of grouped labels
 - Renaming asset paths without updating `letters.json` and intro paths
 - Assuming `theme` changes affect audible behavior today
 - Breaking the non-glass active-state cue while changing letter materials or mesh naming
@@ -97,6 +105,7 @@ Use `docs/agents/shared/09-validation-checklist.md` as the default checklist. Fo
 
 - After data/config edits: verify import/path usage with `rg`, check asset existence against `letters.json`, and inspect for stale README/shared-doc claims.
 - After renderer/audio/input changes: run `npm run dev` when feasible and smoke-test intro skip/completion, start/pause handoff, the affected desktop or mobile control path, proximity-driven narration/preview behavior, and tab hide/show audio gating.
+- After ground chronology changes: verify first reveal near the earliest letter, ambient persistence while moving, single-label promotion near a later-zone letter, pause/resume hiding, inspect-adjacent stability, and bird's-eye hiding.
 - After shell/control changes that touch bird's-eye or active-letter flow: verify pause/unlock exits bird's-eye and that new narration does not start until the runtime is active.
 - After targeting changes: verify the intended looked-at letter wins in dense clusters, off-axis neighbors do not steal activation, and pause/unlock clears targeting before any later reacquisition.
 - After inspect changes: verify candidate prompt visibility, enter/front/back/zoom/exit behavior, and forced inspect exit on pause/unlock; treat live desktop pointer-lock coverage as manual smoke if automation cannot prove it.

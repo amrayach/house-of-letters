@@ -65,6 +65,7 @@ For this repo, the common browser smoke-test paths are:
 - tab hide/show while active versus paused when audio changed
 - proximity-driven narration, preview, and subtitle behavior only after active entry
 - dense-cluster targeting and candidate-prompt behavior when letter selection changed
+- ground chronology first reveal, ambient roaming persistence, single-label promotion, pause/resume hiding, inspect-adjacent freeze, and bird's-eye hiding when the floor navigation thread changed
 - inspect prompt, inspect enter/front/back/zoom/reset/exit, desktop inspect unlock/relock, and inspect-only shell exclusivity when readability work changed
 - pause/unlock from inspect plus bird's-eye/inspect mutual exclusion when either mode changed
 - visible asset failures in the browser console or network panel
@@ -83,6 +84,7 @@ Prefer manual smoke for:
 
 - desktop pointer-lock acquisition and re-entry
 - live free-walk precision and overshoot feel around letter clusters
+- how clearly the ground chronology thread remains followable while moving versus slowing near a target
 - inspect behavior while pointer lock is actually captured
 
 When automation cannot cover the path cleanly, record the exact manual steps exercised and the remaining gap instead of implying equivalent coverage.

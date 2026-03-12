@@ -583,23 +583,52 @@ Why this order minimizes rework:
 3. Bird’s-eye camera redesign
 4. Intro/archive lifecycle unification
 
+### 2C. Ground chronology thread
+
+Status:
+- Implemented in this pass
+
+Scope:
+- add a scene-native grouped chronology thread only
+- keep `main.js` as the orchestrator and keep targeting/movement ownership where it already lives
+- leave `letters.json` untouched and route provisional labels through a dedicated chronology mapping layer
+
+Validation:
+- `npm run build`
+- manual smoke for first reveal, ambient roaming persistence, later-zone focus sharpening, pause/resume hiding, inspect-adjacent stability, and bird's-eye hiding
+
+Docs to update:
+- `PLANS.md`
+- `docs/agents/shared/01-architecture.md`
+- `docs/agents/shared/02-runtime-flow.md`
+- `docs/agents/shared/03-data-assets.md`
+- `docs/agents/shared/05-constraints.md`
+- `docs/agents/shared/06-open-questions.md`
+- `docs/agents/shared/09-validation-checklist.md`
+- `docs/agents/shared/15-ui-ux-reentry.md`
+- `docs/agents/shared/16-visual-regression-hotspots.md`
+
+Notes:
+- `src/data/provisionalChronology.js` now owns grouped chronology labels and validates coverage against `letters.json`.
+- `src/renderer/groundTimeline.js` now owns the floor spine, per-letter anchors/connectors, and label planes.
+- timeline setup disables safely if chronology validation fails or not every covered letter model loads.
+
 ## Recommended next task
 
-Manual desktop pointer-lock and inspect smoke capture.
+Manual ground chronology smoke pass.
 
 Why this is next:
-- the runtime and docs now describe desktop inspect, pause/unlock, and bird's-eye exclusion behavior that source review alone cannot fully defend
-- touch/emulated-mobile paths are easier to automate, but live pointer-lock movement and inspect feel still need a short human-confirmed pass
-- fresh evidence will replace the stale historical screenshot/log references removed in this sync
+- the grouped floor navigation thread is now visible user-facing runtime behavior
+- the highest remaining risk is perceptual: whether the thread reads clearly while moving, slowing, pausing, inspecting, and hiding in bird's-eye
+- browser automation can help around shell visibility and console cleanliness, but it still cannot fully defend captured-pointer movement feel
 
 Keep the scope tight:
-- desktop start -> pointer lock -> acquire candidate -> enter inspect -> switch side -> zoom -> exit -> unlock/pause -> resume
-- confirm inspect and bird's-eye cannot overlap
-- record exactly what was exercised and whether the resulting evidence is stored in-repo or summarized in docs/checkpoint notes
+- desktop start -> pointer lock -> first reveal near Letter 1 -> move forward while the thread stays ambient -> slow near a later-zone letter -> inspect -> exit -> unlock/pause -> resume -> bird's-eye hide
+- record exactly what was exercised and whether the evidence is stored in-repo or summarized in docs/checkpoint notes
 
-**Next narrow task: Manual desktop inspect and pointer-lock smoke pass**
+**Next narrow task: Manual grouped chronology smoke pass**
 
 Why:
-- smallest remaining gap between implemented behavior and defended evidence
+- smallest remaining gap between implemented runtime truth and defended user-visible evidence
 - no feature expansion
-- lowers risk before bird's-eye polish or content work
+- lowers risk before any later copy, bird's-eye, or exact-date work

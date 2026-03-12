@@ -39,9 +39,10 @@
 
 - `initScene()` creates the gameplay `scene`, `camera`, and `renderer`, plus a large ground plane and grid.
 - `initLighting(scene)` adds ambient + directional lights.
-- `initControls(camera, document.body)` prepares:
+- `initControls(camera, renderer.domElement)` prepares:
   - desktop pointer-lock controls
   - mobile touch controls if touch capability is detected
+- desktop pointer-lock requests now target the renderer canvas while start/pause buttons remain shell-owned DOM controls
 - `animate()` is started immediately, before the start screen is shown.
 
 ### 4. Asset loading
@@ -60,6 +61,8 @@
   - a line geometry "string"
   - copied metadata in `model.userData`
   - derived interaction metadata in `model.userData.interaction`
+- After letter loading succeeds, `main.js` creates `ProximityManager`.
+- In the same post-load step, `main.js` creates `groundTimeline` only if `src/data/provisionalChronology.js` validates successfully and every chronology-covered letter model is present in the loaded runtime set.
 
 ### 5. Start screen gate
 
@@ -121,6 +124,7 @@
   - populate preview images
   - populate subtitle text
   - let `syncUiChrome()` reveal the preview/subtitle layer only when the runtime is in active immersive mode
+- `main.js` also passes the minimal targeting snapshot plus movement speed and inspect/view state into `groundTimeline.update(...)`; chronology visibility and emphasis stay scene-native and do not widen `proximityManager`'s public contract.
 
 ### 8. Inspect mode
 
@@ -160,6 +164,7 @@
   - debug HUD update
   - active-gated proximity update, suspended while inspect is active
   - preview/subtitle/theme updates when the active letter changes
+  - grouped chronology thread update from `uiState`, `viewMode`, `inspectState.phase`, `candidateId`, `activeId`, and current movement speed
   - near-letter sway/bob/rotation animation around stored base transforms
   - `renderer.render(scene, camera)`
 
@@ -174,6 +179,10 @@
   - loading/start handoff
   - per-frame orchestration
   - derived shell-facing `viewMode`
+- Ground chronology ownership: `src/renderer/groundTimeline.js`
+  - grouped floor spine, per-letter anchors, per-letter connectors, and cached ground labels
+  - hidden outside active play and in bird's-eye
+  - ambient vs focused emphasis based only on frame state passed from `main.js`
 - Controls/input ownership: `src/renderer/controls.js` and `src/interaction/touchControls.js`
   - pointer lock
   - keyboard/touch movement state
@@ -193,6 +202,7 @@
 - On `beforeunload`, `main.js`:
   - removes its DOM/control event listeners
   - `controls.dispose()`
+  - `groundTimeline.dispose()`
   - `audioEngine.dispose()`
   - disposes letter geometries/materials/maps
   - disposes the loading scene if it is still alive
@@ -216,4 +226,5 @@
 | Touch HUD ownership | touch input and touch HUD are related but no longer share the same owner | mobile pause/resume, refresh, and resize without joystick/look leakage |
 | Visibility-driven audio resume | the audio backend listens to `visibilitychange`, but runtime state decides whether resume is allowed | tab hide/show while active, paused, or waiting at start |
 | Shell gating vs always-running render loop | overlays are now state-gated, but the scene and animation loop still continue behind them | shell exclusivity during loading, start, pause, and bird's-eye |
+| Provisional chronology vs partial model loading | grouped chronology is validated against `letters.json`, but the scene-native thread also depends on every covered model loading successfully | partial asset-failure path, safe disable behavior, and no broken half-network on the floor |
 | Cleanup coverage | unload paths are still split across `main.js` and `loadingScene.js`, even though control/audio listener cleanup is now explicit | memory leaks, duplicate listeners, repeated start/pause handling |

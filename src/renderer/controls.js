@@ -4,6 +4,8 @@ import { TouchControls } from '../interaction/touchControls.js';
 
 // Debug: Walking speed configuration
 let walkingSpeed = 100.0;
+const TRACKPAD_LOOK_SENSITIVITY = 0.0015;
+const PI_2 = Math.PI / 2;
 
 // Bird's eye view state
 let birdEyeViewEnabled = false;
@@ -81,6 +83,40 @@ export function exitBirdEyeView(camera) {
 export function initControls(camera, domElement) {
   const controls = new PointerLockControls(camera, domElement);
   const useTouchControls = isTouchDevice();
+  const lookEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+  const handledKeyCodes = new Set([
+    'ArrowUp',
+    'ArrowDown',
+    'ArrowLeft',
+    'ArrowRight',
+    'KeyW',
+    'KeyA',
+    'KeyS',
+    'KeyD',
+    'KeyQ',
+    'KeyE',
+    'KeyB',
+  ]);
+
+  const applyLookDelta = (deltaX, deltaY, sensitivity = controls.pointerSpeed * 0.002) => {
+    if (!controls.enabled || !controls.isLocked || inspectSuppressed || birdEyeViewEnabled) {
+      return;
+    }
+
+    lookEuler.setFromQuaternion(camera.quaternion);
+    lookEuler.y -= deltaX * sensitivity;
+    lookEuler.x -= deltaY * sensitivity;
+    lookEuler.x = Math.max(PI_2 - controls.maxPolarAngle, Math.min(PI_2 - controls.minPolarAngle, lookEuler.x));
+    camera.quaternion.setFromEuler(lookEuler);
+  };
+
+  const isLikelyTrackpadGesture = (event) => {
+    const pixelMode = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL;
+    const hasHorizontalDelta = Math.abs(event.deltaX) > 0;
+    const smallPixelDelta = Math.abs(event.deltaY) > 0 && Math.abs(event.deltaY) < 48;
+    const fractionalDelta = !Number.isInteger(event.deltaX) || !Number.isInteger(event.deltaY);
+    return pixelMode && (hasHorizontalDelta || smallPixelDelta || fractionalDelta);
+  };
   
   // Create touch controls for mobile
   let touchControls = null;
@@ -98,12 +134,18 @@ export function initControls(camera, domElement) {
   };
 
   const onKeyDown = (event) => {
-    if (!useTouchControls && !controls.isLocked) {
+    const controlsActive = useTouchControls ? isActive : controls.isLocked;
+
+    if (!controlsActive) {
       return;
     }
 
     if (inspectSuppressed) {
       return;
+    }
+
+    if (handledKeyCodes.has(event.code)) {
+      event.preventDefault();
     }
 
     // Toggle bird's eye view with B key
@@ -139,8 +181,14 @@ export function initControls(camera, domElement) {
   };
 
   const onKeyUp = (event) => {
+    const controlsActive = useTouchControls ? isActive : controls.isLocked;
+
     if (inspectSuppressed) {
       return;
+    }
+
+    if (controlsActive && handledKeyCodes.has(event.code)) {
+      event.preventDefault();
     }
 
     switch (event.code) {
@@ -169,8 +217,22 @@ export function initControls(camera, domElement) {
     }
   };
 
+  const onWheel = (event) => {
+    if (useTouchControls || !controls.isLocked || inspectSuppressed || birdEyeViewEnabled) {
+      return;
+    }
+
+    if (!isLikelyTrackpadGesture(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    applyLookDelta(event.deltaX, event.deltaY, TRACKPAD_LOOK_SENSITIVITY);
+  };
+
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('keyup', onKeyUp);
+  document.addEventListener('wheel', onWheel, { passive: false });
 
   const velocity = new THREE.Vector3();
   const direction = new THREE.Vector3();
@@ -333,6 +395,7 @@ export function initControls(camera, domElement) {
       controls.enabled = true;
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('keyup', onKeyUp);
+      document.removeEventListener('wheel', onWheel);
       controls.removeEventListener('unlock', resetMovementState);
       if (touchControls) {
         touchControls.dispose();

@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | Theme switching | `src/audio/themeMixer.js` only logs/state-tracks active letter IDs | `letters.json.theme` looks meaningful but does not currently change playback |
 | Subtitle content | all `letters.json.text` fields are empty | preview UI always falls back to placeholder text |
+| Exact chronology | the ground chronology thread is now grouped-only via `src/data/provisionalChronology.js` | later exact per-letter dates should replace only the data seam, not force renderer ownership changes |
 | Active-state art direction | active letters now use an outline cue plus optional emissive tint | behavior is visible, but the final visual language may still need tuning |
 | Cleanup completeness | core control/audio listener cleanup is explicit now, but disposal still spans `main.js`, `sceneSetup.js`, and `loadingScene.js` | lifecycle responsibilities are improved, not fully unified |
 | Data-generation drift | `scripts/generate-letter-positions.cjs` still uses older zone bounds and `.wav` fallback defaults | rerunning it could produce output that disagrees with the current runtime data contract unless it is reviewed first |
@@ -65,5 +66,6 @@
 ## Good candidate follow-ups after this doc pass
 
 - Add real subtitle/text content to `letters.json`.
+- Replace grouped chronology labels with exact per-letter chronology only when authoritative dates exist.
 - Align `scripts/generate-letter-positions.cjs` with the checked-in zone spread and `.mp3` defaults before regenerating data.
 - Decide whether `theme` stays in the content contract before implementing real theme mixing.
