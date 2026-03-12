@@ -1195,6 +1195,9 @@ loadingScene.start(() => {
 
 (async () => {
   try {
+    const startupLetters = letterLoadStageData[LETTER_LOAD_STAGE.CORE];
+    letterLoadStageState[LETTER_LOAD_STAGE.CORE].status = LETTER_LOAD_STAGE_STATUS.PENDING;
+
     console.log('Loading letter models...');
     
     // Track loading start time for slow connection detection
@@ -1229,7 +1232,7 @@ loadingScene.start(() => {
     });
     
     letterObjects = await Promise.race([
-      loadLetters(scene, lettersData, renderer, updateProgress),
+      loadLetters(scene, startupLetters, renderer, updateProgress),
       loadingTimeout
     ]);
     
@@ -1251,6 +1254,8 @@ loadingScene.start(() => {
       });
     }
 
+    letterLoadStageState[LETTER_LOAD_STAGE.CORE].status = LETTER_LOAD_STAGE_STATUS.READY;
+
     // Mark assets as loaded
     assetsLoaded = true;
     
@@ -1258,6 +1263,7 @@ loadingScene.start(() => {
     transitionToGame();
 
   } catch (error) {
+    letterLoadStageState[LETTER_LOAD_STAGE.CORE].status = LETTER_LOAD_STAGE_STATUS.FAILED;
     console.error('Error loading letters:', error);
     const isTimeoutError = error.message?.includes('timeout');
     
