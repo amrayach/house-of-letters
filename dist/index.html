@@ -7,9 +7,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>House of Dreams</title>
-    <script type="module" crossorigin src="/assets/index-BCNBa9Qu.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/three-DqCvsn8F.js">
-    <link rel="stylesheet" crossorigin href="/assets/index-XoXwaMyI.css">
+    <script type="module" crossorigin src="/assets/index-Coh-uU_O.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/three-yZVMLxUP.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DmheAO3H.css">
   </head>
   <body>
     <!-- Loading Screen with 3D Building Scene -->
@@ -19,34 +19,43 @@
       
       <!-- Loading Overlay with text -->
       <div id="loading-overlay">
-        <div id="loading-content">
+        <div id="loading-content" class="shell-panel shell-panel-loading">
+          <p class="shell-kicker">Archive Loading</p>
           <h1 class="loading-title">House of Dreams</h1>
-          <div id="loading-status">Entering the archive...</div>
-          <div id="loading-progress"></div>
+          <p class="shell-lede loading-lede">The archive is resolving the route before entry.</p>
+          <div class="loading-meta">
+            <div id="loading-status">Entering the archive...</div>
+            <div id="loading-progress"></div>
+          </div>
           <button id="skip-intro-btn" class="btn btn-skip">Skip Intro</button>
         </div>
       </div>
     </div>
 
     <!-- Start Screen -->
-    <div id="start-screen" style="display: none;"> <!-- Initially hidden, shown after load -->
-      <h1>House of Dreams</h1>
-      <p>Explore the archive. Listen to the stories.</p>
-      <button id="start-btn" class="btn">Enter Archive</button>
+    <div id="start-screen" hidden> <!-- Initially hidden, shown after load -->
+      <div class="shell-panel shell-panel-start">
+        <p class="shell-kicker">Archive Entry</p>
+        <h1>House of Dreams</h1>
+        <p class="shell-lede">Explore the archive. Listen to the stories.</p>
+        <p id="start-status" class="screen-status" aria-live="polite">Click to enter. The archive will take control of your pointer.</p>
+        <button id="start-btn" class="btn">Enter Archive</button>
+      </div>
     </div>
 
     <!-- Pause Screen -->
-    <div id="pause-screen" style="display: none;">
+    <div id="pause-screen" hidden>
       <h2>Paused</h2>
+      <p id="pause-status" class="screen-status" aria-live="polite">Resume when you are ready to return to the archive.</p>
       <button id="resume-btn" class="btn">Resume</button>
     </div>
 
     <!-- HUD -->
-    <div id="reticle"></div>
-    <div id="controls-hint">WASD to Move • Mouse to Look • B: Bird's Eye View</div>
+    <div id="reticle" hidden></div>
+    <div id="controls-hint" hidden>WASD to Move • Mouse to Look • B: Bird's Eye View</div>
     
     <!-- Bird's Eye View Indicator -->
-    <div id="bird-eye-indicator" style="display: none;">
+    <div id="bird-eye-indicator" hidden>
       <div class="bird-eye-title">🦅 BIRD'S EYE VIEW</div>
       <div class="bird-eye-controls">
         WASD: Pan • Q/E: Zoom • B: Exit
@@ -60,10 +69,10 @@
     </div>
     
     <!-- Mobile Pause Button -->
-    <button id="mobile-pause-btn" aria-label="Pause">⏸</button>
+    <button id="mobile-pause-btn" aria-label="Pause" hidden>⏸</button>
     
     <!-- Debug Panel -->
-    <div id="debug-panel">
+    <div id="debug-panel" hidden>
       <div class="debug-title">Debug Controls</div>
       <div class="debug-row">
         <label for="speed-slider">Walking Speed:</label>
@@ -81,10 +90,10 @@
     </div>
     
     <!-- Subtitles -->
-    <div id="subtitle-container"></div>
+    <div id="subtitle-container" aria-live="polite" aria-atomic="true"></div>
 
     <!-- Letter Preview -->
-    <div id="letter-preview">
+    <div id="letter-preview" hidden>
       <div class="preview-card">
         <img id="preview-front" src="" alt="Front">
         <div class="preview-label">Front</div>
@@ -92,6 +101,46 @@
       <div class="preview-card">
         <img id="preview-back" src="" alt="Back">
         <div class="preview-label">Back</div>
+      </div>
+    </div>
+
+    <div id="inspect-prompt" hidden>
+      <p id="inspect-prompt-copy">Press E to inspect</p>
+      <button id="inspect-touch-btn" class="btn btn-inspect" hidden>Inspect</button>
+    </div>
+
+    <div id="inspect-overlay" hidden aria-live="polite" aria-atomic="true">
+      <div class="inspect-panel shell-panel">
+        <div class="inspect-header">
+          <div class="inspect-header-copy">
+            <p class="shell-kicker">Letter Inspect</p>
+            <div class="inspect-heading">
+              <h2 id="inspect-title">Letter</h2>
+              <span id="inspect-side-badge">Front</span>
+            </div>
+            <p id="inspect-status" class="screen-status">Press E to return to the archive.</p>
+          </div>
+          <button id="inspect-header-exit-btn" class="btn btn-inspect-secondary inspect-header-exit-btn" type="button">Back</button>
+        </div>
+
+        <div id="inspect-scan-viewport">
+          <div id="inspect-scan-stage">
+            <img id="inspect-scan-image" src="" alt="Letter scan">
+          </div>
+        </div>
+
+        <p class="inspect-controls inspect-controls-desktop">
+          E: Exit • F: Front • B: Back • +/-: Zoom • 0: Reset
+        </p>
+
+        <div class="inspect-controls inspect-controls-touch">
+          <button id="inspect-front-btn" class="btn btn-inspect-secondary" type="button">Front</button>
+          <button id="inspect-back-btn" class="btn btn-inspect-secondary" type="button">Back</button>
+          <button id="inspect-zoom-out-btn" class="btn btn-inspect-secondary" type="button">-</button>
+          <button id="inspect-zoom-reset-btn" class="btn btn-inspect-secondary" type="button">Reset</button>
+          <button id="inspect-zoom-in-btn" class="btn btn-inspect-secondary" type="button">+</button>
+          <button id="inspect-exit-btn" class="btn btn-inspect" type="button">Exit</button>
+        </div>
       </div>
     </div>
 

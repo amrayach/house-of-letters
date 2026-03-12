@@ -89,5 +89,5 @@ Read in this order:
 ### Validation mode
 
 - Follow `docs/agents/shared/09-validation-checklist.md`
-- Use `playwright`, `responsiveness-check`, or `ux-audit` only after code changes or when explicitly testing UX
+- Use `playwright` plus `playwright-cli`, `responsiveness-check`, or `ux-audit` only after code changes or when explicitly testing UX
 - Do not use validation tools as a substitute for reading `src/main.js` and the touched subsystem files

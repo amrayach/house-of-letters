@@ -1,5 +1,12 @@
 import * as THREE from 'three';
-import { CAMERA } from '@config/constants.js';
+import { CAMERA, RENDERER_QUALITY } from '@config/constants.js';
+
+function applyRendererViewport(renderer, camera, pixelRatioCap) {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+}
 
 export function initScene() {
   const scene = new THREE.Scene();
@@ -17,12 +24,13 @@ export function initScene() {
   // Look forward along the Z axis
   camera.lookAt(CAMERA.INITIAL_POSITION.x, CAMERA.INITIAL_POSITION.y, CAMERA.INITIAL_POSITION.z + 10);
 
+  let pixelRatioCap = RENDERER_QUALITY.IMMERSIVE_PIXEL_RATIO_MAX;
+
   const renderer = new THREE.WebGLRenderer({
     antialias: false, // Disable antialiasing for better performance
     powerPreference: "high-performance" // Use discrete GPU if available
   });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Reduce from 2 to 1.5 for better performance
+  applyRendererViewport(renderer, camera, pixelRatioCap);
   renderer.outputColorSpace = THREE.SRGBColorSpace; // Ensure proper color rendering for textures
   renderer.toneMapping = THREE.ACESFilmicToneMapping; // Better color reproduction
   renderer.toneMappingExposure = 1.0;
@@ -46,10 +54,21 @@ export function initScene() {
 
   // Handle resize
   window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    applyRendererViewport(renderer, camera, pixelRatioCap);
   });
 
-  return { scene, camera, renderer };
+  const setInspectQuality = (enabled) => {
+    const nextPixelRatioCap = enabled
+      ? RENDERER_QUALITY.INSPECT_PIXEL_RATIO_MAX
+      : RENDERER_QUALITY.IMMERSIVE_PIXEL_RATIO_MAX;
+
+    if (pixelRatioCap === nextPixelRatioCap) {
+      return;
+    }
+
+    pixelRatioCap = nextPixelRatioCap;
+    applyRendererViewport(renderer, camera, pixelRatioCap);
+  };
+
+  return { scene, camera, renderer, setInspectQuality };
 }

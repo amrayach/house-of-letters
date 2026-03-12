@@ -115,6 +115,17 @@ Observed runtime schema: 46 records, all with the same keys today.
   - narration is triggered from `model.userData.id`
   - theme data is present but currently informational only
 
+## Runtime-derived GLB metadata
+
+- `letters.json` does not store readable-side targeting or inspect-camera data directly.
+- During `loadLetters(scene, lettersData, renderer, onProgress)`, each loaded GLB derives runtime-only metadata under `model.userData.interaction`, including:
+  - expanded trigger bounds
+  - front/back readable-side bounds, centers, and normals
+  - invisible front/back focus helpers used for candidate scoring
+  - provisional inspect anchors used for inspect camera framing
+- Readable-side direction comes from the GLB `Front` and `Back` node transforms first; mesh-normal synthesis is only a fallback when those nodes are missing or malformed.
+- The renderer argument is used only to cap letter-scan texture anisotropy at runtime; this is not part of the JSON content contract.
+
 ## Generated vs source assets
 
 ### Source / editable
@@ -148,6 +159,7 @@ Observed runtime schema: 46 records, all with the same keys today.
   - expects source GLBs in `public/assets/textures/`
   - writes optimized files into `public/assets/models/`
   - current input directory is empty, so verify the workflow before running it
+  - use `gltf-transform inspect` and `gltf-transform validate` on representative GLBs before any asset rewrite; current runtime evidence does not justify routine recompression of the embedded archival JPEG scans
 
 ## Safe vs unsafe mass edits
 

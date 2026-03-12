@@ -14,14 +14,14 @@
 
 | Layer | Owner files | Owns | Does not own |
 | --- | --- | --- | --- |
-| Boot + UI shell | `index.html`, `src/main.js`, `src/styles/main.css` | overlay DOM, start/pause/loading screens, preview/subtitle HUD, top-level sequencing | scene internals, audio internals, per-letter proximity math |
-| Archive rendering | `src/renderer/sceneSetup.js`, `src/renderer/lighting.js` | archive `scene`, `camera`, `renderer`, ground/grid, resize handling, base light rig | GLB loading, audio, DOM flow |
-| Controls + movement | `src/renderer/controls.js`, `src/interaction/touchControls.js` | pointer lock, touch UI, camera movement, bird's-eye mode, key state | narration selection, preview UI, asset loading |
-| Letter loading + scene content | `src/renderer/letters.js`, `src/utils/loaders.js` | GLB fetch/retry, model transforms, material replacement, string geometry, `userData` attachment | DOM preview/subtitles, audio playback decisions |
+| Boot + UI shell | `index.html`, `src/main.js`, `src/styles/main.css` | overlay DOM, start/pause/loading screens, preview/subtitle HUD, inspect prompt/overlay, top-level sequencing | scene internals, audio internals, per-letter proximity math |
+| Archive rendering | `src/renderer/sceneSetup.js`, `src/renderer/lighting.js` | archive `scene`, `camera`, `renderer`, inspect-quality pixel-ratio switching, ground/grid, resize handling, base light rig | GLB loading, audio, DOM flow |
+| Controls + movement | `src/renderer/controls.js`, `src/interaction/touchControls.js` | pointer lock, touch UI, camera movement, bird's-eye mode, inspect suppression seam, key state | narration selection, preview UI, asset loading |
+| Letter loading + scene content | `src/renderer/letters.js`, `src/utils/loaders.js` | GLB fetch/retry, model transforms, material replacement, string geometry, interaction metadata/focus helpers, `userData` attachment | DOM preview/subtitles, audio playback decisions |
 | Loading intro | `src/renderer/loadingScene.js` | Sednaya intro scene, postprocessing, separate renderer lifecycle, skip/completion callbacks | archive gameplay loop, letter data, pause/start UI |
 | Audio | `src/audio/audioEngine.js` | background theme playback, narration lazy loading, ducking, pause/resume, unload | active-letter detection, visual highlighting, theme choice policy |
 | Theme mixing | `src/audio/themeMixer.js` | only current active-letter/theme bookkeeping and logging | actual crossfade or soundtrack switching |
-| Proximity | `src/interaction/proximityManager.js` | nearest-letter search, threshold logic, narration trigger, highlight/unhighlight hooks | DOM preview/subtitles, theme selection, movement |
+| Proximity | `src/interaction/proximityManager.js` | readable-side candidate/active scoring, narration trigger, highlight/unhighlight hooks, minimal targeting snapshot | DOM preview/subtitles, theme selection, movement, inspect UI |
 | Data + config | `src/data/letters.json`, `src/config/constants.js` | metadata schema, asset paths, positions/zones, tuning constants | renderer or audio lifecycle logic |
 | Build + deploy | `package.json`, `vite.config.js`, `public/_headers`, `public/_redirects` | local scripts, aliases, static asset copying, Pages routing/headers | runtime sequencing decisions |
 
@@ -53,13 +53,14 @@ flowchart LR
 ### Rendering
 
 - `sceneSetup.js` owns the archive renderer lifecycle.
+- `sceneSetup.js` may expose renderer-quality toggles used by inspect mode, but `main.js` still decides when inspect is active.
 - `loadingScene.js` is intentionally separate and should stay separate unless the intro is redesigned end-to-end.
 - `letters.js` may mutate loaded model materials and transforms, but it should not own screen overlays or audio policy.
 
 ### Controls
 
 - `controls.js` is the only place that should translate keyboard/touch state into camera motion.
-- `main.js` should only activate/deactivate controls and read status (`isBirdEyeView()`, velocity, lock state).
+- `main.js` should only activate/deactivate controls, request inspect suppression, and read status (`isBirdEyeView()`, velocity, lock state).
 - `touchControls.js` owns the extra mobile DOM it injects; no other module should create duplicate touch UI.
 
 ### Loading
@@ -81,8 +82,8 @@ flowchart LR
 
 ### Proximity
 
-- `ProximityManager` owns active-letter selection and narration trigger timing.
-- `main.js` consumes the active ID to update preview images, subtitles, and the placeholder theme mixer.
+- `ProximityManager` owns candidate/active-letter scoring and narration trigger timing.
+- `main.js` consumes only the minimal candidate/active snapshot to update preview images, subtitles, inspect affordances, and the placeholder theme mixer.
 
 ### Metadata
 
@@ -102,4 +103,4 @@ flowchart LR
 - `sequential-thinking`: use first for non-trivial repo work.
 - `deepwiki`: second-opinion summary only after local reads.
 - `context7`: current Vite/Howler/Pages semantics when wording docs or deploy constraints.
-- `playwright`: browser validation only after runtime/UI changes, not for first-pass architecture reading.
+- `playwright` plus `playwright-cli`: browser validation only after runtime/UI changes, not for first-pass architecture reading.

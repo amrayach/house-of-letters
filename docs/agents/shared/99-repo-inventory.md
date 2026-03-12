@@ -16,16 +16,16 @@ Use this as the compact path map for agent work. One line per path, local-first.
 
 ## Entry points
 
-- `index.html`: DOM shell for loading, start, pause, HUD, subtitles, preview, and module boot
+- `index.html`: DOM shell for loading, start, pause, HUD, subtitles, preview, inspect UI, and module boot
 - `src/main.js`: runtime orchestrator and animation loop entry point
-- `src/styles/main.css`: overlay, HUD, and mobile-control styling loaded directly by `index.html`
+- `src/styles/main.css`: overlay, HUD, inspect, and mobile-control styling loaded directly by `index.html`
 
 ## Rendering
 
-- `src/renderer/sceneSetup.js`: creates the Three.js scene, camera, renderer, ground, and grid
+- `src/renderer/sceneSetup.js`: creates the Three.js scene, camera, renderer, ground, grid, and inspect-quality viewport toggles
 - `src/renderer/lighting.js`: sets global lighting balance for front/back readability
-- `src/renderer/controls.js`: desktop pointer-lock movement plus bird's-eye mode
-- `src/renderer/letters.js`: GLB loading, retry logic, material handling, placement, and string attachment
+- `src/renderer/controls.js`: desktop pointer-lock movement, bird's-eye mode, and inspect suppression seam
+- `src/renderer/letters.js`: GLB loading, retry logic, material handling, placement, string attachment, and readable-side interaction metadata
 - `src/renderer/loadingScene.js`: cinematic intro scene with postprocessing and Sednaya-related assets
 - `src/renderer/particles.js`: optional lightweight dust particle helper
 - `src/utils/loaders.js`: shared GLTF/texture/audio loader singletons and preload helper
@@ -37,12 +37,12 @@ Use this as the compact path map for agent work. One line per path, local-first.
 
 ## Interaction
 
-- `src/interaction/proximityManager.js`: nearest-letter detection and activation/deactivation hooks
+- `src/interaction/proximityManager.js`: readable-side candidate/active scoring plus activation/deactivation hooks
 - `src/interaction/touchControls.js`: mobile joystick/look controls and touch UI elements
 
 ## Config/data
 
-- `src/config/constants.js`: scene, camera, model, audio, interaction, animation, and asset path constants
+- `src/config/constants.js`: scene, camera, model, audio, interaction, inspect, renderer-quality, animation, and asset path constants
 - `src/data/letters.json`: runtime dataset for 46 letters with positions, zones, and asset references
 - `src/data/letters_backup.json`: backup copy of letter metadata; useful for diffing, not runtime
 - `src/chrono_timeline.txt`: planning note for chronology/zone distribution; reference only
@@ -53,7 +53,7 @@ Use this as the compact path map for agent work. One line per path, local-first.
 - `vite.config.js`: Vite plugin setup, aliases, build output, and GLB asset inclusion
 - `public/_headers`: Cloudflare Pages headers for GLB and MP3 content types plus CORS
 - `public/_redirects`: Cloudflare Pages SPA routing to `index.html`
-- `README.md`: quick-start and deployment overview, but some implementation notes are stale
+- `README.md`: quick-start, runtime controls, and deployment overview
 - `docs/0-index.md`: generated doc index; useful for browsing only after local code reads
 - `docs/1-overview.md`: generated high-level summary; secondary to source files
 - `docs/2-getting-started.md`: generated setup summary; secondary to `README.md` and `package.json`

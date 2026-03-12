@@ -18,7 +18,8 @@ Current repo scope:
 Implications:
 
 - React, Tailwind, API, and DB skills stay parked until the codebase actually grows those layers.
-- `playwright` is a validation and UX tool, not a primary code-understanding tool.
+- Browser validation defaults to the `playwright` skill plus `playwright-cli`, not the Playwright MCP.
+- `playwright` and `playwright-cli` are validation and UX tools, not primary code-understanding tools.
 - Figma is conditional only when a real file/frame/node exists to inspect.
 
 ## Active now
@@ -27,7 +28,8 @@ Implications:
 | --- | --- | --- | --- | --- |
 | `cloudflare-deploy` | active now | deploy | publish, host, configure Pages | Cloudflare Pages is the current deployment target |
 | `image-processing` | active now | asset prep, optimization | resize, crop, convert, optimize images | The repo ships image-heavy letter assets and likely needs asset hygiene |
-| `playwright` | active now | validation, UX | browser flow test, interaction regression, screenshots, debugging | The app is interactive and browser behavior matters, but this is not the primary code-reading tool |
+| `playwright` | active now | validation, UX | browser flow test, wrapper-script guidance, screenshots, debugging | The repo now prefers this skill's CLI-first browser workflow instead of the Playwright MCP |
+| `playwright-cli` | active now | validation, UX | direct browser commands, snapshots, screenshots, debugging | The installed CLI is now part of the default browser-validation path for this repo |
 | `project-health` | active now | repo governance | agent-doc upkeep, settings audit, context cleanup | The repo is actively growing its guidance and documentation layer |
 | `responsiveness-check` | active now | validation | mobile breakpoint, touch layout, viewport sweep | The app has mobile/touch controls and adaptive HUD elements |
 | `threejs-animation` | active now | implementation, refinement | letter motion, cinematic timing, camera movement | Animation is part of the experience and loading scene |

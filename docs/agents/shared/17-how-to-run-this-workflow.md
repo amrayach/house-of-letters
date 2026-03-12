@@ -41,12 +41,12 @@ Default chain:
 
 Do not start with all three at once.
 
-## 3. Activate MCPs And Skills By Phase
+## 3. Activate Tools And Skills By Phase
 
 - Early planning or repo understanding: `sequential-thinking`, local file reads, then `deepwiki` only as a second opinion, `context7` only for real upstream ambiguity.
-- UI, UX, or browser-visible work: `playwright`; use `figma` only when a real design artifact exists.
+- UI, UX, or browser-visible work: `playwright` plus `playwright-cli`; use `figma` only when a real design artifact exists.
 - Three.js or runtime work: `sequential-thinking`, local runtime files, relevant `threejs-*` skills, and `context7` only when the repo cannot answer the library question locally.
-- Validation, release, or repo health: `playwright`, `project-health`, and `cloudflare-deploy` only when deployment is actually in scope.
+- Validation, release, or repo health: `playwright` plus `playwright-cli`, `project-health`, and `cloudflare-deploy` only when deployment is actually in scope.
 
 Task type determines tool activation. Tools are not always-on.
 

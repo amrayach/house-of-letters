@@ -8,6 +8,7 @@ let walkingSpeed = 100.0;
 // Bird's eye view state
 let birdEyeViewEnabled = false;
 let savedCameraState = null;
+let inspectSuppressed = false;
 
 // Detect if device is touch-capable
 const isTouchDevice = () => {
@@ -101,6 +102,10 @@ export function initControls(camera, domElement) {
       return;
     }
 
+    if (inspectSuppressed) {
+      return;
+    }
+
     // Toggle bird's eye view with B key
     if (event.code === 'KeyB') {
       toggleBirdEyeView(camera);
@@ -134,6 +139,10 @@ export function initControls(camera, domElement) {
   };
 
   const onKeyUp = (event) => {
+    if (inspectSuppressed) {
+      return;
+    }
+
     switch (event.code) {
       case 'ArrowUp':
       case 'KeyW':
@@ -189,9 +198,25 @@ export function initControls(camera, domElement) {
     touchControls,
     isTouchDevice: useTouchControls,
     getVelocity: () => currentSpeed,
+    setInspectSuppressed: (suppressed) => {
+      inspectSuppressed = suppressed;
+      controls.enabled = !suppressed;
+      resetMovementState();
+
+      if (useTouchControls && touchControls) {
+        if (suppressed) {
+          touchControls.disable();
+        } else if (isActive) {
+          touchControls.enable();
+        }
+      }
+    },
     
     // Activate controls (lock for desktop, enable touch for mobile)
     activate: () => {
+      inspectSuppressed = false;
+      controls.enabled = true;
+
       if (useTouchControls) {
         isActive = true;
         touchControls.enable();
@@ -203,6 +228,8 @@ export function initControls(camera, domElement) {
     // Deactivate controls
     deactivate: () => {
       resetMovementState();
+      inspectSuppressed = false;
+      controls.enabled = true;
 
       if (useTouchControls) {
         isActive = false;
@@ -220,6 +247,11 @@ export function initControls(camera, domElement) {
     update: (delta) => {
       // Clamp delta to prevent physics explosions during lag spikes
       const timeStep = Math.min(delta, 0.05);
+
+      if (inspectSuppressed) {
+        currentSpeed = 0;
+        return;
+      }
 
       // Bird's eye view mode - different controls
       if (birdEyeViewEnabled) {
@@ -297,6 +329,8 @@ export function initControls(camera, domElement) {
     },
     
     dispose: () => {
+      inspectSuppressed = false;
+      controls.enabled = true;
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('keyup', onKeyUp);
       controls.removeEventListener('unlock', resetMovementState);

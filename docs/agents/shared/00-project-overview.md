@@ -9,13 +9,13 @@
 
 ## What this project is
 
-This app loads scanned letters as 3D GLB objects, places them in a navigable space, plays narration when the user approaches a letter, and wraps the experience in a cinematic loading intro plus overlay UI.
+This app loads scanned letters as 3D GLB objects, places them in a navigable space, uses readable-side targeting to decide which letter is in focus, plays narration when the user approaches a readable letter face, and wraps the experience in a cinematic loading intro plus overlay UI.
 
 ## Runtime entry points
 
 - `index.html`: declares the overlay DOM, loads `/src/styles/main.css`, and boots `/src/main.js`
 - `src/main.js`: orchestration entry point; initializes scene, loading flow, controls, audio, proximity, UI updates, and the animation loop
-- `src/styles/main.css`: styles the loading screen, start/pause screens, HUD, mobile controls, and preview UI
+- `src/styles/main.css`: styles the loading screen, start/pause screens, HUD, inspect UI, mobile controls, and preview UI
 
 ## Major subsystems
 
@@ -23,7 +23,7 @@ This app loads scanned letters as 3D GLB objects, places them in a navigable spa
 | --- | --- | --- |
 | Rendering | `src/renderer/*` | active and central; scene, lighting, controls, GLB loading, cinematic intro, minor particle support |
 | Audio | `src/audio/*` | partly complete; `audioEngine.js` is working Howler playback, `themeMixer.js` is still a placeholder |
-| Interaction | `src/interaction/*` | active; proximity checks and mobile touch controls are implemented |
+| Interaction | `src/interaction/*` | active; readable-side targeting, inspect entry support, and mobile touch controls are implemented |
 | Config and content | `src/config/constants.js`, `src/data/letters.json` | active; constants and 46-letter runtime dataset drive behavior |
 | Shared loaders | `src/utils/loaders.js` | active; shared GLTF/texture/audio loaders plus preload helper |
 | Deployment/build | `package.json`, `vite.config.js`, `public/_headers`, `public/_redirects` | active; Vite build and Cloudflare Pages routing are in place |
@@ -35,6 +35,7 @@ This app loads scanned letters as 3D GLB objects, places them in a navigable spa
 - Scene setup, lighting, animation loop, and letter loading
 - Desktop pointer-lock controls and mobile touch controls
 - Loading intro flow and overlay UI shell
+- Readable-side targeting plus full-size inspect overlay
 - Howler-based theme playback and narration lazy loading
 - Cloudflare Pages deployment files for SPA routing and asset headers
 

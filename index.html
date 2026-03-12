@@ -102,6 +102,46 @@
       </div>
     </div>
 
+    <div id="inspect-prompt" hidden>
+      <p id="inspect-prompt-copy">Press E to inspect</p>
+      <button id="inspect-touch-btn" class="btn btn-inspect" hidden>Inspect</button>
+    </div>
+
+    <div id="inspect-overlay" hidden aria-live="polite" aria-atomic="true">
+      <div class="inspect-panel shell-panel">
+        <div class="inspect-header">
+          <div class="inspect-header-copy">
+            <p class="shell-kicker">Letter Inspect</p>
+            <div class="inspect-heading">
+              <h2 id="inspect-title">Letter</h2>
+              <span id="inspect-side-badge">Front</span>
+            </div>
+            <p id="inspect-status" class="screen-status">Press E to return to the archive.</p>
+          </div>
+          <button id="inspect-header-exit-btn" class="btn btn-inspect-secondary inspect-header-exit-btn" type="button">Back</button>
+        </div>
+
+        <div id="inspect-scan-viewport">
+          <div id="inspect-scan-stage">
+            <img id="inspect-scan-image" src="" alt="Letter scan">
+          </div>
+        </div>
+
+        <p class="inspect-controls inspect-controls-desktop">
+          E: Exit • F: Front • B: Back • +/-: Zoom • 0: Reset
+        </p>
+
+        <div class="inspect-controls inspect-controls-touch">
+          <button id="inspect-front-btn" class="btn btn-inspect-secondary" type="button">Front</button>
+          <button id="inspect-back-btn" class="btn btn-inspect-secondary" type="button">Back</button>
+          <button id="inspect-zoom-out-btn" class="btn btn-inspect-secondary" type="button">-</button>
+          <button id="inspect-zoom-reset-btn" class="btn btn-inspect-secondary" type="button">Reset</button>
+          <button id="inspect-zoom-in-btn" class="btn btn-inspect-secondary" type="button">+</button>
+          <button id="inspect-exit-btn" class="btn btn-inspect" type="button">Exit</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

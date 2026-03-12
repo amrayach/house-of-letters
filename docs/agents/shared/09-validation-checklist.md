@@ -21,6 +21,7 @@ Use this as the default pre-edit and post-edit checklist for repo work. If a tas
 3. Remove duplicated guidance when a cross-reference is enough.
 4. Inspect stale file references and broken markdown links.
 5. Confirm changed docs still match the checked-out repo and not only older summaries.
+6. If docs cite screenshots, logs, or output artifacts as evidence, confirm those files actually exist in-repo or rewrite the claim as historical context only.
 
 ## Post-edit checks for code tasks
 
@@ -63,8 +64,28 @@ For this repo, the common browser smoke-test paths are:
 - mobile touch controls when touch UI changed
 - tab hide/show while active versus paused when audio changed
 - proximity-driven narration, preview, and subtitle behavior only after active entry
+- dense-cluster targeting and candidate-prompt behavior when letter selection changed
+- inspect prompt, inspect enter/front/back/zoom/reset/exit, desktop inspect unlock/relock, and inspect-only shell exclusivity when readability work changed
+- pause/unlock from inspect plus bird's-eye/inspect mutual exclusion when either mode changed
 - visible asset failures in the browser console or network panel
 - responsive HUD/layout only when viewport-sensitive UI changed
+
+## Automated vs manual smoke guidance
+
+Prefer automation for:
+
+- shell exclusivity and overlay visibility
+- touch or emulated-mobile inspect flows
+- console or network evidence
+- responsive inspect layout and button-state checks
+
+Prefer manual smoke for:
+
+- desktop pointer-lock acquisition and re-entry
+- live free-walk precision and overshoot feel around letter clusters
+- inspect behavior while pointer lock is actually captured
+
+When automation cannot cover the path cleanly, record the exact manual steps exercised and the remaining gap instead of implying equivalent coverage.
 
 ## Archive content/data checks
 
@@ -83,21 +104,25 @@ Treat the validator as the canonical local check for:
 - optional-field fallbacks versus hard failures
 - orphaned model/image/audio assets
 - warning-only contract drift when run with `--strict`
+- when GLBs or scene-side texture fidelity are in scope, add representative `gltf-transform inspect` and `gltf-transform validate` checks before choosing compression, re-export, or texture-format changes
 
-## When to use Playwright
+## When to use `playwright` plus `playwright-cli`
 
-Use Playwright when:
+Use the `playwright` skill plus `playwright-cli` when:
 
 - the changed behavior only exists in a browser
 - you need console or network evidence
 - manual reproduction is repetitive or error-prone
 - deployed or preview behavior differs from static reasoning
+- you can validate the flow without over-claiming desktop pointer-lock coverage
 
-Do not use Playwright:
+Do not use this browser-automation path:
 
 - for first-pass repo understanding
 - for docs-only edits
 - as a substitute for reading the owning local code
+
+For this repo, desktop pointer-lock flows are partial-automation territory at best. Use browser automation around them when helpful, but keep captured-pointer movement/inspect behavior in the manual-smoke bucket unless you have direct evidence otherwise.
 
 ## When to update docs after code changes
 

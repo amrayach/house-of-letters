@@ -14,6 +14,7 @@ Baseline for this document:
   - pause/resume messaging
   - subtitle and preview layout cleanup
   - loading/start composition polish
+  - candidate targeting and inspect-mode readability
 
 ## Current UI state summary
 
@@ -25,6 +26,7 @@ Baseline for this document:
 - Pointer-lock entry and re-entry now keep the user in a recoverable shell if pointer capture is denied or interrupted.
 - Desktop pause now exits bird's-eye instead of resuming into a leaked top-down camera state.
 - Subtitle and letter preview overlays remain tied to active-letter proximity, but their visibility is now shell-gated in one place and their desktop/mobile layouts are less obstructive than the initial baseline.
+- Active immersive play now exposes a candidate-driven inspect prompt and a dedicated inspect overlay for full-size front/back scan viewing.
 - Active-letter narration and emphasis are now evaluated only during active runtime, not behind the start or pause shells.
 - Bird's-eye mode remains part of the same runtime, but it now feels more obviously like the next visual mismatch after loading/start were tightened.
 
@@ -35,6 +37,7 @@ Baseline for this document:
 - The start shell now has one obvious focal block, which makes entry feel more intentional without changing the interaction model.
 - The direct DOM overlay model is workable for additive UX polish.
 - Proximity-driven subtitle plus preview remains the clearest non-verbal cue for letter focus.
+- Readability no longer depends on tiny world-space geometry alone; inspect mode provides a reversible full-scan view without changing archive scale.
 - Mobile and desktop already branch cleanly at the control layer, which makes targeted shell fixes feasible without architectural churn.
 
 ## UI state matrix
@@ -45,6 +48,7 @@ Baseline for this document:
 | `start` | start shell | start button | pause, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, debug | desktop or touch | loading handoff | successful activation | desktop pointer-lock denial, mobile shell leakage |
 | `active desktop` | reticle, controls hint, subtitle/preview when letter is active | scene, pointer lock | start, pause, mobile controls | keyboard + mouse | pointer lock acquired | unlock, bird's-eye toggle | pointer-lock interruption, preview collision near scene focal point |
 | `active mobile` | pause button, joystick, look area, subtitle/preview when letter is active | touch controls, scene | start, pause, desktop HUD, debug | touch | start tap or resume tap | mobile pause | safe-area overlap, preview/subtitle collision |
+| `inspect` | inspect overlay, inspect prompt replacement, scene camera framed on one letter side | keyboard inspect shortcuts on desktop or overlay buttons on touch | start, pause, reticle, controls hint, touch joystick/look HUD, preview, subtitle | desktop or touch | inspect prompt/button from active immersive play | inspect exit, pause/unlock, invalid state correction | camera restore, bird's-eye exclusion, responsive overlay density |
 | `paused desktop` | pause shell | resume button | start, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, debug | keyboard + mouse | pointer unlock | pointer lock reacquired | resume failure, stale movement state |
 | `paused mobile` | pause shell | resume button | start, pause button, joystick, look area, desktop HUD, debug, preview, subtitle | touch | mobile pause button | resume tap | touch controls leaking under pause shell |
 | `bird-eye` | bird's-eye indicator | scene navigation | start, pause, reticle, controls hint, mobile controls | desktop today | `B` while active | `B` again or pause | panel/system mismatch, keyboard state persistence |

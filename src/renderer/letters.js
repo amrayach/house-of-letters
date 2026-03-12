@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { getGLTFLoader } from '@utils/loaders.js';
-import { MODEL, ASSETS, LOADING_RETRY } from '@config/constants.js';
+import { INTERACTION, MODEL, LOADING_RETRY, RENDERER_QUALITY } from '@config/constants.js';
 
 const gltfLoader = getGLTFLoader();
 const sharedStringMaterial = new THREE.LineBasicMaterial({ 
@@ -9,6 +9,162 @@ const sharedStringMaterial = new THREE.LineBasicMaterial({
   transparent: true,
   opacity: 0.15
 });
+const DEFAULT_FRONT_NORMAL_LOCAL = new THREE.Vector3(0, 0, 1);
+const DEFAULT_BACK_NORMAL_LOCAL = new THREE.Vector3(0, 0, -1);
+const PLANE_NORMAL_LOCAL = new THREE.Vector3(0, 0, 1);
+const SIDE_READABLE_AXIS_LOCAL = new THREE.Vector3(0, 1, 0);
+const MIN_FOCUS_SIZE = 0.01;
+const MIN_NORMAL_OFFSET = 0.001;
+const averageNormalLocal = new THREE.Vector3();
+const readableAxisLocal = new THREE.Vector3();
+const sideNormalLocal = new THREE.Vector3();
+const sideWorldQuaternion = new THREE.Quaternion();
+
+function cloneBox3(box) {
+  return new THREE.Box3(box.min.clone(), box.max.clone());
+}
+
+function synthesizeSideNormalLocal(sideNode, fallbackNormalLocal) {
+  averageNormalLocal.set(0, 0, 0);
+  let foundNormal = false;
+
+  sideNode.traverse((child) => {
+    if (!child.isMesh) {
+      return;
+    }
+
+    const normalAttribute = child.geometry?.attributes?.normal;
+
+    if (!normalAttribute || normalAttribute.count === 0) {
+      return;
+    }
+
+    sideNormalLocal.set(0, 0, 0);
+
+    for (let index = 0; index < normalAttribute.count; index += 1) {
+      sideNormalLocal.x += normalAttribute.getX(index);
+      sideNormalLocal.y += normalAttribute.getY(index);
+      sideNormalLocal.z += normalAttribute.getZ(index);
+    }
+
+    if (sideNormalLocal.lengthSq() === 0) {
+      return;
+    }
+
+    sideNormalLocal
+      .normalize()
+      .applyQuaternion(child.getWorldQuaternion(sideWorldQuaternion))
+      .normalize();
+
+    averageNormalLocal.add(sideNormalLocal);
+    foundNormal = true;
+  });
+
+  if (!foundNormal || averageNormalLocal.lengthSq() === 0) {
+    return fallbackNormalLocal.clone();
+  }
+
+  averageNormalLocal.normalize();
+
+  if (averageNormalLocal.dot(fallbackNormalLocal) < 0) {
+    averageNormalLocal.negate();
+  }
+
+  return averageNormalLocal.clone();
+}
+
+function extractSideNormalLocal(sideNode, fallbackNormalLocal) {
+  if (!sideNode) {
+    return fallbackNormalLocal.clone();
+  }
+
+  sideNode.getWorldQuaternion(sideWorldQuaternion);
+  readableAxisLocal
+    .copy(SIDE_READABLE_AXIS_LOCAL)
+    .applyQuaternion(sideWorldQuaternion)
+    .normalize();
+
+  if (readableAxisLocal.lengthSq() > 0) {
+    if (readableAxisLocal.dot(fallbackNormalLocal) < 0) {
+      readableAxisLocal.negate();
+    }
+
+    return readableAxisLocal.clone();
+  }
+
+  return synthesizeSideNormalLocal(sideNode, fallbackNormalLocal);
+}
+
+function createFocusTarget(sideName, sideBoxLocal, sideNormalLocal) {
+  const sideCenter = sideBoxLocal.getCenter(new THREE.Vector3());
+  const sideSize = sideBoxLocal.getSize(new THREE.Vector3());
+  const focusWidth = Math.max(sideSize.x, MIN_FOCUS_SIZE);
+  const focusHeight = Math.max(sideSize.y, MIN_FOCUS_SIZE);
+  const normalOffset = Math.max(sideSize.z * 0.5, MIN_NORMAL_OFFSET);
+  const inspectAnchorLocal = sideCenter.clone().addScaledVector(sideNormalLocal, normalOffset * 2);
+
+  const focusTarget = new THREE.Mesh(
+    new THREE.PlaneGeometry(focusWidth, focusHeight),
+    new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: false,
+      side: THREE.DoubleSide,
+      toneMapped: false,
+    }),
+  );
+
+  focusTarget.name = `focus-target-${sideName}`;
+  focusTarget.userData.isFocusHelper = true;
+  focusTarget.position.copy(sideCenter).addScaledVector(sideNormalLocal, normalOffset);
+  focusTarget.quaternion.setFromUnitVectors(PLANE_NORMAL_LOCAL, sideNormalLocal);
+
+  return {
+    nodeName: sideName,
+    center: sideCenter,
+    size: sideSize,
+    normal: sideNormalLocal.clone(),
+    bounds: cloneBox3(sideBoxLocal),
+    inspectAnchorLocal,
+    inspectAnchorProvisional: true,
+    focusTarget,
+  };
+}
+
+function buildInteractionMetadata(model, localBounds) {
+  const localCenter = localBounds.getCenter(new THREE.Vector3());
+  const localSize = localBounds.getSize(new THREE.Vector3());
+  const triggerPaddingLocal = new THREE.Vector3(
+    INTERACTION.TRIGGER_PADDING_WORLD.x / MODEL.SCALE,
+    INTERACTION.TRIGGER_PADDING_WORLD.y / MODEL.SCALE,
+    INTERACTION.TRIGGER_PADDING_WORLD.z / MODEL.SCALE,
+  );
+  const triggerBoxLocal = cloneBox3(localBounds).expandByVector(triggerPaddingLocal);
+  const frontNode = model.getObjectByName('Front');
+  const backNode = model.getObjectByName('Back');
+  const frontBounds = frontNode ? new THREE.Box3().setFromObject(frontNode) : cloneBox3(localBounds);
+  const backBounds = backNode ? new THREE.Box3().setFromObject(backNode) : cloneBox3(localBounds);
+  const frontNormalLocal = extractSideNormalLocal(frontNode, DEFAULT_FRONT_NORMAL_LOCAL);
+  const backNormalLocal = extractSideNormalLocal(backNode, DEFAULT_BACK_NORMAL_LOCAL);
+  const front = createFocusTarget('front', frontBounds, frontNormalLocal);
+  const back = createFocusTarget('back', backBounds, backNormalLocal);
+
+  front.focusTarget.userData.interactionSide = 'front';
+  back.focusTarget.userData.interactionSide = 'back';
+
+  return {
+    center: localCenter,
+    size: localSize,
+    bounds: cloneBox3(localBounds),
+    triggerBoxLocal,
+    worldSize: localSize.clone().multiplyScalar(MODEL.SCALE),
+    readableSides: {
+      front,
+      back,
+    },
+  };
+}
 
 /**
  * Load a single model with retry logic for slow connections
@@ -39,11 +195,17 @@ function loadModelWithRetry(path, retryCount = 0, onDownloadProgress = null) {
   });
 }
 
-export async function loadLetters(scene, lettersData, onProgress = null) {
+export async function loadLetters(scene, lettersData, renderer, onProgress = null) {
   const letterObjects = [];
   const loadPromises = [];
   let loadedCount = 0;
   const totalCount = lettersData.length;
+  const textureAnisotropy = renderer?.capabilities
+    ? Math.min(
+      renderer.capabilities.getMaxAnisotropy(),
+      RENDERER_QUALITY.LETTER_TEXTURE_ANISOTROPY,
+    )
+    : 1;
   
   // Track download progress for better UX on slow connections
   const downloadProgress = new Map(); // modelId -> { loaded, total }
@@ -148,6 +310,7 @@ export async function loadLetters(scene, lettersData, onProgress = null) {
                   if (existingMap) {
                     // Set correct color space for the texture
                     existingMap.colorSpace = THREE.SRGBColorSpace;
+                    existingMap.anisotropy = textureAnisotropy;
                     existingMap.needsUpdate = true;
                     
                     console.log(`[TEXTURE] ${child.name} has texture: ${existingMap.image?.width}x${existingMap.image?.height}`);
@@ -185,8 +348,9 @@ export async function loadLetters(scene, lettersData, onProgress = null) {
           model.scale.set(1, 1, 1);
           model.updateMatrixWorld(true);
 
-          const box = new THREE.Box3().setFromObject(model);
-          const attachY = box.max.y;
+          const localBounds = new THREE.Box3().setFromObject(model);
+          const attachY = localBounds.max.y;
+          const interaction = buildInteractionMetadata(model, localBounds);
 
           // Restore transforms
           model.position.copy(originalPosition);
@@ -205,6 +369,11 @@ export async function loadLetters(scene, lettersData, onProgress = null) {
           stringLine.frustumCulled = false; // Prevent string from being culled
           model.add(stringLine);
 
+          interaction.readableSides.front.focusTarget.userData.letterId = data.id;
+          interaction.readableSides.back.focusTarget.userData.letterId = data.id;
+          model.add(interaction.readableSides.front.focusTarget);
+          model.add(interaction.readableSides.back.focusTarget);
+
           // Optimization: Removed per-letter point lights to drastically improve performance.
           // Rely on global scene lighting instead.
 
@@ -213,6 +382,7 @@ export async function loadLetters(scene, lettersData, onProgress = null) {
             id: data.id,
             basePositionY: data.position.y,
             baseRotationY: angle,
+            interaction,
             ...data
           };
 

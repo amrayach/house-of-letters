@@ -8,7 +8,9 @@ Interactive 3D letter archive built with `Vite`, `Three.js`, and `Howler`. The i
 - Plays a cinematic loading intro before handing off to the archive scene
 - Loads 46 GLB letter models from `src/data/letters.json`
 - Supports desktop pointer-lock controls and mobile touch controls
+- Uses readable-side candidate targeting instead of raw nearest-letter activation
 - Shows front/back letter scans plus subtitle fallback UI for the active letter
+- Exposes a dedicated inspect mode for full-size front/back scan viewing
 - Plays a looping background theme and lazy-loads narration with ducking
 - Deploys as a static site to Cloudflare Pages
 
@@ -39,11 +41,15 @@ Desktop:
 - Click `Enter Archive` to start and capture the pointer
 - `W / A / S / D` to move
 - Mouse to look around
+- `E` to enter or exit inspect mode when a letter candidate is available
+- `F` / `B` to switch inspect sides, `+` / `-` to zoom, `0` to reset zoom
+- `B` to toggle bird's-eye while the archive is active
 - `ESC` to release pointer lock and pause
 
 Mobile:
 - Tap `Enter Archive` to start
 - Use the on-screen joystick and look area to move
+- Use the `Inspect` button when it appears to open the focused letter scan
 - Use the pause button to return to the shell
 
 ## Content Pipeline

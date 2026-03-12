@@ -118,6 +118,7 @@ Never include secrets, tokens, credentials, or broad unrelated file dumps in a p
 ### Primarily Codex
 
 - `playwright`
+- `playwright-cli`
 - `responsiveness-check`
 - `ux-audit`
 - `threejs-*`

@@ -9,6 +9,12 @@ export const SCENE = {
   FOG_FAR: 100
 };
 
+export const RENDERER_QUALITY = {
+  IMMERSIVE_PIXEL_RATIO_MAX: 1.5,
+  INSPECT_PIXEL_RATIO_MAX: 2.0,
+  LETTER_TEXTURE_ANISOTROPY: 8,
+};
+
 // Camera
 export const CAMERA = {
   FOV: 75,
@@ -35,9 +41,29 @@ export const AUDIO = {
 
 // Interaction
 export const INTERACTION = {
-  PROXIMITY_THRESHOLD: 3, // Trigger radius for proximity activation
-  ACTIVATION_DISTANCE: 3,
-  CHECK_RADIUS: 15.0 // Only check letters within this radius
+  CHECK_RADIUS: 15.0,
+  TRIGGER_PADDING_WORLD: {
+    x: 0.6,
+    y: 0.25,
+    z: 1.1,
+  },
+  VIEW_ALIGNMENT_WEIGHT: 0.9,
+  FACING_ALIGNMENT_WEIGHT: 0.75,
+  RAYCAST_BONUS_WEIGHT: 1.25,
+  STICKY_BIAS: 0.1,
+  SWITCH_MARGIN: 0.15,
+};
+
+export const INSPECT = {
+  FOV: 30,
+  FRAMING_PADDING: 1.18,
+  TRANSITION_DURATION: 0.42,
+  MIN_DISTANCE: 0.85,
+  MAX_DISTANCE: 4.5,
+  MIN_ZOOM: 0.5,
+  DEFAULT_ZOOM: 1,
+  MAX_ZOOM: 3,
+  ZOOM_STEP: 0.25,
 };
 
 // Animation

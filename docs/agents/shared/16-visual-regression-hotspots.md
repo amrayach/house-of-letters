@@ -11,6 +11,8 @@ Use this as the watchlist for shell-state and overlay regressions after UI edits
 | pause screen | active HUD remains visible behind the pause shell | pause depends on different desktop and mobile control branches, but shell gating should now own all overlay visibility | desktop unlock, mobile pause tap, resume failure | confirm pause shell is exclusive and recoverable in both input modes |
 | subtitle layer | subtitle obscures the focal scene or sits too close to preview cards | active-letter UI depends on runtime state plus responsive positioning | entering letter proximity on narrow screens | check subtitle spacing at desktop and mobile widths near the first letter cluster |
 | letter preview | preview cards cover too much scene area or remain mounted when inactive | preview visibility combines shell gating, proximity, and CSS transitions | active-letter enter and exit, pause, resize | confirm preview is absent outside active immersive letter focus and returns cleanly on re-entry |
+| inspect prompt | prompt leaks into pause/bird's-eye/inspect, or advertises the wrong side | prompt visibility depends on candidate targeting plus shell/view state | approach letter, rotate away, enter inspect, pause | confirm the prompt appears only for a live immersive candidate and that its front/back copy matches the candidate side |
+| inspect overlay | overlay leaves immersive HUD visible, side/zoom controls desync, or exit restores the wrong pose | inspect couples camera interpolation, input suppression, side metadata, and responsive CSS | enter inspect, switch side, zoom, exit, pause/unlock | confirm the overlay is exclusive, controls gate correctly, and exit or forced exit returns cleanly to immersive play |
 | bird's-eye mode | indicator collides with other overlays, or pause/resume returns in the wrong camera mode | bird's-eye is stateful but stylistically separate from the rest of the archive | `B` toggle, pause from bird's-eye, desktop debug mode | confirm indicator appears only while bird's-eye is active and that pause/resume returns to immersive mode |
 | mobile controls | joystick, look area, or pause button show during loading, start, or pause | mobile visibility now depends on shell gating plus coarse-pointer CSS, so duplicated control-layer toggles would regress it | initial mobile load, pause/resume, viewport resize | confirm touch controls appear only in active mobile play |
 | z-index and overlay stack | wrong shell appears on top, or hidden overlays still intercept behavior expectations | multiple full-screen shells coexist with an always-running scene renderer | fast transitions, intro skip, pointer-lock failures | test loading -> start -> active -> pause -> resume in sequence and verify single-shell ownership |
@@ -22,25 +24,16 @@ Run these after any shell, HUD, pointer-lock, or responsive overlay change:
 
 1. Desktop loading -> start -> active -> unlock -> resume.
 2. Desktop pointer-lock failure path.
-3. Desktop bird's-eye entry, pause exit, and normal resume.
-4. Mobile loading -> start -> active -> pause -> resume.
-5. Mobile active-letter proximity with subtitle and preview visible.
-6. Loading/start panel hierarchy at a narrow mobile width after resize or refresh.
+3. Desktop active -> candidate -> inspect -> exit -> unlock -> resume.
+4. Desktop bird's-eye entry, pause exit, and normal resume.
+5. Mobile loading -> start -> active -> touch inspect -> exit -> pause -> resume.
+6. Mobile active-letter proximity with subtitle and preview visible.
+7. Loading/start panel hierarchy at a narrow mobile width after resize or refresh.
 
 ## Current evidence set
 
-The baseline walkthrough that informed this watchlist used local Playwright captures from the running app, including:
+No screenshot or log artifacts are currently checked into the repo for this watchlist.
 
-- `uiux-loading-screen.png`
-- `uiux-start-screen.png`
-- `uiux-bird-eye.png`
-- `uiux-mobile-start-screen.png`
-- `uiux-mobile-active.png`
-- `uiux-mobile-pause-screen.png`
-- `uiux-mobile-preview-subtitle.png`
+Earlier plan revisions referenced local `uiux-*` captures and `output/playwright/*` images, but those files are not present in the checked-out repo today.
 
-The current loading/start composition pass also captured:
-
-- `output/playwright/loading-after.png`
-- `output/playwright/start-after-desktop.png`
-- `output/playwright/start-after-mobile.png`
+Use this document as the checklist for fresh evidence capture. When a new smoke pass is run, either store the artifacts in-repo intentionally or summarize the exact run and outcome in docs/checkpoint notes instead of citing missing files.

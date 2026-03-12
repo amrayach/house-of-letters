@@ -32,13 +32,13 @@ Required reading:
 - [relevant source files]
 - [relevant config/build/deploy files]
 
-MCP usage:
+Tool usage:
 - sequential-thinking: [mandatory / optional / do not use]
 - context7: [when to use]
 - deepwiki: [when to use]
-- playwright: [when to use]
+- playwright + playwright-cli: [when to use]
 - figma: [when to use]
-- [other MCPs]: [conditions]
+- [other tools or MCPs]: [conditions]
 
 Skills to use if available:
 - [skill 1]

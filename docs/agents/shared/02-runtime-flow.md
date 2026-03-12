@@ -46,7 +46,7 @@
 
 ### 4. Asset loading
 
-- `loadLetters(scene, lettersData, updateProgress)` starts one GLB load per record in `letters.json`.
+- `loadLetters(scene, lettersData, renderer, updateProgress)` starts one GLB load per record in `letters.json`.
 - `loadModelWithRetry(...)` retries each failed model up to 3 times with a 2-second delay.
 - `Promise.race([... , loadingTimeout])` caps the total wait at `LOADING_TIMEOUT_MS` (10 minutes).
 - `loadLetters(...)` is partial-success tolerant:
@@ -56,8 +56,10 @@
 - Each loaded model gets:
   - scaled and positioned from `letters.json`
   - material replacement and texture color-space fixes
+  - bounded texture anisotropy from the live renderer capabilities
   - a line geometry "string"
   - copied metadata in `model.userData`
+  - derived interaction metadata in `model.userData.interaction`
 
 ### 5. Start screen gate
 
@@ -95,22 +97,44 @@
 ### 7. Proximity detection
 
 - Only while `uiState === active`, `proximityManager.update()`:
-  - finds the nearest loaded letter within `CHECK_RADIUS`
-  - activates it when within `PROXIMITY_THRESHOLD`
-  - deactivates when the user leaves the threshold
-- Outside active runtime states, `main.js` clears the shell-facing active-letter UI instead of letting new proximity side effects fire behind loading, start, or pause shells.
+  - prefilters letters within `CHECK_RADIUS`
+  - scores them from expanded trigger-volume distance, readable-side view alignment, readable-side facing, and a center-view focus bonus
+  - keeps a minimal targeting snapshot with `candidateId/candidateSide/candidateScore` plus `activeId/activeSide/activeScore`
+  - uses sticky bias and switch margin so active selection does not flap between nearby letters
+- `src/renderer/letters.js` now provides local-space interaction metadata per letter:
+  - root bounds center and size
+  - expanded trigger box
+  - front/back readable-side normals and centers
+    - readable-side direction comes from the `Front` and `Back` node transforms first
+    - current archive assets encode readable face direction in the side-node orientation, not in averaged display-mesh normals
+    - mesh-normal synthesis remains fallback-only for malformed or missing side nodes
+  - collider-based focus targets used for scoring
+  - inspect anchors consumed by the dedicated inspect-mode camera framing
+- Outside active runtime states, `main.js` calls `clearTargeting()` so highlight, narration, and active-letter UI do not leak behind loading, start, or pause shells.
 - Activation side effects:
   - `audioEngine.playNarration(letterId)`
   - a material-agnostic outline cue on non-glass letter meshes
   - best-effort emissive tint on materials that support emissive
-- `main.js` uses the returned `activeLetterId` to:
+- `main.js` uses the returned `targetState.activeId` to:
   - keep a shell-facing `displayedActiveLetterId`
   - update `themeMixer` when the active ID changes
   - populate preview images
   - populate subtitle text
   - let `syncUiChrome()` reveal the preview/subtitle layer only when the runtime is in active immersive mode
 
-### 8. Narration and theme behavior
+### 8. Inspect mode
+
+- Inspect is entered only from `uiState === active`, `viewMode === immersive`, and a valid proximity candidate.
+- `main.js` snapshots a single `letterId` plus `side` for the inspect session and defaults the side to `front` if candidate-side data is missing or ambiguous.
+- Once inspect begins, live targeting is cleared and proximity retargeting is suspended until inspect exits.
+- `src/renderer/controls.js` exposes one explicit suppression seam so movement and look input stop mutating the camera during inspect.
+- Desktop inspect intentionally releases pointer lock so the overlay can scroll and accept cursor input, then requests pointer lock again on inspect exit; touch inspect continues to use shell-owned overlay buttons.
+- Inspect camera placement is computed from per-side metadata, inspect anchors, current aspect ratio, bounded distance clamps, and a narrower inspect FOV.
+- Any inspect FOV change is followed immediately by `camera.updateProjectionMatrix()`.
+- `main.js` interpolates into and out of inspect, and restores the saved free-walk camera pose and FOV on exit.
+- Pause, pointer-lock unlock, and bird's-eye-invalid transitions force inspect to exit cleanly before the shell changes state.
+
+### 9. Narration and theme behavior
 
 - Background theme:
   - one theme starts on `startBtn` click
@@ -127,13 +151,14 @@
   - `themeMixer.update(...)` only logs/state-tracks
   - no current code swaps or crossfades background themes per letter/zone
 
-### 9. Archive render loop
+### 10. Archive render loop
 
 - `animate()` does all per-frame runtime work:
   - state-aware `updateControls(delta)` while `uiState === active`
   - bird's-eye view-mode sync from `controls.js` into shell-facing `viewMode`
+  - inspect transition updates, inspect UI sync, and inspect-specific letter-freeze behavior while inspect is active
   - debug HUD update
-  - active-gated proximity update
+  - active-gated proximity update, suspended while inspect is active
   - preview/subtitle/theme updates when the active letter changes
   - near-letter sway/bob/rotation animation around stored base transforms
   - `renderer.render(scene, camera)`
@@ -156,14 +181,14 @@
   - touch gesture tracking and reset
   - `main.js` may force bird's-eye exit when shell state changes make that mode invalid
 - Active-letter ownership: `src/interaction/proximityManager.js`
-  - nearest-letter detection
+  - readable-side candidate/active scoring
   - active highlight cue
   - narration trigger/stop handoff into audio
 - Audio ownership: `src/audio/audioEngine.js`
   - Howler setup, background theme, narration caching/loading, ducking, pause/resume, and visibility listener backend
   - no authority over shell state; resume remains gated by runtime state supplied from `main.js`
 
-### 10. Cleanup and disposal
+### 11. Cleanup and disposal
 
 - On `beforeunload`, `main.js`:
   - removes its DOM/control event listeners

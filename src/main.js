@@ -7,7 +7,7 @@ import { LoadingScene } from '@renderer/loadingScene.js';
 import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
 import { ProximityManager } from '@interaction/proximityManager.js';
-import { AUDIO, ANIMATION, LOADING_TIMEOUT_MS } from '@config/constants.js';
+import { AUDIO, ANIMATION, INSPECT, LOADING_TIMEOUT_MS } from '@config/constants.js';
 import lettersData from '@data/letters.json';
 
 // Loading Scene Elements
@@ -24,7 +24,7 @@ let assetsLoaded = false;
 let loadingSceneComplete = false;
 
 // 1. Initialize Scene (hidden until loading complete)
-const { scene, camera, renderer } = initScene();
+const { scene, camera, renderer, setInspectQuality } = initScene();
 
 // 2. Lighting
 initLighting(scene);
@@ -38,6 +38,7 @@ const {
   activate: activateControls,
   deactivate: deactivateControls,
   dispose: disposeControls,
+  setInspectSuppressed,
 } = initControls(camera, document.body);
 
 // Debug: Speed slider setup
@@ -58,6 +59,8 @@ speedSlider.addEventListener('input', handleSpeedSliderInput);
 let letterObjects = [];
 let proximityManager = null;
 let displayedActiveLetterId = null;
+let currentTargetState = null;
+const letterObjectById = new Map();
 
 const UI_STATE = Object.freeze({
   LOADING: 'loading',
@@ -68,7 +71,15 @@ const UI_STATE = Object.freeze({
 
 const VIEW_MODE = Object.freeze({
   IMMERSIVE: 'immersive',
+  INSPECT: 'inspect',
   BIRD_EYE: 'bird-eye',
+});
+
+const INSPECT_PHASE = Object.freeze({
+  IDLE: 'idle',
+  ENTERING: 'entering',
+  ACTIVE: 'active',
+  EXITING: 'exiting',
 });
 
 const POINTER_LOCK_FALLBACK_MS = 1800;
@@ -91,6 +102,23 @@ const subtitleContainer = document.getElementById('subtitle-container');
 const birdEyeIndicator = document.getElementById('bird-eye-indicator');
 const touchJoystickContainer = document.getElementById('touch-joystick-container');
 const touchLookArea = document.getElementById('touch-look-area');
+const inspectPrompt = document.getElementById('inspect-prompt');
+const inspectPromptCopy = document.getElementById('inspect-prompt-copy');
+const inspectTouchBtn = document.getElementById('inspect-touch-btn');
+const inspectOverlay = document.getElementById('inspect-overlay');
+const inspectTitle = document.getElementById('inspect-title');
+const inspectStatus = document.getElementById('inspect-status');
+const inspectSideBadge = document.getElementById('inspect-side-badge');
+const inspectScanViewport = document.getElementById('inspect-scan-viewport');
+const inspectScanStage = document.getElementById('inspect-scan-stage');
+const inspectScanImage = document.getElementById('inspect-scan-image');
+const inspectHeaderExitBtn = document.getElementById('inspect-header-exit-btn');
+const inspectFrontBtn = document.getElementById('inspect-front-btn');
+const inspectBackBtn = document.getElementById('inspect-back-btn');
+const inspectZoomOutBtn = document.getElementById('inspect-zoom-out-btn');
+const inspectZoomResetBtn = document.getElementById('inspect-zoom-reset-btn');
+const inspectZoomInBtn = document.getElementById('inspect-zoom-in-btn');
+const inspectExitBtn = document.getElementById('inspect-exit-btn');
 const letterDataById = new Map(lettersData.map((letter) => [letter.id, letter]));
 const subtitleElement = document.createElement('div');
 subtitleElement.className = 'subtitle';
@@ -103,6 +131,26 @@ let hasBootstrappedExperience = false;
 let pendingDesktopState = UI_STATE.START;
 let pointerLockFallbackTimer = null;
 let isTransitioningOutOfLoading = false;
+let suppressPauseOnNextDesktopUnlock = false;
+const inspectState = {
+  phase: INSPECT_PHASE.IDLE,
+  letterId: null,
+  side: 'front',
+  zoom: INSPECT.DEFAULT_ZOOM,
+  returnPose: null,
+  restorePointerLockOnExit: false,
+  transitionFrom: null,
+  transitionTo: null,
+  transitionElapsed: 0,
+  transitionDuration: INSPECT.TRANSITION_DURATION,
+};
+const inspectScratchCamera = new THREE.PerspectiveCamera(INSPECT.FOV, camera.aspect, camera.near, camera.far);
+const inspectViewSize = new THREE.Vector2();
+const inspectCenterWorld = new THREE.Vector3();
+const inspectAnchorWorld = new THREE.Vector3();
+const inspectDirectionWorld = new THREE.Vector3();
+const inspectTargetPosition = new THREE.Vector3();
+const inspectLookObject = new THREE.Object3D();
 
 const debugQuery = new URLSearchParams(window.location.search).get('debug');
 const storedDebugPreference = (() => {
@@ -119,6 +167,282 @@ const DEFAULT_START_STATUS = isTouchDevice
 const DEFAULT_PAUSE_STATUS = isTouchDevice
   ? 'Tap Resume to return to the archive.'
   : 'Click Resume to recapture your pointer and return to the archive.';
+
+function createEmptyTargetState() {
+  return {
+    candidateId: null,
+    candidateSide: null,
+    candidateScore: null,
+    activeId: null,
+    activeSide: null,
+    activeScore: null,
+  };
+}
+
+const EMPTY_TARGET_STATE = Object.freeze(createEmptyTargetState());
+currentTargetState = EMPTY_TARGET_STATE;
+
+function getLetterImagePaths(letterData) {
+  return {
+    frontPath: letterData.frontImage || `/assets/letters/${letterData.id}.jpg`,
+    backPath: letterData.backImage || `/assets/letters/${letterData.id}-${letterData.id}.jpg`,
+  };
+}
+
+function captureCameraPose() {
+  return {
+    position: camera.position.clone(),
+    quaternion: camera.quaternion.clone(),
+    fov: camera.fov,
+  };
+}
+
+function setCameraFov(nextFov) {
+  if (Math.abs(camera.fov - nextFov) > 0.001) {
+    camera.fov = nextFov;
+    camera.updateProjectionMatrix();
+  }
+}
+
+function applyCameraPose(pose) {
+  if (!pose) {
+    return;
+  }
+
+  camera.position.copy(pose.position);
+  camera.quaternion.copy(pose.quaternion);
+  setCameraFov(pose.fov);
+}
+
+function resetInspectState() {
+  inspectState.phase = INSPECT_PHASE.IDLE;
+  inspectState.letterId = null;
+  inspectState.side = 'front';
+  inspectState.zoom = INSPECT.DEFAULT_ZOOM;
+  inspectState.returnPose = null;
+  inspectState.restorePointerLockOnExit = false;
+  inspectState.transitionFrom = null;
+  inspectState.transitionTo = null;
+  inspectState.transitionElapsed = 0;
+  inspectState.transitionDuration = INSPECT.TRANSITION_DURATION;
+}
+
+function getLetterObjectById(letterId) {
+  return letterObjectById.get(letterId) || null;
+}
+
+function resolveInspectSide(letter, requestedSide) {
+  const readableSides = letter?.userData?.interaction?.readableSides;
+
+  if (!readableSides) {
+    return null;
+  }
+
+  if (requestedSide && readableSides[requestedSide]) {
+    return requestedSide;
+  }
+
+  if (readableSides.front) {
+    return 'front';
+  }
+
+  if (readableSides.back) {
+    return 'back';
+  }
+
+  const fallbackSide = Object.keys(readableSides)[0];
+  return fallbackSide || null;
+}
+
+function buildInspectTarget(letter, requestedSide) {
+  const resolvedSide = resolveInspectSide(letter, requestedSide);
+
+  if (!resolvedSide) {
+    return null;
+  }
+
+  const side = letter.userData.interaction.readableSides[resolvedSide];
+
+  inspectCenterWorld.copy(side.center);
+  letter.localToWorld(inspectCenterWorld);
+
+  inspectAnchorWorld.copy(side.inspectAnchorLocal || side.center);
+  letter.localToWorld(inspectAnchorWorld);
+
+  inspectDirectionWorld.copy(inspectAnchorWorld).sub(inspectCenterWorld);
+
+  if (inspectDirectionWorld.lengthSq() === 0) {
+    inspectDirectionWorld.copy(side.normal).transformDirection(letter.matrixWorld);
+  } else {
+    inspectDirectionWorld.normalize();
+  }
+
+  inspectScratchCamera.aspect = camera.aspect;
+  inspectScratchCamera.fov = INSPECT.FOV;
+  inspectScratchCamera.updateProjectionMatrix();
+  inspectScratchCamera.getViewSize(1, inspectViewSize);
+
+  const widthAtUnit = Math.max(inspectViewSize.x, 0.001);
+  const heightAtUnit = Math.max(inspectViewSize.y, 0.001);
+  const sideWidth = Math.max((side.size?.x || 0.1) * letter.scale.x, 0.05);
+  const sideHeight = Math.max((side.size?.y || 0.1) * letter.scale.y, 0.05);
+  const anchorDistance = inspectAnchorWorld.distanceTo(inspectCenterWorld);
+  const framedDistance = Math.max(
+    (sideWidth * INSPECT.FRAMING_PADDING) / widthAtUnit,
+    (sideHeight * INSPECT.FRAMING_PADDING) / heightAtUnit,
+    anchorDistance,
+  );
+  const inspectDistance = THREE.MathUtils.clamp(
+    framedDistance,
+    INSPECT.MIN_DISTANCE,
+    INSPECT.MAX_DISTANCE,
+  );
+
+  inspectTargetPosition.copy(inspectCenterWorld).addScaledVector(inspectDirectionWorld, inspectDistance);
+  inspectLookObject.position.copy(inspectTargetPosition);
+  inspectLookObject.lookAt(inspectCenterWorld);
+
+  return {
+    letterId: letter.userData.id,
+    side: resolvedSide,
+    pose: {
+      position: inspectTargetPosition.clone(),
+      quaternion: inspectLookObject.quaternion.clone(),
+      fov: INSPECT.FOV,
+    },
+  };
+}
+
+function getInspectStatusText() {
+  if (inspectState.phase === INSPECT_PHASE.ENTERING) {
+    return 'Aligning inspect view...';
+  }
+
+  if (inspectState.phase === INSPECT_PHASE.EXITING) {
+    return 'Returning to the archive...';
+  }
+
+  return isTouchDevice
+    ? 'Swipe the scan, use the controls below, and tap Exit to return.'
+    : 'Pointer released for inspection. Scroll the scan, then press E or Back to return.';
+}
+
+function getInspectViewportContentBox() {
+  if (!inspectScanViewport) {
+    return null;
+  }
+
+  const stageStyle = inspectScanStage
+    ? window.getComputedStyle(inspectScanStage)
+    : null;
+  const horizontalPadding = stageStyle
+    ? parseFloat(stageStyle.paddingLeft) + parseFloat(stageStyle.paddingRight)
+    : 0;
+  const verticalPadding = stageStyle
+    ? parseFloat(stageStyle.paddingTop) + parseFloat(stageStyle.paddingBottom)
+    : 0;
+
+  return {
+    width: Math.max(inspectScanViewport.clientWidth - horizontalPadding, 1),
+    height: Math.max(inspectScanViewport.clientHeight - verticalPadding, 1),
+  };
+}
+
+function updateInspectZoomUI() {
+  if (!inspectScanImage) {
+    return;
+  }
+
+  const viewportContentBox = getInspectViewportContentBox();
+  const { naturalWidth, naturalHeight } = inspectScanImage;
+
+  if (viewportContentBox && naturalWidth > 0 && naturalHeight > 0) {
+    const baseScale = Math.min(
+      viewportContentBox.width / naturalWidth,
+      viewportContentBox.height / naturalHeight,
+    );
+    const renderedWidth = Math.max(naturalWidth * baseScale * inspectState.zoom, 1);
+    inspectScanImage.style.width = `${renderedWidth}px`;
+  } else {
+    inspectScanImage.style.width = '';
+  }
+
+  const canInteract = inspectState.phase === INSPECT_PHASE.ACTIVE;
+  const atMinZoom = inspectState.zoom <= INSPECT.MIN_ZOOM;
+  const atDefaultZoom = Math.abs(inspectState.zoom - INSPECT.DEFAULT_ZOOM) <= 0.001;
+  const atMaxZoom = inspectState.zoom >= INSPECT.MAX_ZOOM;
+
+  if (inspectZoomOutBtn) {
+    inspectZoomOutBtn.disabled = !canInteract || atMinZoom;
+  }
+
+  if (inspectZoomResetBtn) {
+    inspectZoomResetBtn.disabled = !canInteract || atDefaultZoom;
+  }
+
+  if (inspectZoomInBtn) {
+    inspectZoomInBtn.disabled = !canInteract || atMaxZoom;
+  }
+}
+
+function setInspectZoom(nextZoom) {
+  inspectState.zoom = THREE.MathUtils.clamp(nextZoom, INSPECT.MIN_ZOOM, INSPECT.MAX_ZOOM);
+  updateInspectZoomUI();
+}
+
+function updateInspectContent() {
+  if (!inspectState.letterId) {
+    return;
+  }
+
+  const letterData = letterDataById.get(inspectState.letterId);
+
+  if (!letterData) {
+    return;
+  }
+
+  const { frontPath, backPath } = getLetterImagePaths(letterData);
+  const activePath = inspectState.side === 'back' ? backPath : frontPath;
+
+  if (inspectTitle) {
+    inspectTitle.textContent = `Letter ${inspectState.letterId}`;
+  }
+
+  if (inspectSideBadge) {
+    inspectSideBadge.textContent = inspectState.side === 'back' ? 'Back' : 'Front';
+  }
+
+  if (inspectStatus) {
+    inspectStatus.textContent = getInspectStatusText();
+  }
+
+  if (inspectScanImage) {
+    if (inspectScanImage.src !== new URL(activePath, window.location.href).href) {
+      inspectScanImage.src = activePath;
+    }
+    inspectScanImage.alt = `Letter ${inspectState.letterId} ${inspectState.side} scan`;
+  }
+
+  const canSwitchSides = inspectState.phase === INSPECT_PHASE.ACTIVE;
+
+  if (inspectFrontBtn) {
+    inspectFrontBtn.disabled = !canSwitchSides || inspectState.side === 'front';
+  }
+
+  if (inspectBackBtn) {
+    inspectBackBtn.disabled = !canSwitchSides || inspectState.side === 'back';
+  }
+
+  if (inspectExitBtn) {
+    inspectExitBtn.disabled = inspectState.phase !== INSPECT_PHASE.ACTIVE;
+  }
+
+  if (inspectHeaderExitBtn) {
+    inspectHeaderExitBtn.disabled = inspectState.phase !== INSPECT_PHASE.ACTIVE;
+  }
+
+  updateInspectZoomUI();
+}
 
 document.body.dataset.inputMode = isTouchDevice ? 'touch' : 'desktop';
 document.body.dataset.uiState = uiState;
@@ -176,13 +500,36 @@ function setTouchOverlayVisibility(show) {
   }
 }
 
+function syncInspectUi() {
+  const immersiveActive = uiState === UI_STATE.ACTIVE && viewMode === VIEW_MODE.IMMERSIVE;
+  const inspectVisible = uiState === UI_STATE.ACTIVE && inspectState.phase !== INSPECT_PHASE.IDLE;
+  const hasCandidate = immersiveActive && Boolean(currentTargetState?.candidateId);
+  const promptSide = currentTargetState?.candidateSide === 'back' ? 'Back' : 'Front';
+
+  document.body.dataset.inspectPhase = inspectState.phase;
+
+  if (inspectPromptCopy) {
+    inspectPromptCopy.textContent = isTouchDevice
+      ? `Inspect ${promptSide.toLowerCase()} side`
+      : `Press E to inspect ${promptSide.toLowerCase()} side`;
+  }
+
+  setElementHidden(inspectPrompt, !hasCandidate || inspectState.phase !== INSPECT_PHASE.IDLE);
+  setElementHidden(inspectTouchBtn, !isTouchDevice || !hasCandidate || inspectState.phase !== INSPECT_PHASE.IDLE);
+  setElementHidden(inspectOverlay, !inspectVisible);
+
+  if (inspectVisible) {
+    updateInspectContent();
+  }
+}
+
 function syncUiChrome() {
   const isActive = uiState === UI_STATE.ACTIVE;
   const immersiveActive = isActive && viewMode === VIEW_MODE.IMMERSIVE;
   const birdEyeActive = isActive && viewMode === VIEW_MODE.BIRD_EYE;
   const desktopImmersive = immersiveActive && !isTouchDevice;
   const mobileImmersive = immersiveActive && isTouchDevice;
-  const shouldShowLetterUi = immersiveActive && Boolean(displayedActiveLetterId);
+  const shouldShowLetterUi = immersiveActive && inspectState.phase === INSPECT_PHASE.IDLE && Boolean(displayedActiveLetterId);
   const shouldShowDebug = debugUiEnabled && desktopImmersive;
 
   document.body.dataset.uiState = uiState;
@@ -201,6 +548,7 @@ function syncUiChrome() {
   previewContainer.hidden = !shouldShowLetterUi;
   previewContainer.classList.toggle('visible', shouldShowLetterUi);
   subtitleElement.hidden = !shouldShowLetterUi || !subtitleElement.textContent;
+  syncInspectUi();
 }
 
 function setUiState(nextState) {
@@ -216,6 +564,7 @@ function setViewMode(nextMode) {
     viewMode = nextMode;
   }
 
+  setInspectQuality(viewMode === VIEW_MODE.INSPECT);
   syncUiChrome();
 }
 
@@ -287,8 +636,7 @@ function clearActiveLetterUI() {
 }
 
 function showActiveLetterUI(letterData) {
-  const frontPath = letterData.frontImage || `/assets/letters/${letterData.id}.jpg`;
-  const backPath = letterData.backImage || `/assets/letters/${letterData.id}-${letterData.id}.jpg`;
+  const { frontPath, backPath } = getLetterImagePaths(letterData);
 
   if (frontImage.src !== new URL(frontPath, window.location.href).href) {
     frontImage.src = frontPath;
@@ -323,6 +671,166 @@ function updateActiveLetterUI(activeLetterId) {
   }
 
   showActiveLetterUI(letterData);
+}
+
+function clearRuntimeTargeting() {
+  currentTargetState = proximityManager ? proximityManager.clearTargeting() : EMPTY_TARGET_STATE;
+  updateActiveLetterUI(currentTargetState?.activeId ?? null);
+  syncInspectUi();
+  return currentTargetState;
+}
+
+function startInspectTransition(targetPose, phase) {
+  inspectState.phase = phase;
+  inspectState.transitionFrom = captureCameraPose();
+  inspectState.transitionTo = targetPose;
+  inspectState.transitionElapsed = 0;
+  inspectState.transitionDuration = INSPECT.TRANSITION_DURATION;
+  updateInspectContent();
+}
+
+function enterInspectMode() {
+  if (uiState !== UI_STATE.ACTIVE || viewMode !== VIEW_MODE.IMMERSIVE || inspectState.phase !== INSPECT_PHASE.IDLE) {
+    return false;
+  }
+
+  const candidateId = currentTargetState?.candidateId;
+
+  if (!candidateId) {
+    return false;
+  }
+
+  const letter = getLetterObjectById(candidateId);
+
+  if (!letter) {
+    return false;
+  }
+
+  const target = buildInspectTarget(letter, currentTargetState?.candidateSide);
+
+  if (!target) {
+    return false;
+  }
+
+  inspectState.letterId = target.letterId;
+  inspectState.side = target.side;
+  inspectState.returnPose = captureCameraPose();
+  inspectState.restorePointerLockOnExit = !isTouchDevice && controls.isLocked;
+  setInspectZoom(INSPECT.DEFAULT_ZOOM);
+  if (inspectScanViewport) {
+    inspectScanViewport.scrollTop = 0;
+    inspectScanViewport.scrollLeft = 0;
+  }
+  setInspectSuppressed(true);
+  if (inspectState.restorePointerLockOnExit) {
+    suppressPauseOnNextDesktopUnlock = true;
+    controls.unlock();
+  }
+  startInspectTransition(target.pose, INSPECT_PHASE.ENTERING);
+  setViewMode(VIEW_MODE.INSPECT);
+  clearRuntimeTargeting();
+  return true;
+}
+
+function exitInspectMode() {
+  if (inspectState.phase !== INSPECT_PHASE.ACTIVE || !inspectState.returnPose) {
+    return false;
+  }
+
+  startInspectTransition(inspectState.returnPose, INSPECT_PHASE.EXITING);
+  syncInspectUi();
+  return true;
+}
+
+function forceExitInspectMode({ restorePose = true } = {}) {
+  if (inspectState.phase === INSPECT_PHASE.IDLE) {
+    return false;
+  }
+
+  if (restorePose && inspectState.returnPose) {
+    applyCameraPose(inspectState.returnPose);
+  }
+
+  setInspectSuppressed(false);
+  resetInspectState();
+  setViewMode(VIEW_MODE.IMMERSIVE);
+  syncInspectUi();
+  return true;
+}
+
+function switchInspectSide(nextSide) {
+  if (inspectState.phase !== INSPECT_PHASE.ACTIVE || !inspectState.letterId) {
+    return false;
+  }
+
+  const letter = getLetterObjectById(inspectState.letterId);
+
+  if (!letter) {
+    return false;
+  }
+
+  const target = buildInspectTarget(letter, nextSide);
+
+  if (!target || target.side === inspectState.side) {
+    return false;
+  }
+
+  inspectState.side = target.side;
+  if (inspectScanViewport) {
+    inspectScanViewport.scrollTop = 0;
+    inspectScanViewport.scrollLeft = 0;
+  }
+  startInspectTransition(target.pose, INSPECT_PHASE.ENTERING);
+  syncInspectUi();
+  return true;
+}
+
+function adjustInspectZoom(direction) {
+  if (inspectState.phase !== INSPECT_PHASE.ACTIVE) {
+    return false;
+  }
+
+  setInspectZoom(inspectState.zoom + (direction * INSPECT.ZOOM_STEP));
+  return true;
+}
+
+function resetInspectZoom() {
+  if (inspectState.phase !== INSPECT_PHASE.ACTIVE) {
+    return false;
+  }
+
+  setInspectZoom(INSPECT.DEFAULT_ZOOM);
+  if (inspectScanViewport) {
+    inspectScanViewport.scrollTop = 0;
+    inspectScanViewport.scrollLeft = 0;
+  }
+  return true;
+}
+
+function handleInspectImageLoad() {
+  updateInspectZoomUI();
+}
+
+function handleInspectViewportResize() {
+  if (inspectState.phase !== INSPECT_PHASE.IDLE) {
+    updateInspectZoomUI();
+  }
+}
+
+function restoreDesktopPointerLockAfterInspect(shouldRestorePointerLock = inspectState.restorePointerLockOnExit) {
+  if (isTouchDevice || !shouldRestorePointerLock) {
+    return;
+  }
+
+  pendingDesktopState = UI_STATE.PAUSED;
+  clearPointerLockFallbackTimer();
+  controls.lock();
+
+  pointerLockFallbackTimer = window.setTimeout(() => {
+    if (!controls.isLocked && uiState === UI_STATE.ACTIVE && inspectState.phase === INSPECT_PHASE.IDLE) {
+      handlePointerLockFailure('Pointer lock was unavailable. Click Resume to return to the archive.');
+    }
+  }, POINTER_LOCK_FALLBACK_MS);
 }
 
 // Function to transition from loading to game
@@ -364,6 +872,11 @@ function handleDesktopUnlock() {
   setStartPendingState(false);
   setPausePendingState(false);
 
+  if (suppressPauseOnNextDesktopUnlock) {
+    suppressPauseOnNextDesktopUnlock = false;
+    return;
+  }
+
   if (uiState === UI_STATE.LOADING || uiState === UI_STATE.START) {
     return;
   }
@@ -373,6 +886,8 @@ function handleDesktopUnlock() {
     setViewMode(VIEW_MODE.IMMERSIVE);
   }
 
+  forceExitInspectMode({ restorePose: true });
+  clearRuntimeTargeting();
   setPauseStatus('Pointer released. Click Resume to return to the archive.');
   setUiState(UI_STATE.PAUSED);
   audioEngine.pause();
@@ -396,6 +911,8 @@ function handleResume() {
 
 function handleMobilePause() {
   deactivateControls();
+  forceExitInspectMode({ restorePose: true });
+  clearRuntimeTargeting();
   setPausePendingState(false, 'Paused. Tap Resume to continue exploring.');
   setUiState(UI_STATE.PAUSED);
   audioEngine.pause();
@@ -432,6 +949,119 @@ function handlePointerLockError() {
   handlePointerLockFailure(failureMessage);
 }
 
+function handleInspectKeyDown(event) {
+  if (event.metaKey || event.ctrlKey || event.altKey) {
+    return;
+  }
+
+  if (event.code === 'KeyE') {
+    if (inspectState.phase === INSPECT_PHASE.ACTIVE) {
+      event.preventDefault();
+      exitInspectMode();
+      return;
+    }
+
+    if (inspectState.phase === INSPECT_PHASE.IDLE && uiState === UI_STATE.ACTIVE && viewMode === VIEW_MODE.IMMERSIVE) {
+      if (enterInspectMode()) {
+        event.preventDefault();
+      }
+    }
+
+    return;
+  }
+
+  if (inspectState.phase !== INSPECT_PHASE.ACTIVE) {
+    return;
+  }
+
+  const { code, key } = event;
+  const normalizedKey = typeof key === 'string' ? key.normalize('NFKC') : '';
+  const legacyKeyCode = event.keyCode || event.which || 0;
+  const isZoomInKey = code === 'Equal'
+    || code === 'NumpadAdd'
+    || normalizedKey === '+'
+    || normalizedKey === '='
+    || normalizedKey === 'Add'
+    || legacyKeyCode === 187
+    || legacyKeyCode === 107
+    || legacyKeyCode === 61;
+  const isZoomOutKey = code === 'Minus'
+    || code === 'NumpadSubtract'
+    || normalizedKey === '-'
+    || normalizedKey === '_'
+    || normalizedKey === '−'
+    || normalizedKey === 'Subtract'
+    || legacyKeyCode === 189
+    || legacyKeyCode === 109
+    || legacyKeyCode === 173;
+  const isResetZoomKey = code === 'Digit0'
+    || code === 'Numpad0'
+    || normalizedKey === '0'
+    || legacyKeyCode === 48
+    || legacyKeyCode === 96;
+
+  switch (code) {
+    case 'KeyF':
+      event.preventDefault();
+      switchInspectSide('front');
+      break;
+    case 'KeyB':
+      event.preventDefault();
+      switchInspectSide('back');
+      break;
+    default:
+      if (isZoomInKey) {
+        event.preventDefault();
+        adjustInspectZoom(1);
+        break;
+      }
+
+      if (isZoomOutKey) {
+        event.preventDefault();
+        adjustInspectZoom(-1);
+        break;
+      }
+
+      if (isResetZoomKey) {
+        event.preventDefault();
+        resetInspectZoom();
+      }
+      break;
+  }
+}
+
+function handleTouchInspectEnter() {
+  enterInspectMode();
+}
+
+function handleTouchInspectFront() {
+  switchInspectSide('front');
+}
+
+function handleTouchInspectBack() {
+  switchInspectSide('back');
+}
+
+function handleTouchInspectZoomOut() {
+  adjustInspectZoom(-1);
+}
+
+function handleTouchInspectZoomReset() {
+  resetInspectZoom();
+}
+
+function handleTouchInspectZoomIn() {
+  adjustInspectZoom(1);
+}
+
+function handleTouchInspectExit() {
+  exitInspectMode();
+}
+
+function handleInspectHeaderExit() {
+  exitInspectMode();
+}
+
 if (skipBtn) {
   skipBtn.addEventListener('click', handleSkipIntro);
 }
@@ -444,9 +1074,48 @@ if (!isTouchDevice) {
 
 resumeBtn.addEventListener('click', handleResume);
 startBtn.addEventListener('click', handleStartExperience);
+document.addEventListener('keydown', handleInspectKeyDown);
 
 if (pauseBtn) {
   pauseBtn.addEventListener('click', handleMobilePause);
+}
+
+if (inspectTouchBtn) {
+  inspectTouchBtn.addEventListener('click', handleTouchInspectEnter);
+}
+
+if (inspectScanImage) {
+  inspectScanImage.addEventListener('load', handleInspectImageLoad);
+}
+
+window.addEventListener('resize', handleInspectViewportResize);
+
+if (inspectHeaderExitBtn) {
+  inspectHeaderExitBtn.addEventListener('click', handleInspectHeaderExit);
+}
+
+if (inspectFrontBtn) {
+  inspectFrontBtn.addEventListener('click', handleTouchInspectFront);
+}
+
+if (inspectBackBtn) {
+  inspectBackBtn.addEventListener('click', handleTouchInspectBack);
+}
+
+if (inspectZoomOutBtn) {
+  inspectZoomOutBtn.addEventListener('click', handleTouchInspectZoomOut);
+}
+
+if (inspectZoomResetBtn) {
+  inspectZoomResetBtn.addEventListener('click', handleTouchInspectZoomReset);
+}
+
+if (inspectZoomInBtn) {
+  inspectZoomInBtn.addEventListener('click', handleTouchInspectZoomIn);
+}
+
+if (inspectExitBtn) {
+  inspectExitBtn.addEventListener('click', handleTouchInspectExit);
 }
 
 setStartPendingState(false);
@@ -498,12 +1167,16 @@ loadingScene.start(() => {
     });
     
     letterObjects = await Promise.race([
-      loadLetters(scene, lettersData, updateProgress),
+      loadLetters(scene, lettersData, renderer, updateProgress),
       loadingTimeout
     ]);
     
     const loadingDuration = Math.floor((Date.now() - loadingStartTime) / 1000);
     console.log(`Loaded ${letterObjects.length} letters successfully in ${loadingDuration}s!`);
+    letterObjectById.clear();
+    letterObjects.forEach((letter) => {
+      letterObjectById.set(letter.userData.id, letter);
+    });
 
     // 5. Interaction
     proximityManager = new ProximityManager(camera, letterObjects);
@@ -544,11 +1217,69 @@ loadingScene.start(() => {
 // 7. Animation Loop
 const clock = new THREE.Clock();
 
+function updateInspectTransition(delta) {
+  if (
+    inspectState.phase !== INSPECT_PHASE.ENTERING &&
+    inspectState.phase !== INSPECT_PHASE.EXITING
+  ) {
+    return;
+  }
+
+  inspectState.transitionElapsed += delta;
+  const progress = THREE.MathUtils.clamp(
+    inspectState.transitionElapsed / inspectState.transitionDuration,
+    0,
+    1,
+  );
+
+  camera.position.lerpVectors(
+    inspectState.transitionFrom.position,
+    inspectState.transitionTo.position,
+    progress,
+  );
+  camera.quaternion.copy(inspectState.transitionFrom.quaternion).slerp(
+    inspectState.transitionTo.quaternion,
+    progress,
+  );
+  setCameraFov(THREE.MathUtils.lerp(
+    inspectState.transitionFrom.fov,
+    inspectState.transitionTo.fov,
+    progress,
+  ));
+
+  if (progress < 1) {
+    return;
+  }
+
+  applyCameraPose(inspectState.transitionTo);
+
+  if (inspectState.phase === INSPECT_PHASE.EXITING) {
+    const shouldRestorePointerLock = inspectState.restorePointerLockOnExit;
+    setInspectSuppressed(false);
+    resetInspectState();
+    setViewMode(VIEW_MODE.IMMERSIVE);
+    syncInspectUi();
+    if (shouldRestorePointerLock) {
+      restoreDesktopPointerLockAfterInspect(shouldRestorePointerLock);
+    }
+    return;
+  }
+
+  inspectState.phase = INSPECT_PHASE.ACTIVE;
+  inspectState.transitionFrom = null;
+  inspectState.transitionTo = null;
+  inspectState.transitionElapsed = 0;
+  updateInspectContent();
+  syncInspectUi();
+}
+
 function animate() {
   requestAnimationFrame(animate);
 
   const delta = clock.getDelta();
-  const nextViewMode = isBirdEyeView() ? VIEW_MODE.BIRD_EYE : VIEW_MODE.IMMERSIVE;
+  const nextViewMode = inspectState.phase !== INSPECT_PHASE.IDLE
+    ? VIEW_MODE.INSPECT
+    : (isBirdEyeView() ? VIEW_MODE.BIRD_EYE : VIEW_MODE.IMMERSIVE);
 
   if (viewMode !== nextViewMode) {
     setViewMode(nextViewMode);
@@ -565,6 +1296,8 @@ function animate() {
   if (uiState === UI_STATE.ACTIVE) {
     currentSpeedDisplay.textContent = getVelocity().toFixed(2);
   }
+
+  updateInspectTransition(delta);
   
   // Update debug position display
   if (debugPositionDisplay) {
@@ -572,13 +1305,20 @@ function animate() {
   }
 
   // Check Proximity
-  const activeLetterId = uiState === UI_STATE.ACTIVE && proximityManager
-    ? proximityManager.update()
-    : null;
-
   if (proximityManager) {
-    updateActiveLetterUI(activeLetterId);
+    if (uiState === UI_STATE.ACTIVE && inspectState.phase === INSPECT_PHASE.IDLE) {
+      currentTargetState = proximityManager.update();
+    } else if (currentTargetState.activeId || currentTargetState.candidateId) {
+      currentTargetState = proximityManager.clearTargeting();
+    } else {
+      currentTargetState = EMPTY_TARGET_STATE;
+    }
+  } else {
+    currentTargetState = EMPTY_TARGET_STATE;
   }
+
+  updateActiveLetterUI(currentTargetState?.activeId ?? null);
+  syncInspectUi();
 
   // Animate Letters (Slight airflow)
   const time = clock.getElapsedTime();
@@ -596,17 +1336,25 @@ function animate() {
       // Skip animation for distant letters to save CPU
       if (distSq > animationRadiusSq) return;
 
+      const baseRotationY = letter.userData.baseRotationY ?? 0;
+      const basePositionY = letter.userData.basePositionY ?? letter.userData.position.y;
+
+      if (inspectState.phase !== INSPECT_PHASE.IDLE && letter.userData.id === inspectState.letterId) {
+        letter.rotation.y = baseRotationY;
+        letter.rotation.z = 0;
+        letter.position.y = basePositionY;
+        return;
+      }
+
       const offset = i * 2; // Phase offset
 
       // Gentle rotation (torsion)
-      const baseRotationY = letter.userData.baseRotationY ?? 0;
       letter.rotation.y = baseRotationY + Math.sin(time * ANIMATION.ROTATION_SPEED + offset) * ANIMATION.ROTATION_AMPLITUDE;
 
       // Swaying (wind)
       letter.rotation.z = Math.sin(time * ANIMATION.SWAY_SPEED + offset) * ANIMATION.SWAY_AMPLITUDE;
 
       // Vertical bobbing (air currents)
-      const basePositionY = letter.userData.basePositionY ?? letter.userData.position.y;
       letter.position.y = basePositionY + Math.sin(time * ANIMATION.BOB_SPEED + offset) * ANIMATION.BOB_AMPLITUDE;
     });
   }
@@ -630,6 +1378,7 @@ function cleanupRuntime() {
   speedSlider.removeEventListener('input', handleSpeedSliderInput);
   startBtn.removeEventListener('click', handleStartExperience);
   resumeBtn.removeEventListener('click', handleResume);
+  document.removeEventListener('keydown', handleInspectKeyDown);
 
   if (skipBtn) {
     skipBtn.removeEventListener('click', handleSkipIntro);
@@ -639,17 +1388,57 @@ function cleanupRuntime() {
     pauseBtn.removeEventListener('click', handleMobilePause);
   }
 
+  if (inspectTouchBtn) {
+    inspectTouchBtn.removeEventListener('click', handleTouchInspectEnter);
+  }
+
+  if (inspectFrontBtn) {
+    inspectFrontBtn.removeEventListener('click', handleTouchInspectFront);
+  }
+
+  if (inspectBackBtn) {
+    inspectBackBtn.removeEventListener('click', handleTouchInspectBack);
+  }
+
+  if (inspectZoomOutBtn) {
+    inspectZoomOutBtn.removeEventListener('click', handleTouchInspectZoomOut);
+  }
+
+  if (inspectZoomResetBtn) {
+    inspectZoomResetBtn.removeEventListener('click', handleTouchInspectZoomReset);
+  }
+
+  if (inspectZoomInBtn) {
+    inspectZoomInBtn.removeEventListener('click', handleTouchInspectZoomIn);
+  }
+
+  if (inspectExitBtn) {
+    inspectExitBtn.removeEventListener('click', handleTouchInspectExit);
+  }
+
+  if (inspectHeaderExitBtn) {
+    inspectHeaderExitBtn.removeEventListener('click', handleInspectHeaderExit);
+  }
+
+  if (inspectScanImage) {
+    inspectScanImage.removeEventListener('load', handleInspectImageLoad);
+  }
+
+  window.removeEventListener('resize', handleInspectViewportResize);
+
   if (!isTouchDevice) {
     controls.removeEventListener('lock', handleDesktopLock);
     controls.removeEventListener('unlock', handleDesktopUnlock);
     document.removeEventListener('pointerlockerror', handlePointerLockError);
   }
 
+  forceExitInspectMode({ restorePose: false });
   disposeControls();
+
+  clearRuntimeTargeting();
 
   // Dispose audio resources
   audioEngine.dispose();
-  
   updateActiveLetterUI(null);
 
   // Dispose Three.js resources

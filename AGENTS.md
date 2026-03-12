@@ -49,7 +49,8 @@ Update shared docs in the same pass when behavior, ownership, constraints, valid
 - Use `sequential-thinking` first for non-trivial tasks.
 - Read local files before `deepwiki`; use `deepwiki` only as a second opinion.
 - Use `context7` only for current upstream semantics the repo cannot answer locally.
-- Use validation MCPs after changes, not for first-pass repo understanding.
+- For browser automation or browser-visible validation, prefer the `playwright` skill plus `playwright-cli`; do not default to the Playwright MCP for this repo.
+- Use validation tools after changes, not for first-pass repo understanding.
 - Prefer the repo-specific routing in `docs/agents/shared/11-tool-routing.md`, `docs/agents/shared/13-skill-activation-matrix.md`, and `docs/agents/shared/14-agent-tool-conventions.md` over ad hoc skill lists in wrappers.
 
 Deeper guidance lives in `docs/agents/shared/*`.

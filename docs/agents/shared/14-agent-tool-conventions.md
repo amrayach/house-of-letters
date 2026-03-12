@@ -2,14 +2,14 @@
 
 This file keeps tool and skill routing aligned with `AGENTS.md`. Use it with `09-validation-checklist.md`, `11-tool-routing.md`, `12-cross-agent-handoffs.md`, and `13-skill-activation-matrix.md`, not instead of them.
 
-## MCP Order By Task Type
+## Tool Order By Task Type
 
 | Task type | Start here | Then use | Notes |
 | --- | --- | --- | --- |
 | repo grounding or docs/governance | `sequential-thinking` -> local file reads | `project-health`, then `deepwiki` only if a second opinion helps | Keep local code and checked-in docs authoritative |
 | runtime implementation | `sequential-thinking` for non-trivial work -> targeted source reads | task-matched skills, then validation tools after edits | Do not start with browser automation |
 | upstream library or platform semantics | local code, versions, and config | `context7` | Use only when the repo cannot answer the question locally |
-| browser validation | local diff and ownership already understood | `playwright`, `responsiveness-check`, or `ux-audit` | Use after edits or for explicit UX testing; follow `09-validation-checklist.md` |
+| browser validation | local diff and ownership already understood | `playwright` + `playwright-cli`, `responsiveness-check`, or `ux-audit` | Use after edits or for explicit UX testing; follow `09-validation-checklist.md` |
 | contrastive review | grounded diff plus open questions | Claude review or `gemini-peer-review` | External review comes after local grounding, not before; see `09-validation-checklist.md` and `12-cross-agent-handoffs.md` |
 
 ## Skill Defaults And Conditionals
@@ -36,7 +36,8 @@ Conditional skills worth activating when the task fits:
 - no `sequential-thinking`: write a short manual execution order before editing
 - no `context7`: rely on local versions, imports, and config, then state any unresolved uncertainty
 - no `deepwiki`: stay local-first and continue
-- no browser-validation tool: use static review plus explicit manual QA steps
+- no `playwright-cli` binary: use the `playwright` skill's wrapper path if available
+- no browser-validation tool or wrapper: use static review plus explicit manual QA steps
 - missing skill or blocked integration: continue with local evidence and state the skipped tool plainly
 
 Do not invent behavior for unavailable tools. Record the fallback and keep moving.
