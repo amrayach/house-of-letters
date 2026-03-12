@@ -12,6 +12,45 @@ import { AUDIO, ANIMATION, INSPECT, LOADING_TIMEOUT_MS, TIMELINE } from '@config
 import lettersData from '@data/letters.json';
 import { validatedProvisionalChronology } from '@data/provisionalChronology.js';
 
+const LETTER_LOAD_STAGE = Object.freeze({
+  CORE: 'core',
+  DEFERRED: 'deferred',
+});
+
+const LETTER_LOAD_STAGE_STATUS = Object.freeze({
+  IDLE: 'idle',
+  PENDING: 'pending',
+  READY: 'ready',
+  DEGRADED: 'degraded',
+  FAILED: 'failed',
+});
+
+const CORE_ENTRY_ZONES = new Set([1, 2]);
+
+function resolveLetterLoadStage(letter) {
+  return CORE_ENTRY_ZONES.has(letter.zone)
+    ? LETTER_LOAD_STAGE.CORE
+    : LETTER_LOAD_STAGE.DEFERRED;
+}
+
+// Keep staged boot grouping owned by main.js so later slices can change startup
+// sequencing without widening loader, controls, or audio ownership.
+const letterLoadStageData = (() => {
+  const stagedLetters = {
+    [LETTER_LOAD_STAGE.CORE]: [],
+    [LETTER_LOAD_STAGE.DEFERRED]: [],
+  };
+
+  lettersData.forEach((letter) => {
+    stagedLetters[resolveLetterLoadStage(letter)].push(letter);
+  });
+
+  return Object.freeze({
+    [LETTER_LOAD_STAGE.CORE]: Object.freeze([...stagedLetters[LETTER_LOAD_STAGE.CORE]]),
+    [LETTER_LOAD_STAGE.DEFERRED]: Object.freeze([...stagedLetters[LETTER_LOAD_STAGE.DEFERRED]]),
+  });
+})();
+
 // Loading Scene Elements
 const loadingSceneContainer = document.getElementById('loading-scene-container');
 const loadingProgress = document.getElementById('loading-progress');
@@ -24,6 +63,16 @@ const loadingScene = new LoadingScene(loadingSceneContainer);
 // Main game state
 let assetsLoaded = false;
 let loadingSceneComplete = false;
+const letterLoadStageState = {
+  [LETTER_LOAD_STAGE.CORE]: {
+    status: LETTER_LOAD_STAGE_STATUS.IDLE,
+    totalLetters: letterLoadStageData[LETTER_LOAD_STAGE.CORE].length,
+  },
+  [LETTER_LOAD_STAGE.DEFERRED]: {
+    status: LETTER_LOAD_STAGE_STATUS.IDLE,
+    totalLetters: letterLoadStageData[LETTER_LOAD_STAGE.DEFERRED].length,
+  },
+};
 
 // 1. Initialize Scene (hidden until loading complete)
 const { scene, camera, renderer, setInspectQuality } = initScene();
