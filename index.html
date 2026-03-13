@@ -33,23 +33,29 @@
     <!-- Start Screen -->
     <div id="start-screen" hidden> <!-- Initially hidden, shown after load -->
       <div class="shell-panel shell-panel-start">
-        <p id="start-kicker" class="shell-kicker">Archive Entry</p>
-        <h1 id="start-title">House of Dreams</h1>
-        <p id="start-lede" class="shell-lede">Explore the archive. Listen to the stories.</p>
-        <div id="start-project-block" hidden>
-          <p class="shell-kicker">Project</p>
-          <p id="start-project-copy" class="screen-status"></p>
+        <div class="start-shell-primary">
+          <p id="start-kicker" class="shell-kicker">Archive Entry</p>
+          <h1 id="start-title">House of Dreams</h1>
+          <p id="start-lede" class="shell-lede">Explore the archive. Listen to the stories.</p>
+          <div class="start-shell-entry">
+            <p id="start-status" class="screen-status" aria-live="polite">Click to enter. The archive will take control of your pointer.</p>
+            <button id="start-btn" class="btn">Enter Archive</button>
+          </div>
         </div>
-        <div id="start-how-to-block" hidden>
-          <p class="shell-kicker">How to Use</p>
-          <p id="start-how-to-copy" class="screen-status"></p>
+        <div class="start-shell-secondary" aria-label="Archive introduction">
+          <div id="start-project-block" class="start-shell-detail" hidden>
+            <p class="shell-kicker">Project</p>
+            <p id="start-project-copy" class="screen-status"></p>
+          </div>
+          <div id="start-how-to-block" class="start-shell-detail" hidden>
+            <p class="shell-kicker">How to Use</p>
+            <p id="start-how-to-copy" class="screen-status"></p>
+          </div>
+          <div id="start-context-block" class="start-shell-detail" hidden>
+            <p class="shell-kicker">Context</p>
+            <p id="start-context-copy" class="screen-status"></p>
+          </div>
         </div>
-        <div id="start-context-block" hidden>
-          <p class="shell-kicker">Context</p>
-          <p id="start-context-copy" class="screen-status"></p>
-        </div>
-        <p id="start-status" class="screen-status" aria-live="polite">Click to enter. The archive will take control of your pointer.</p>
-        <button id="start-btn" class="btn">Enter Archive</button>
       </div>
     </div>
 
