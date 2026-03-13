@@ -15,6 +15,14 @@
 
 - The app boots from `index.html` into `src/main.js` and builds successfully for Cloudflare Pages.
 - The archive scene, loading intro, GLB letter loading, desktop controls, touch controls, narration playback, preview HUD, and inspect overlay are all present.
+- Startup letter loading is now staged in `src/main.js`:
+  - zones 1 and 2 are the core subset that gates entry
+  - zones 3 and 4 load in the background only after a successful archive entry
+- Late-loaded letters now integrate into the live runtime without introducing a new shell state or widening loader ownership.
+- The ground chronology thread now initializes only when every chronology-covered letter model is present; it stays disabled when deferred loading settles without full required coverage.
+- Deferred degraded or failed late-letter sessions now surface as minimal in-session status only:
+  - desktop reuses the controls hint text
+  - touch shows a small active-immersive status pill
 - The guidance layer under `docs/agents/shared/` is now strong enough to support staged engineering work.
 - The runtime ownership model is now consolidated:
   - `main.js` owns shell/UI state and overlay visibility
@@ -39,6 +47,10 @@
 - Intro scene boot and archive scene boot happen in parallel.
 - `letters.json` resolves to existing runtime assets.
 - GLB loading has retry handling and partial-success tolerance.
+- Start availability now depends on the core startup subset rather than waiting for every letter model in the archive.
+- Deferred zone 3/4 loading now starts only after archive entry and integrates any successful late loads into the active session.
+- Deferred degraded or failed late-letter sessions now keep the active session alive while surfacing minimal status on desktop and touch.
+- The ground chronology thread now waits for full chronology coverage and stays absent when deferred loading leaves required letters missing.
 - Narration registration, lazy loading, ducking, pause, and resume are implemented in `audioEngine.js`.
 - Candidate/active targeting now comes from readable-side metadata, focus helpers, and score-based switching rather than raw nearest-center distance.
 - Preview images and subtitle fallback UI are wired into active-letter behavior and stay gated behind active immersive play.

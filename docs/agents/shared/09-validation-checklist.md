@@ -22,6 +22,9 @@ Use this as the default pre-edit and post-edit checklist for repo work. If a tas
 4. Inspect stale file references and broken markdown links.
 5. Confirm changed docs still match the checked-out repo and not only older summaries.
 6. If docs cite screenshots, logs, or output artifacts as evidence, confirm those files actually exist in-repo or rewrite the claim as historical context only.
+7. If docs describe runtime sequencing, confirm they match the current staged boot path in `src/main.js`.
+8. Confirm no doc still claims the archive waits for all letters before entry if the code now gates only on the core startup subset.
+9. State manual-only device or pointer-lock gaps explicitly instead of implying equivalent automated coverage.
 
 ## Post-edit checks for code tasks
 
@@ -56,7 +59,13 @@ Prefer a targeted flow over generic clicking. Re-test the exact path the change 
 For this repo, the common browser smoke-test paths are:
 
 - loading intro completion and skip
+- core-only startup load reaching the start shell without waiting for deferred zones
 - start and pause handoff
+- deferred zone 3/4 loading starting only after successful archive entry
+- late-loaded letters becoming available inside the live session without a reload
+- deferred degraded or failed sessions keeping the active session alive
+- desktop degraded status text through `#controls-hint`
+- touch degraded status pill visibility only during active immersive touch sessions
 - shell exclusivity during loading, start, and pause
 - bird's-eye exit on desktop pause/unlock
 - desktop pointer lock when input changed
@@ -65,7 +74,7 @@ For this repo, the common browser smoke-test paths are:
 - tab hide/show while active versus paused when audio changed
 - proximity-driven narration, preview, and subtitle behavior only after active entry
 - dense-cluster targeting and candidate-prompt behavior when letter selection changed
-- ground chronology first reveal, ambient roaming persistence, single-label promotion, pause/resume hiding, inspect-adjacent freeze, and bird's-eye hiding when the floor navigation thread changed
+- ground chronology first reveal, delayed initialization until full required coverage, safe absence when deferred coverage stays incomplete, ambient roaming persistence, single-label promotion, pause/resume hiding, inspect-adjacent freeze, and bird's-eye hiding when the floor navigation thread changed
 - inspect prompt, inspect enter/front/back/zoom/reset/exit, desktop inspect unlock/relock, and inspect-only shell exclusivity when readability work changed
 - pause/unlock from inspect plus bird's-eye/inspect mutual exclusion when either mode changed
 - visible asset failures in the browser console or network panel
@@ -77,12 +86,15 @@ Prefer automation for:
 
 - shell exclusivity and overlay visibility
 - touch or emulated-mobile inspect flows
+- forced deferred degraded paths by blocking one deferred late-letter asset
+- checking that late-letter integration and `document.body.dataset.groundTimelineCoverage` reflect the expected deferred outcome
 - console or network evidence
 - responsive inspect layout and button-state checks
 
 Prefer manual smoke for:
 
 - desktop pointer-lock acquisition and re-entry
+- physical iOS/Android degraded-session checks for touch-pill placement against the pause button and browser safe areas
 - live free-walk precision and overshoot feel around letter clusters
 - how clearly the ground chronology thread remains followable while moving versus slowing near a target
 - inspect behavior while pointer lock is actually captured
@@ -107,6 +119,25 @@ Treat the validator as the canonical local check for:
 - orphaned model/image/audio assets
 - warning-only contract drift when run with `--strict`
 - when GLBs or scene-side texture fidelity are in scope, add representative `gltf-transform inspect` and `gltf-transform validate` checks before choosing compression, re-export, or texture-format changes
+
+## Current staged-runtime proof path
+
+Use this narrower proof ladder for the current boot and deferred-loading runtime:
+
+1. Read `src/main.js` first to confirm:
+   - zones 1 and 2 gate entry as the core startup subset
+   - zones 3 and 4 defer until successful archive entry
+   - deferred late-letter state stays owned by `main.js`
+2. Run `npm run validate:letters` for the current data and asset contract.
+3. Run `npm run build` when the task touches deploy-sensitive behavior or when a checkpoint needs fresh build proof.
+4. For browser-visible deferred behavior, force a degraded session by blocking one deferred GLB and verify:
+   - active play continues
+   - `document.body.dataset.deferredLetterLoadStatus` settles to `degraded` or `failed`
+   - desktop `#controls-hint` or touch `#touch-deferred-status` surfaces the expected message
+   - `document.body.dataset.groundTimelineCoverage` remains `incomplete` when required coverage is still missing
+5. Record any manual-only gaps honestly:
+   - desktop pointer-lock remains manual-first
+   - physical iOS Safari and Android Chrome placement for the touch deferred-status pill remain manual-only until captured on real devices
 
 ## When to use `playwright` plus `playwright-cli`
 

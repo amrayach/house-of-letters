@@ -9,12 +9,14 @@
    - lighting and controls
 3. Two async tracks then run in parallel:
    - intro camera sequence in `LoadingScene.start(...)`
-   - archive letter/model loading via `loadLetters(...)`
+   - core archive letter/model loading for zones 1 and 2 via `loadLetters(...)`
 4. Only when both tracks complete does `transitionToGame()` hide the loading screen and move the overlay shell into `start`.
 5. The user clicks `Enter Archive`, which bootstraps audio and then:
    - on desktop, waits for pointer lock before moving into `active`
    - on mobile, activates touch controls immediately and moves into `active`
-6. The archive render loop keeps running until page unload, but shell overlays are now explicitly state-gated.
+6. The first successful move into `active` also triggers one deferred background load for zones 3 and 4.
+7. Successful deferred loads integrate directly into the live runtime, and `groundTimeline` initializes only if chronology-required coverage becomes complete.
+8. The archive render loop keeps running until page unload, but shell overlays are now explicitly state-gated.
 
 ## Detailed flow
 
@@ -47,13 +49,17 @@
 
 ### 4. Asset loading
 
-- `loadLetters(scene, lettersData, renderer, updateProgress)` starts one GLB load per record in `letters.json`.
+- `main.js` partitions `letters.json` into staged groups with `resolveLetterLoadStage(letter)`:
+  - core startup letters are zones 1 and 2
+  - deferred letters are zones 3 and 4
+- Startup loading uses `loadLetters(scene, startupLetters, renderer, updateProgress)` where `startupLetters` is only the core subset.
+- The loading shell progress text and counts reflect only that startup subset.
 - `loadModelWithRetry(...)` retries each failed model up to 3 times with a 2-second delay.
 - `Promise.race([... , loadingTimeout])` caps the total wait at `LOADING_TIMEOUT_MS` (10 minutes).
 - `loadLetters(...)` is partial-success tolerant:
   - individual model failures are collected with `Promise.allSettled`
   - successfully loaded models still enter the scene
-  - `assetsLoaded` becomes `true` even if some models failed
+  - the core stage can still mark `assetsLoaded = true` if some startup letters failed but enough loaded for the promise to resolve
 - Each loaded model gets:
   - scaled and positioned from `letters.json`
   - material replacement and texture color-space fixes
@@ -61,34 +67,57 @@
   - a line geometry "string"
   - copied metadata in `model.userData`
   - derived interaction metadata in `model.userData.interaction`
-- After letter loading succeeds, `main.js` creates `ProximityManager`.
-- In the same post-load step, `main.js` creates `groundTimeline` only if `src/data/provisionalChronology.js` validates successfully and every chronology-covered letter model is present in the loaded runtime set.
+- After the core startup load succeeds, `main.js`:
+  - populates `letterObjectById`
+  - creates `ProximityManager`
+  - attempts `tryInitializeGroundTimeline()`
+- `groundTimeline` is not guaranteed at startup:
+  - it initializes only if `src/data/provisionalChronology.js` validates successfully and every chronology-covered letter model is already present
+  - if required chronology letters live in deferred zones, initialization is delayed until later integration or remains disabled
 
-### 5. Start screen gate
+### 5. Deferred post-entry loading
+
+- `startDeferredLetterLoad()` is owned by `main.js` and guarded by `hasTriggeredDeferredLetterLoad`, so it runs at most once per session.
+- Deferred loading starts only after successful archive entry:
+  - desktop triggers it from `handleDesktopLock()` after pointer lock has actually moved the shell into `active`
+  - touch triggers it from `handleStartExperience()` after touch controls are active and the shell has moved into `active`
+- Deferred loading reuses the existing `loadLetters(scene, deferredLetters, renderer)` contract with no new loader ownership and no second shell state.
+- Deferred results are finalized in `finalizeDeferredLetterLoad(...)`:
+  - `ready` when all requested late letters integrate
+  - `degraded` when some late letters integrate and some remain missing
+  - `failed` when none of the late letters integrate or the deferred load rejects outright
+- `integrateLateLoadedLetters(...)` keeps late-letter ownership narrow:
+  - it deduplicates against `letterObjectById`
+  - it appends new letters through `proximityManager.addLetters(...)` when proximity already exists
+  - it falls back to creating `ProximityManager` only if startup somehow reached this point without one
+- After integration, `main.js` retries `tryInitializeGroundTimeline()` and leaves the thread disabled if required coverage is still incomplete.
+
+### 6. Start screen gate
 
 - `transitionToGame()` is called from two places:
   - after `loadingSceneComplete = true`
-  - after `assetsLoaded = true`
+  - after `assetsLoaded = true` for the core startup subset
 - It only proceeds when both flags are true.
 - When it proceeds:
   - the loading screen fades out
   - `loadingScene.dispose()` tears down the intro renderer/composer
   - `uiState` moves to `start`, which reveals only the start shell
 
-### 6. Control activation
+### 7. Control activation
 
 - `startBtn` click is the real runtime handoff:
   - `bootstrapExperience()` initializes audio once, starts the background theme, and registers narrations
   - on touch devices:
     - `activateControls()`
     - `uiState` moves to `active`
+    - deferred zone 3/4 loading starts immediately after that successful active transition
     - mobile pause/touch HUD become visible through `syncUiChrome()`
   - on desktop:
     - audio is paused until pointer lock succeeds
     - the start shell stays visible while pointer lock is requested
     - `pointerlockerror` or timeout keeps the user in a recoverable shell
 - Desktop:
-  - `controls.lock` moves the shell to `active` and resumes audio
+  - `controls.lock` moves the shell to `active`, resumes audio, and triggers deferred loading once
   - `controls.unlock` forces bird's-eye off, moves the shell to `paused`, and pauses audio
 - Mobile:
   - touch controls are enabled/disabled directly
@@ -97,7 +126,7 @@
   - `#mobile-pause-btn` and `#resume-btn` own pause/resume
   - touch HUD stays hidden until `uiState === active`
 
-### 7. Proximity detection
+### 8. Proximity detection
 
 - Only while `uiState === active`, `proximityManager.update()`:
   - prefilters letters within `CHECK_RADIUS`
@@ -126,7 +155,22 @@
   - let `syncUiChrome()` reveal the preview/subtitle layer only when the runtime is in active immersive mode
 - `main.js` also passes the minimal targeting snapshot plus movement speed and inspect/view state into `groundTimeline.update(...)`; chronology visibility and emphasis stay scene-native and do not widen `proximityManager`'s public contract.
 
-### 8. Inspect mode
+### 9. Deferred degraded status surfaces
+
+- Deferred background load state is stored in `letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED]`.
+- `getDeferredStageStatusText()` produces the user-facing degraded or failed copy:
+  - degraded: some later letters are unavailable this session
+  - failed: later letters could not be loaded, but the user can keep exploring the core archive
+- `syncLetterLoadStageUi()` keeps both minimal status surfaces sourced from that same state:
+  - desktop reuses `#controls-hint`
+  - touch uses `#touch-deferred-status`
+- The touch status pill remains intentionally narrow:
+  - it is shell-owned in `main.js`
+  - it is shown only for touch devices in `uiState === active` and `viewMode === immersive`
+  - it hides during loading, start, pause, bird's-eye, and inspect
+- No new shell state or broader fallback system was added for deferred degraded handling.
+
+### 10. Inspect mode
 
 - Inspect is entered only from `uiState === active`, `viewMode === immersive`, and a valid proximity candidate.
 - `main.js` snapshots a single `letterId` plus `side` for the inspect session and defaults the side to `front` if candidate-side data is missing or ambiguous.
@@ -138,7 +182,7 @@
 - `main.js` interpolates into and out of inspect, and restores the saved free-walk camera pose and FOV on exit.
 - Pause, pointer-lock unlock, and bird's-eye-invalid transitions force inspect to exit cleanly before the shell changes state.
 
-### 9. Narration and theme behavior
+### 11. Narration and theme behavior
 
 - Background theme:
   - one theme starts on `startBtn` click
@@ -155,7 +199,7 @@
   - `themeMixer.update(...)` only logs/state-tracks
   - no current code swaps or crossfades background themes per letter/zone
 
-### 10. Archive render loop
+### 12. Archive render loop
 
 - `animate()` does all per-frame runtime work:
   - state-aware `updateControls(delta)` while `uiState === active`
@@ -174,13 +218,17 @@
   - `uiState`
   - shell visibility for loading/start/pause
   - HUD, bird's-eye indicator, touch HUD, debug panel, and active-letter overlay visibility
+  - staged letter-load state and the minimal deferred degraded-status surfaces
   - active-letter preview/subtitle content population
 - Runtime/game-loop ownership: `src/main.js`
   - loading/start handoff
+  - startup core-vs-deferred sequencing
+  - late-letter integration into the live runtime
   - per-frame orchestration
   - derived shell-facing `viewMode`
 - Ground chronology ownership: `src/renderer/groundTimeline.js`
   - grouped floor spine, per-letter anchors, per-letter connectors, and cached ground labels
+  - construction is delayed until `main.js` confirms full chronology coverage from the currently integrated letters
   - hidden outside active play and in bird's-eye
   - ambient vs focused emphasis based only on frame state passed from `main.js`
 - Controls/input ownership: `src/renderer/controls.js` and `src/interaction/touchControls.js`
@@ -216,15 +264,18 @@
 
 | Coupling | Why it is fragile | What to check after edits |
 | --- | --- | --- |
-| Intro gate = `assetsLoaded && loadingSceneComplete` | any missed callback leaves the user stuck on loading/start flow | skip intro, slow network, partial model failure, timeout path |
+| Intro gate = `assetsLoaded && loadingSceneComplete` | `assetsLoaded` now means the core startup subset only, so older "all letters before entry" assumptions are wrong and any missed callback still leaves the user stuck on loading/start flow | skip intro, slow network, partial startup model failure, timeout path |
 | Two render loops during loading | intro and archive both render before the start screen; performance changes hit load time too | FPS and CPU/GPU load during initial boot |
 | Audio starts only on `startBtn` click | browser autoplay rules require user interaction; moving this earlier will break playback | desktop click path, mobile first tap, resume after tab hide |
 | `themeMixer` vs `letter.theme` | metadata suggests per-letter themes, runtime does not implement them | do not assume JSON theme edits change audible behavior |
 | Highlight logic vs material replacement | the active-state cue now depends on lazily added outline geometry plus optional emissive tint | active-letter visual feedback after material or non-glass detection edits |
 | Letter animation vs loader orientation | loader stores the base facing angle and height, and `animate()` sways around those stored values | letter facing/orientation after motion changes |
 | Desktop vs mobile pause/control branches | pointer-lock and touch controls use different activation paths, but the overlay shell is now the coordinating state machine | start, pointer-lock failure, pause, resume, and unlock behavior on both input modes |
+| Deferred load start timing | zones 3 and 4 now depend on the first successful active transition, not startup completion | desktop pointer-lock success, mobile start entry, and one-shot guarding against duplicate deferred loads |
+| Late-letter integration | deferred letters join a live scene and active proximity set after the session has already started | active session continuity, no duplicate letters, and new late letters becoming targetable without a reload |
 | Touch HUD ownership | touch input and touch HUD are related but no longer share the same owner | mobile pause/resume, refresh, and resize without joystick/look leakage |
 | Visibility-driven audio resume | the audio backend listens to `visibilitychange`, but runtime state decides whether resume is allowed | tab hide/show while active, paused, or waiting at start |
 | Shell gating vs always-running render loop | overlays are now state-gated, but the scene and animation loop still continue behind them | shell exclusivity during loading, start, pause, and bird's-eye |
-| Provisional chronology vs partial model loading | grouped chronology is validated against `letters.json`, but the scene-native thread also depends on every covered model loading successfully | partial asset-failure path, safe disable behavior, and no broken half-network on the floor |
+| Provisional chronology vs partial model loading | grouped chronology is validated against `letters.json`, but the scene-native thread now depends on every covered model loading successfully across both startup and deferred stages | partial asset-failure path, safe disable behavior, and no broken half-network on the floor |
+| Deferred degraded status surfaces | desktop and touch now expose the same degraded state through different minimal surfaces, both gated from `main.js` | controls-hint text on desktop, touch pill visibility, and no leakage into pause/start/inspect |
 | Cleanup coverage | unload paths are still split across `main.js` and `loadingScene.js`, even though control/audio listener cleanup is now explicit | memory leaks, duplicate listeners, repeated start/pause handling |

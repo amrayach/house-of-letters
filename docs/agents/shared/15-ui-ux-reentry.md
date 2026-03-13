@@ -20,6 +20,8 @@ Baseline for this document:
 
 - The archive opens with a cinematic loading scene, then hands off to a dedicated start shell.
 - Loading and start now share a restrained panel treatment, so title, status, and CTA read as one focal system instead of loose text on a flat veil.
+- Startup now loads only the core archive subset first, so the start shell no longer waits for every letter model before entry.
+- Deferred zone 3 and 4 loading now begins only after a successful archive entry and integrates late letters into the live session.
 - Desktop now keeps HUD, controls hint, bird's-eye panel, and debug UI out of loading and start states.
 - Mobile now keeps joystick, look area, and pause affordances out of loading, start, and pause shells until the archive is active.
 - Touch HUD visibility is now shell-owned in `main.js` rather than toggled independently inside touch-control activation.
@@ -27,8 +29,11 @@ Baseline for this document:
 - Desktop pause now exits bird's-eye instead of resuming into a leaked top-down camera state.
 - Subtitle and letter preview overlays remain tied to active-letter proximity, but their visibility is now shell-gated in one place and their desktop/mobile layouts are less obstructive than the initial baseline.
 - Active immersive play now exposes a candidate-driven inspect prompt and a dedicated inspect overlay for full-size front/back scan viewing.
-- Active immersive play now also reveals a scene-native grouped chronology thread on first letter focus, then keeps it as an ambient floor guide while roaming.
+- Active immersive play now also reveals a scene-native grouped chronology thread only when full chronology-required letter coverage exists, then keeps it as an ambient floor guide while roaming.
 - Active-letter narration and emphasis are now evaluated only during active runtime, not behind the start or pause shells.
+- Deferred degraded or failed late-letter sessions now surface through existing active-state chrome only:
+  - desktop appends status to the controls hint
+  - touch shows a small status pill only during active immersive play
 - Bird's-eye mode remains part of the same runtime, but it now feels more obviously like the next visual mismatch after loading/start were tightened.
 
 ## Strongest strengths already present
@@ -38,7 +43,7 @@ Baseline for this document:
 - The start shell now has one obvious focal block, which makes entry feel more intentional without changing the interaction model.
 - The direct DOM overlay model is workable for additive UX polish.
 - Proximity-driven subtitle plus preview remains the clearest non-verbal cue for letter focus.
-- The new ground chronology thread gives the archive a continuous navigational cue without adding new DOM chrome.
+- When chronology coverage is complete, the new ground chronology thread gives the archive a continuous navigational cue without adding new DOM chrome.
 - Readability no longer depends on tiny world-space geometry alone; inspect mode provides a reversible full-scan view without changing archive scale.
 - Mobile and desktop already branch cleanly at the control layer, which makes targeted shell fixes feasible without architectural churn.
 
@@ -46,13 +51,13 @@ Baseline for this document:
 
 | State | Visible overlays | Interactive overlays | Hidden overlays | Input mode | Entry trigger | Exit trigger | Known fragile transitions |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `loading` | loading scene, loading overlay, skip intro | skip intro | start, pause, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, debug | none | initial boot | intro complete + assets loaded | double transition scheduling, timeout/error path |
-| `start` | start shell | start button | pause, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, debug | desktop or touch | loading handoff | successful activation | desktop pointer-lock denial, mobile shell leakage |
-| `active desktop` | reticle, controls hint, subtitle/preview when letter is active | scene, pointer lock | start, pause, mobile controls | keyboard + mouse | pointer lock acquired | unlock, bird's-eye toggle | pointer-lock interruption, preview collision near scene focal point |
-| `active mobile` | pause button, joystick, look area, subtitle/preview when letter is active | touch controls, scene | start, pause, desktop HUD, debug | touch | start tap or resume tap | mobile pause | safe-area overlap, preview/subtitle collision |
-| `inspect` | inspect overlay, inspect prompt replacement, scene camera framed on one letter side | keyboard inspect shortcuts on desktop or overlay buttons on touch | start, pause, reticle, controls hint, touch joystick/look HUD, preview, subtitle | desktop or touch | inspect prompt/button from active immersive play | inspect exit, pause/unlock, invalid state correction | camera restore, bird's-eye exclusion, responsive overlay density |
-| `paused desktop` | pause shell | resume button | start, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, debug | keyboard + mouse | pointer unlock | pointer lock reacquired | resume failure, stale movement state |
-| `paused mobile` | pause shell | resume button | start, pause button, joystick, look area, desktop HUD, debug, preview, subtitle | touch | mobile pause button | resume tap | touch controls leaking under pause shell |
+| `loading` | loading scene, loading overlay, skip intro | skip intro | start, pause, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, touch deferred status, debug | none | initial boot | intro complete + core startup load | double transition scheduling, timeout/error path |
+| `start` | start shell | start button | pause, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, touch deferred status, debug | desktop or touch | loading handoff after core startup load | successful activation | desktop pointer-lock denial, mobile shell leakage |
+| `active desktop` | reticle, controls hint, subtitle/preview when letter is active | scene, pointer lock | start, pause, mobile controls, touch deferred status | keyboard + mouse | pointer lock acquired | unlock, bird's-eye toggle | pointer-lock interruption, preview collision near scene focal point, degraded-status copy append |
+| `active mobile` | pause button, joystick, look area, touch deferred status when degraded, subtitle/preview when letter is active | touch controls, scene | start, pause, desktop HUD, debug | touch | start tap or resume tap | mobile pause | safe-area overlap, preview/subtitle collision, degraded-pill overlap with pause/browser chrome |
+| `inspect` | inspect overlay, inspect prompt replacement, scene camera framed on one letter side | keyboard inspect shortcuts on desktop or overlay buttons on touch | start, pause, reticle, controls hint, touch joystick/look HUD, touch deferred status, preview, subtitle | desktop or touch | inspect prompt/button from active immersive play | inspect exit, pause/unlock, invalid state correction | camera restore, bird's-eye exclusion, responsive overlay density |
+| `paused desktop` | pause shell | resume button | start, reticle, controls hint, bird's-eye, preview, subtitle, mobile controls, touch deferred status, debug | keyboard + mouse | pointer unlock | pointer lock reacquired | resume failure, stale movement state |
+| `paused mobile` | pause shell | resume button | start, pause button, joystick, look area, desktop HUD, debug, touch deferred status, preview, subtitle | touch | mobile pause button | resume tap | touch controls leaking under pause shell |
 | `bird-eye` | bird's-eye indicator | scene navigation | start, pause, reticle, controls hint, mobile controls | desktop today | `B` while active | `B` again or pause | panel/system mismatch, keyboard state persistence |
 | `active-letter emphasis` | subtitle + preview | none today | unrelated shells | desktop or touch | proximity threshold enter | proximity threshold exit | layout overlap, missing copy fallback quality |
 
@@ -60,7 +65,7 @@ Baseline for this document:
 
 1. Bird's-eye mode still feels like a tool overlay rather than a first-class archive view.
 2. Subtitle fallback copy remains generic when letter text is missing.
-3. Preview and subtitle layout are improved but still scene-obstructive on smaller phones.
+3. Preview and subtitle layout are improved but still scene-obstructive on smaller phones, especially in degraded sessions that also show the touch status pill.
 4. Pause messaging is clearer, but shell copy overall still under-orients first-time users.
 5. Debug UI policy is now enforced in shell states, but it still depends on a runtime flag rather than a stricter environment boundary.
 6. Overlay behavior is now explicit, but regression risk remains high because the runtime still combines DOM shell logic with an always-running render loop.
@@ -70,7 +75,7 @@ Baseline for this document:
 ### High
 
 - Bird's-eye presentation is visually detached from the rest of the archive shell.
-- Mobile overlay density is still tight in active-letter moments on small screens.
+- Mobile overlay density is still tight in active-letter moments on small screens, especially when the degraded touch-status pill is present.
 - Placeholder subtitle fallback weakens narrative credibility.
 
 ### Medium
@@ -115,7 +120,7 @@ Figma:
 
 - Keep subtitle width narrow enough to preserve focal context.
 - Make preview cards slightly lighter and more subordinate to the scene.
-- Preserve safe-area spacing for pause and control affordances.
+- Preserve safe-area spacing for pause, control affordances, and the degraded touch-status pill.
 
 Validation:
 - Proximity test at mobile widths around the first active letter cluster.
@@ -177,6 +182,7 @@ The first UX pass is complete only if:
 - Touch controls must stay absent until active play begins.
 - Safe-area spacing is part of the UX contract, not polish.
 - Active-letter overlays need conservative sizing because the scene already shares space with joystick, look zone, and pause affordances.
+- The degraded touch-status pill should appear only in active immersive touch sessions and must stay clear of the pause button and browser chrome.
 
 ## Improvements that need Figma vs do not
 
