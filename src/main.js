@@ -9,6 +9,7 @@ import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
 import { ProximityManager } from '@interaction/proximityManager.js';
 import { AUDIO, ANIMATION, INSPECT, LOADING_TIMEOUT_MS, TIMELINE } from '@config/constants.js';
+import { START_SHELL_CONTENT } from '@config/startShellContent.js';
 import lettersData from '@data/letters.json';
 import { validatedProvisionalChronology } from '@data/provisionalChronology.js';
 
@@ -156,6 +157,15 @@ const POINTER_LOCK_FALLBACK_MS = 1800;
 
 const loadingScreen = document.getElementById('loading-screen');
 const startScreen = document.getElementById('start-screen');
+const startKicker = document.getElementById('start-kicker');
+const startTitle = document.getElementById('start-title');
+const startLede = document.getElementById('start-lede');
+const startProjectBlock = document.getElementById('start-project-block');
+const startProjectCopy = document.getElementById('start-project-copy');
+const startHowToBlock = document.getElementById('start-how-to-block');
+const startHowToCopy = document.getElementById('start-how-to-copy');
+const startContextBlock = document.getElementById('start-context-block');
+const startContextCopy = document.getElementById('start-context-copy');
 const startBtn = document.getElementById('start-btn');
 const startStatus = document.getElementById('start-status');
 const pauseScreen = document.getElementById('pause-screen');
@@ -771,6 +781,27 @@ function setElementHidden(element, hidden) {
   if (element) {
     element.hidden = hidden;
   }
+}
+
+function setElementText(element, text = '') {
+  if (element) {
+    element.textContent = text;
+  }
+}
+
+function syncStartShellContent() {
+  setElementText(startKicker, START_SHELL_CONTENT.kicker);
+  setElementText(startTitle, START_SHELL_CONTENT.title);
+  setElementText(startLede, START_SHELL_CONTENT.lede);
+
+  setElementText(startProjectCopy, START_SHELL_CONTENT.project);
+  setElementHidden(startProjectBlock, !START_SHELL_CONTENT.project);
+
+  setElementText(startHowToCopy, START_SHELL_CONTENT.howToUse);
+  setElementHidden(startHowToBlock, !START_SHELL_CONTENT.howToUse);
+
+  setElementText(startContextCopy, START_SHELL_CONTENT.context);
+  setElementHidden(startContextBlock, !START_SHELL_CONTENT.context);
 }
 
 function setStartStatus(message = DEFAULT_START_STATUS) {
@@ -1444,6 +1475,7 @@ if (inspectExitBtn) {
 
 setStartPendingState(false);
 setPausePendingState(false);
+syncStartShellContent();
 syncLetterLoadStageUi();
 syncUiChrome();
 
