@@ -50,6 +50,9 @@ const letterLoadStageData = (() => {
     [LETTER_LOAD_STAGE.DEFERRED]: Object.freeze([...stagedLetters[LETTER_LOAD_STAGE.DEFERRED]]),
   });
 })();
+const deferredRequestedLetterIds = Object.freeze(
+  letterLoadStageData[LETTER_LOAD_STAGE.DEFERRED].map((letter) => letter.id),
+);
 const timelineRequiredLetterIds = validatedProvisionalChronology
   ? new Set(validatedProvisionalChronology.flatMap((group) => group.letterIds))
   : null;
@@ -70,10 +73,20 @@ const letterLoadStageState = {
   [LETTER_LOAD_STAGE.CORE]: {
     status: LETTER_LOAD_STAGE_STATUS.IDLE,
     totalLetters: letterLoadStageData[LETTER_LOAD_STAGE.CORE].length,
+    loadedCount: 0,
+    errorMessage: null,
   },
   [LETTER_LOAD_STAGE.DEFERRED]: {
     status: LETTER_LOAD_STAGE_STATUS.IDLE,
     totalLetters: letterLoadStageData[LETTER_LOAD_STAGE.DEFERRED].length,
+    loadedCount: 0,
+    requestedLetterIds: [...deferredRequestedLetterIds],
+    integratedLetterIds: [],
+    missingLetterIds: [...deferredRequestedLetterIds],
+    statusMessage: '',
+    errorMessage: null,
+    settledAt: null,
+    hasFullCoverage: false,
   },
 };
 
@@ -224,6 +237,7 @@ const DEFAULT_START_STATUS = isTouchDevice
 const DEFAULT_PAUSE_STATUS = isTouchDevice
   ? 'Tap Resume to return to the archive.'
   : 'Click Resume to recapture your pointer and return to the archive.';
+const DEFAULT_DESKTOP_CONTROLS_HINT = 'WASD to Move • Mouse to Look • B: Bird\'s Eye View';
 
 function createEmptyTargetState() {
   return {
@@ -286,6 +300,70 @@ function resetInspectState() {
 
 function getLetterObjectById(letterId) {
   return letterObjectById.get(letterId) || null;
+}
+
+function getGroundTimelineCoverageStatus() {
+  if (!validatedProvisionalChronology) {
+    return 'disabled';
+  }
+
+  return hasRequiredGroundTimelineCoverage() ? 'full' : 'incomplete';
+}
+
+function getDeferredStageStatusText() {
+  const deferredStage = letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED];
+
+  if (deferredStage.status === LETTER_LOAD_STAGE_STATUS.DEGRADED) {
+    return deferredStage.statusMessage || 'Some later letters are unavailable this session.';
+  }
+
+  if (deferredStage.status === LETTER_LOAD_STAGE_STATUS.FAILED) {
+    return deferredStage.statusMessage || 'Later letters could not be loaded. You can keep exploring the core archive.';
+  }
+
+  return '';
+}
+
+function syncLetterLoadStageUi() {
+  document.body.dataset.coreLetterLoadStatus = letterLoadStageState[LETTER_LOAD_STAGE.CORE].status;
+  document.body.dataset.deferredLetterLoadStatus = letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status;
+  document.body.dataset.groundTimelineCoverage = getGroundTimelineCoverageStatus();
+
+  if (!controlsHint) {
+    return;
+  }
+
+  const deferredStatusText = getDeferredStageStatusText();
+  controlsHint.setAttribute('aria-live', 'polite');
+  controlsHint.dataset.deferredLetterLoadStatus = letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status;
+  controlsHint.textContent = deferredStatusText
+    ? `${DEFAULT_DESKTOP_CONTROLS_HINT} • ${deferredStatusText}`
+    : DEFAULT_DESKTOP_CONTROLS_HINT;
+}
+
+function setLetterLoadStageStatus(stage, nextStatus, updates = {}) {
+  const stageState = letterLoadStageState[stage];
+
+  if (!stageState) {
+    return null;
+  }
+
+  stageState.status = nextStatus;
+  Object.assign(stageState, updates);
+  syncLetterLoadStageUi();
+  return stageState;
+}
+
+function getIntegratedLetterIds(letters) {
+  if (!Array.isArray(letters) || letters.length === 0) {
+    return [];
+  }
+
+  return [...new Set(
+    letters
+      .map((letter) => letter?.userData?.id)
+      .filter((letterId) => Number.isInteger(letterId)),
+  )];
 }
 
 function hasRequiredGroundTimelineCoverage() {
@@ -353,6 +431,50 @@ function integrateLateLoadedLetters(loadedLetters) {
   return integratedLetters;
 }
 
+function finalizeDeferredLetterLoad({ loadedLetters = [], error = null } = {}) {
+  const integratedLetters = error ? [] : integrateLateLoadedLetters(loadedLetters);
+  const integratedLetterIds = getIntegratedLetterIds(integratedLetters);
+  const integratedLetterIdSet = new Set(integratedLetterIds);
+  const missingLetterIds = deferredRequestedLetterIds.filter((letterId) => !integratedLetterIdSet.has(letterId));
+  const hasFullCoverage = hasRequiredGroundTimelineCoverage();
+  let status = LETTER_LOAD_STAGE_STATUS.READY;
+  let statusMessage = '';
+
+  if (error) {
+    status = LETTER_LOAD_STAGE_STATUS.FAILED;
+    statusMessage = 'Later letters could not be loaded. You can keep exploring the core archive.';
+  } else if (missingLetterIds.length > 0) {
+    status = integratedLetterIds.length > 0
+      ? LETTER_LOAD_STAGE_STATUS.DEGRADED
+      : LETTER_LOAD_STAGE_STATUS.FAILED;
+    statusMessage = integratedLetterIds.length > 0
+      ? 'Some later letters are unavailable this session.'
+      : 'Later letters could not be loaded. You can keep exploring the core archive.';
+  }
+
+  setLetterLoadStageStatus(LETTER_LOAD_STAGE.DEFERRED, status, {
+    loadedCount: integratedLetterIds.length,
+    integratedLetterIds,
+    missingLetterIds,
+    statusMessage,
+    errorMessage: error?.message || null,
+    settledAt: Date.now(),
+    hasFullCoverage,
+  });
+
+  if (missingLetterIds.length > 0) {
+    console.warn(
+      `Deferred background load settled as ${status}. Missing late letters: ${missingLetterIds.join(', ')}`,
+    );
+  }
+
+  if (!hasFullCoverage && validatedProvisionalChronology) {
+    console.log('[ground-timeline] Coverage incomplete after deferred load; timeline remains disabled.');
+  }
+
+  return integratedLetters;
+}
+
 function startDeferredLetterLoad() {
   if (hasTriggeredDeferredLetterLoad) {
     return deferredLetterLoadPromise;
@@ -363,26 +485,30 @@ function startDeferredLetterLoad() {
   const deferredLetters = letterLoadStageData[LETTER_LOAD_STAGE.DEFERRED];
 
   if (deferredLetters.length === 0) {
-    letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.READY;
+    setLetterLoadStageStatus(LETTER_LOAD_STAGE.DEFERRED, LETTER_LOAD_STAGE_STATUS.READY, {
+      loadedCount: 0,
+      integratedLetterIds: [],
+      missingLetterIds: [],
+      statusMessage: '',
+      errorMessage: null,
+      settledAt: Date.now(),
+      hasFullCoverage: hasRequiredGroundTimelineCoverage(),
+    });
     tryInitializeGroundTimeline();
     deferredLetterLoadPromise = Promise.resolve([]);
     return deferredLetterLoadPromise;
   }
 
-  letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.PENDING;
+  setLetterLoadStageStatus(LETTER_LOAD_STAGE.DEFERRED, LETTER_LOAD_STAGE_STATUS.PENDING, {
+    statusMessage: '',
+    errorMessage: null,
+    settledAt: null,
+  });
   console.log(`Starting deferred background load for ${deferredLetters.length} late letters.`);
 
   deferredLetterLoadPromise = loadLetters(scene, deferredLetters, renderer)
     .then((loadedLetters) => {
-      const integratedLetters = integrateLateLoadedLetters(loadedLetters);
-
-      if (integratedLetters.length === deferredLetters.length) {
-        letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.READY;
-      } else if (integratedLetters.length > 0) {
-        letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.DEGRADED;
-      } else {
-        letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.FAILED;
-      }
+      const integratedLetters = finalizeDeferredLetterLoad({ loadedLetters });
 
       console.log(
         `Deferred background load integrated ${integratedLetters.length}/${deferredLetters.length} letters.`,
@@ -391,9 +517,8 @@ function startDeferredLetterLoad() {
       return integratedLetters;
     })
     .catch((error) => {
-      letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status = LETTER_LOAD_STAGE_STATUS.FAILED;
       console.error('Deferred letter load failed:', error);
-      return [];
+      return finalizeDeferredLetterLoad({ error });
     });
 
   return deferredLetterLoadPromise;
@@ -1300,6 +1425,7 @@ if (inspectExitBtn) {
 
 setStartPendingState(false);
 setPausePendingState(false);
+syncLetterLoadStageUi();
 syncUiChrome();
 
 // Start the loading scene animation
@@ -1314,7 +1440,10 @@ loadingScene.start(() => {
 (async () => {
   try {
     const startupLetters = letterLoadStageData[LETTER_LOAD_STAGE.CORE];
-    letterLoadStageState[LETTER_LOAD_STAGE.CORE].status = LETTER_LOAD_STAGE_STATUS.PENDING;
+    setLetterLoadStageStatus(LETTER_LOAD_STAGE.CORE, LETTER_LOAD_STAGE_STATUS.PENDING, {
+      loadedCount: 0,
+      errorMessage: null,
+    });
 
     console.log('Loading letter models...');
     
@@ -1365,7 +1494,10 @@ loadingScene.start(() => {
     proximityManager = new ProximityManager(camera, letterObjects);
     tryInitializeGroundTimeline();
 
-    letterLoadStageState[LETTER_LOAD_STAGE.CORE].status = LETTER_LOAD_STAGE_STATUS.READY;
+    setLetterLoadStageStatus(LETTER_LOAD_STAGE.CORE, LETTER_LOAD_STAGE_STATUS.READY, {
+      loadedCount: letterObjects.length,
+      errorMessage: null,
+    });
 
     // Mark assets as loaded
     assetsLoaded = true;
@@ -1374,7 +1506,9 @@ loadingScene.start(() => {
     transitionToGame();
 
   } catch (error) {
-    letterLoadStageState[LETTER_LOAD_STAGE.CORE].status = LETTER_LOAD_STAGE_STATUS.FAILED;
+    setLetterLoadStageStatus(LETTER_LOAD_STAGE.CORE, LETTER_LOAD_STAGE_STATUS.FAILED, {
+      errorMessage: error.message || 'Failed to load startup letters.',
+    });
     console.error('Error loading letters:', error);
     const isTimeoutError = error.message?.includes('timeout');
     
