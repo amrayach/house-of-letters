@@ -363,6 +363,25 @@ body {
   z-index: 100;
 }
 
+#touch-deferred-status {
+  position: fixed;
+  top: calc(78px + var(--safe-area-top));
+  right: calc(16px + var(--safe-area-right));
+  max-width: min(18rem, calc(100vw - 32px - var(--safe-area-left) - var(--safe-area-right)));
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(7, 11, 18, 0.82);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  text-align: left;
+  pointer-events: none;
+  z-index: 1000;
+  backdrop-filter: blur(12px);
+}
+
 /* Debug Panel */
 #debug-panel {
   display: none;
@@ -796,6 +815,13 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
   #controls-hint {
     display: none;
   }
+
+  #touch-deferred-status {
+    top: calc(82px + var(--safe-area-top));
+    right: calc(14px + var(--safe-area-right));
+    max-width: min(16rem, calc(100vw - 28px - var(--safe-area-left) - var(--safe-area-right)));
+    font-size: 0.72rem;
+  }
   
   #debug-panel {
     display: none;
@@ -1012,6 +1038,10 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
   #debug-panel {
     display: none;
   }
+}
+
+body[data-input-mode="desktop"] #touch-deferred-status {
+  display: none;
 }
 
 /* Bird's Eye View Indicator */

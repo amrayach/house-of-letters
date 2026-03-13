@@ -162,6 +162,7 @@ const pauseScreen = document.getElementById('pause-screen');
 const resumeBtn = document.getElementById('resume-btn');
 const pauseStatus = document.getElementById('pause-status');
 const pauseBtn = document.getElementById('mobile-pause-btn');
+const touchDeferredStatus = document.getElementById('touch-deferred-status');
 const reticle = document.getElementById('reticle');
 const controlsHint = document.getElementById('controls-hint');
 const debugPanel = document.getElementById('debug-panel');
@@ -324,21 +325,38 @@ function getDeferredStageStatusText() {
   return '';
 }
 
+function syncTouchDeferredStatusUi(deferredStatusText = getDeferredStageStatusText()) {
+  if (!touchDeferredStatus) {
+    return;
+  }
+
+  touchDeferredStatus.dataset.deferredLetterLoadStatus = letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status;
+  touchDeferredStatus.textContent = deferredStatusText;
+
+  const showTouchDeferredStatus = isTouchDevice
+    && uiState === UI_STATE.ACTIVE
+    && viewMode === VIEW_MODE.IMMERSIVE
+    && Boolean(deferredStatusText);
+
+  setElementHidden(touchDeferredStatus, !showTouchDeferredStatus);
+}
+
 function syncLetterLoadStageUi() {
   document.body.dataset.coreLetterLoadStatus = letterLoadStageState[LETTER_LOAD_STAGE.CORE].status;
   document.body.dataset.deferredLetterLoadStatus = letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status;
   document.body.dataset.groundTimelineCoverage = getGroundTimelineCoverageStatus();
 
-  if (!controlsHint) {
-    return;
+  const deferredStatusText = getDeferredStageStatusText();
+
+  if (controlsHint) {
+    controlsHint.setAttribute('aria-live', 'polite');
+    controlsHint.dataset.deferredLetterLoadStatus = letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status;
+    controlsHint.textContent = deferredStatusText
+      ? `${DEFAULT_DESKTOP_CONTROLS_HINT} • ${deferredStatusText}`
+      : DEFAULT_DESKTOP_CONTROLS_HINT;
   }
 
-  const deferredStatusText = getDeferredStageStatusText();
-  controlsHint.setAttribute('aria-live', 'polite');
-  controlsHint.dataset.deferredLetterLoadStatus = letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED].status;
-  controlsHint.textContent = deferredStatusText
-    ? `${DEFAULT_DESKTOP_CONTROLS_HINT} • ${deferredStatusText}`
-    : DEFAULT_DESKTOP_CONTROLS_HINT;
+  syncTouchDeferredStatusUi(deferredStatusText);
 }
 
 function setLetterLoadStageStatus(stage, nextStatus, updates = {}) {
@@ -837,6 +855,7 @@ function syncUiChrome() {
   setElementHidden(debugPanel, !shouldShowDebug);
 
   setTouchOverlayVisibility(mobileImmersive);
+  syncTouchDeferredStatusUi();
 
   previewContainer.hidden = !shouldShowLetterUi;
   previewContainer.classList.toggle('visible', shouldShowLetterUi);
