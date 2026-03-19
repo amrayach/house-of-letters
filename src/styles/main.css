@@ -8,6 +8,7 @@
   --shell-panel-shadow: 0 24px 90px rgba(0, 0, 0, 0.55);
   --shell-kicker-color: rgba(255, 255, 255, 0.62);
   --shell-glow: rgba(112, 144, 255, 0.14);
+  --zone1-glow: 102, 136, 204;
   /* Safe area insets for notched phones */
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
@@ -38,6 +39,180 @@ body {
   height: 100%;
   width: 100%;
   position: fixed;
+}
+
+/* ==================== */
+/* LANDING SCREEN       */
+/* ==================== */
+
+#landing-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: var(--bg-color);
+  transition: opacity 0.6s ease;
+  overflow: hidden;
+}
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr auto 1fr;
+  width: 100%;
+  height: 100%;
+  padding: clamp(28px, 4vw, 56px);
+  box-sizing: border-box;
+  gap: 0;
+}
+
+/* Corner panel positions */
+.landing-panel-tl { grid-column: 1; grid-row: 1; align-self: start; justify-self: start; }
+.landing-panel-tr { grid-column: 2; grid-row: 1; align-self: start; justify-self: end; }
+.landing-panel-bl { grid-column: 1; grid-row: 3; align-self: end; justify-self: start; }
+.landing-panel-br { grid-column: 2; grid-row: 3; align-self: end; justify-self: end; }
+
+.landing-center {
+  grid-column: 1 / span 2;
+  grid-row: 2;
+  justify-self: center;
+  align-self: center;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.landing-title {
+  font-size: clamp(2.8rem, 5vw, 4.4rem);
+  margin: 0 0 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+.landing-subtitle {
+  margin: 0 0 2rem;
+  font-size: 1.02rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.62);
+  text-wrap: balance;
+}
+
+#landing-cta {
+  min-width: min(100%, 18rem);
+  animation: cta-breathe 3s ease-in-out infinite;
+  animation-delay: 1.8s;
+}
+
+#landing-cta:hover {
+  box-shadow: 0 0 30px rgba(var(--zone1-glow), 0.5);
+  animation: none;
+}
+
+/* Landing panels */
+.landing-panel {
+  position: relative;
+  overflow: hidden;
+  max-width: 20rem;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--shell-panel-border);
+  border-radius: 20px;
+  background: var(--shell-panel-bg);
+  box-shadow: var(--shell-panel-shadow);
+  backdrop-filter: blur(18px);
+}
+
+.landing-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at top center, var(--shell-glow) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 26%);
+  pointer-events: none;
+}
+
+.landing-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-panel .shell-kicker {
+  margin: 0 0 10px;
+}
+
+.landing-panel-body {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.78);
+  max-height: 4.95em; /* ~3 lines at 1.65 line-height */
+  overflow: hidden;
+  transition: max-height 0.35s ease;
+}
+
+.landing-panel.expanded .landing-panel-body {
+  max-height: 40em;
+}
+
+.landing-read-more {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-family);
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.54);
+  transition: color 0.2s ease;
+}
+
+.landing-read-more:hover {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+/* Staggered entrance animation */
+@keyframes landingFadeSlideIn {
+  from { opacity: 0; transform: translateY(var(--landing-reveal-y, 10px)); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Pre-reveal: hide animated elements */
+#landing-screen:not(.landing-revealed) .landing-panel,
+#landing-screen:not(.landing-revealed) .landing-center {
+  opacity: 0;
+}
+
+#landing-screen.landing-revealed .landing-center {
+  --landing-reveal-y: 6px;
+  animation: landingFadeSlideIn 400ms ease-out 200ms forwards;
+  opacity: 0;
+}
+
+#landing-screen.landing-revealed .landing-panel-tl {
+  --landing-reveal-y: 8px;
+  animation: landingFadeSlideIn 300ms ease-out 500ms forwards;
+  opacity: 0;
+}
+
+#landing-screen.landing-revealed .landing-panel-tr {
+  --landing-reveal-y: 8px;
+  animation: landingFadeSlideIn 300ms ease-out 650ms forwards;
+  opacity: 0;
+}
+
+#landing-screen.landing-revealed .landing-panel-bl {
+  --landing-reveal-y: 8px;
+  animation: landingFadeSlideIn 300ms ease-out 800ms forwards;
+  opacity: 0;
+}
+
+#landing-screen.landing-revealed .landing-panel-br {
+  --landing-reveal-y: 8px;
+  animation: landingFadeSlideIn 300ms ease-out 950ms forwards;
+  opacity: 0;
 }
 
 /* Loading Screen with 3D Scene */
@@ -181,6 +356,19 @@ body {
   margin-bottom: 0;
 }
 
+#loading-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(var(--zone1-glow), 0.6);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease-out;
+  pointer-events: none;
+}
+
 .loading-meta {
   margin: 1.2rem auto 1.8rem;
   padding-top: 1rem;
@@ -229,7 +417,7 @@ body {
   height: 100%;
   background:
     radial-gradient(circle at 50% 38%, rgba(123, 145, 255, 0.12) 0%, transparent 34%),
-    linear-gradient(180deg, rgba(2, 4, 10, 0.72) 0%, rgba(0, 0, 0, 0.9) 100%);
+    linear-gradient(180deg, rgba(2, 4, 10, 0.55) 0%, rgba(0, 0, 0, 0.70) 100%);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -239,8 +427,7 @@ body {
   box-sizing: border-box;
   z-index: 1000;
   text-align: center;
-  transition: opacity 0.5s ease;
-  overflow-y: auto;
+  transition: none;
 }
 
 #start-screen::before {
@@ -248,20 +435,105 @@ body {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.04) 50%, transparent 100%);
+    linear-gradient(90deg, transparent 0, rgba(255, 255, 255, 0.02) 50%, transparent 100%);
   background-size: 100% 1px;
   background-repeat: no-repeat;
   background-position: center;
   pointer-events: none;
 }
 
+@keyframes panelGlow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+#start-screen .shell-panel-start::before {
+  background:
+    radial-gradient(circle at 30% 20%, rgba(var(--zone1-glow), 0.06) 0%, transparent 60%),
+    radial-gradient(circle at top center, var(--shell-glow) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 26%);
+  animation: panelGlow 6s ease-in-out infinite;
+}
+
+@keyframes cta-breathe {
+  0%, 100% { box-shadow: 0 0 20px rgba(var(--zone1-glow), 0.0); }
+  50% { box-shadow: 0 0 20px rgba(var(--zone1-glow), 0.35); }
+}
+
+#start-btn {
+  min-width: min(100%, 16rem);
+  margin-top: 0.5rem;
+  animation: cta-breathe 3s ease-in-out infinite;
+  animation-delay: 1.4s;
+}
+
+#start-btn:hover {
+  box-shadow: 0 0 30px rgba(var(--zone1-glow), 0.5);
+  animation: none;
+}
+
+/* === Staggered reveal choreography === */
+@keyframes shellFadeSlideIn {
+  from { opacity: 0; transform: translateY(var(--shell-reveal-y, 8px)); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Pre-reveal: hide animated elements */
+#start-screen:not(.shell-revealed) .shell-panel-start,
+#start-screen:not(.shell-revealed) .start-shell-copy,
+#start-screen:not(.shell-revealed) .start-shell-entry,
+#start-screen:not(.shell-revealed) .start-shell-detail:not([hidden]) {
+  opacity: 0;
+}
+
+/* When .shell-revealed is added, run the choreography */
+@keyframes shellPanelReveal {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#start-screen.shell-revealed .shell-panel-start {
+  animation: shellPanelReveal 400ms ease-out 200ms forwards;
+  opacity: 0;
+}
+
+#start-screen.shell-revealed .start-shell-copy {
+  --shell-reveal-y: 6px;
+  animation: shellFadeSlideIn 150ms ease-out 500ms forwards;
+  opacity: 0;
+}
+
+#start-screen.shell-revealed .start-shell-entry {
+  --shell-reveal-y: 6px;
+  animation: shellFadeSlideIn 150ms ease-out 650ms forwards;
+  opacity: 0;
+}
+
+#start-screen.shell-revealed .start-shell-detail:not([hidden]):nth-child(1) {
+  --shell-reveal-y: 4px;
+  animation: shellFadeSlideIn 150ms ease-out 800ms forwards;
+  opacity: 0;
+}
+
+#start-screen.shell-revealed .start-shell-detail:not([hidden]):nth-child(2) {
+  --shell-reveal-y: 4px;
+  animation: shellFadeSlideIn 150ms ease-out 900ms forwards;
+  opacity: 0;
+}
+
+#start-screen.shell-revealed .start-shell-detail:not([hidden]):nth-child(3) {
+  --shell-reveal-y: 4px;
+  animation: shellFadeSlideIn 150ms ease-out 1000ms forwards;
+  opacity: 0;
+}
+
 #start-screen .shell-panel-start {
-  width: min(58rem, calc(100vw - 48px));
+  width: min(34rem, calc(100vw - 48px));
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  padding: clamp(28px, 4vw, 44px);
+  align-items: center;
+  gap: 0.95rem;
+  padding: clamp(28px, 4vw, 42px);
 }
 
 #start-screen h1 {
@@ -273,66 +545,7 @@ body {
 }
 
 #start-screen .shell-lede {
-  max-width: 30rem;
-}
-
-.start-shell-primary {
-  display: grid;
-  justify-items: center;
-  gap: 1rem;
-  text-align: center;
-}
-
-.start-shell-entry {
-  width: 100%;
-  display: grid;
-  justify-items: center;
-  gap: 0.85rem;
-  margin-top: 0.35rem;
-  padding-top: 1.35rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-#start-status {
-  max-width: 26rem;
-  margin: 0;
-  opacity: 0.78;
-}
-
-.start-shell-secondary {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.9rem;
-  margin-top: 1.55rem;
-  padding-top: 1.35rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  align-items: start;
-}
-
-.start-shell-detail {
-  min-width: 0;
-  padding: 1rem 1rem 1.1rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%),
-    rgba(7, 10, 16, 0.42);
-  text-align: left;
-}
-
-.start-shell-detail .shell-kicker {
-  margin: 0 0 0.7rem;
-  font-size: 0.68rem;
-  letter-spacing: 0.28em;
-}
-
-.start-shell-detail .screen-status {
-  max-width: none;
-  margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.65;
-  opacity: 0.72;
+  max-width: 24rem;
 }
 
 /* Pause Screen */
@@ -372,11 +585,6 @@ body {
   text-transform: uppercase;
   letter-spacing: 2px;
   transition: all 0.3s ease;
-}
-
-#start-btn {
-  min-width: min(100%, 16rem);
-  margin-top: 0.5rem;
 }
 
 .btn:hover {
@@ -752,6 +960,36 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
   display: none;
 }
 
+/* Accessibility: respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  #landing-screen,
+  #landing-screen .landing-panel,
+  #landing-screen .landing-center,
+  #landing-cta,
+  #start-screen,
+  #start-screen .shell-panel-start,
+  #start-screen .start-shell-copy,
+  #start-screen .start-shell-entry,
+  #start-screen .start-shell-detail,
+  #start-screen .shell-panel-start::before,
+  #start-btn {
+    animation: none !important;
+    transition-duration: 0.01s !important;
+  }
+
+  #landing-screen:not(.landing-revealed) .landing-panel,
+  #landing-screen:not(.landing-revealed) .landing-center {
+    opacity: 1;
+  }
+
+  #start-screen:not(.shell-revealed) .shell-panel-start,
+  #start-screen:not(.shell-revealed) .start-shell-copy,
+  #start-screen:not(.shell-revealed) .start-shell-entry,
+  #start-screen:not(.shell-revealed) .start-shell-detail:not([hidden]) {
+    opacity: 1;
+  }
+}
+
 /* ==================== */
 /* MOBILE TOUCH CONTROLS */
 /* ==================== */
@@ -871,6 +1109,37 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
 /* ==================== */
 
 @media (max-width: 768px) {
+  /* Landing screen: stack panels vertically */
+  .landing-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: clamp(20px, 4vw, 32px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .landing-panel {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .landing-center {
+    order: -1;
+    padding: 1.5rem 0 0.5rem;
+  }
+
+  .landing-title {
+    font-size: 2rem;
+    letter-spacing: 0.14em;
+  }
+
+  .landing-subtitle {
+    font-size: 0.94rem;
+    margin-bottom: 1.2rem;
+  }
+
   /* Hide desktop-only elements */
   #controls-hint {
     display: none;
@@ -921,16 +1190,6 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
   }
   
   /* Adjust start screen */
-  #start-screen {
-    justify-content: flex-start;
-    padding: 20px 16px 24px;
-  }
-
-  #start-screen .shell-panel-start {
-    width: min(100%, 38rem);
-    padding: 24px 20px;
-  }
-
   #start-screen h1 {
     font-size: 2rem;
     letter-spacing: 0.14em;
@@ -943,30 +1202,6 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
   .screen-status {
     font-size: 0.88rem;
     max-width: 19rem;
-  }
-
-  .start-shell-entry {
-    padding-top: 1rem;
-  }
-
-  #start-status {
-    max-width: 24rem;
-  }
-
-  .start-shell-secondary {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-    margin-top: 1.2rem;
-    padding-top: 1rem;
-  }
-
-  .start-shell-detail {
-    padding: 0.95rem 1rem 1rem;
-  }
-
-  .start-shell-detail .screen-status {
-    max-width: none;
-    font-size: 0.84rem;
   }
   
   .btn {
@@ -1049,13 +1284,22 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
 
 /* Smaller phones */
 @media (max-width: 480px) {
-  #start-screen {
-    padding: 16px 12px 20px;
+  .landing-grid {
+    padding: 16px;
+    gap: 0.8rem;
   }
 
-  #start-screen .shell-panel-start {
-    width: 100%;
-    padding: 20px 16px;
+  .landing-title {
+    font-size: 1.5rem;
+  }
+
+  .landing-panel {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .landing-panel-body {
+    font-size: 0.86rem;
   }
 
   #joystick-base {
@@ -1085,34 +1329,6 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
 
   #start-screen h1 {
     font-size: 1.5rem;
-  }
-
-  .start-shell-primary {
-    gap: 0.8rem;
-  }
-
-  .start-shell-entry {
-    gap: 0.75rem;
-    padding-top: 0.9rem;
-  }
-
-  #start-status {
-    max-width: none;
-  }
-
-  .start-shell-secondary {
-    margin-top: 1rem;
-    padding-top: 0.9rem;
-  }
-
-  .start-shell-detail {
-    padding: 0.85rem 0.9rem 0.95rem;
-    border-radius: 14px;
-  }
-
-  .start-shell-detail .screen-status {
-    font-size: 0.8rem;
-    line-height: 1.6;
   }
 
   #letter-preview {

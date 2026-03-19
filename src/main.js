@@ -5,11 +5,14 @@ import { initControls, setWalkingSpeed, isBirdEyeView, exitBirdEyeView } from '@
 import { createGroundTimeline } from '@renderer/groundTimeline.js';
 import { loadLetters } from '@renderer/letters.js';
 import { LoadingScene } from '@renderer/loadingScene.js';
+import { initAtmosphere, updateAtmosphere } from '@renderer/atmosphere.js';
+import { createDust, updateDust } from '@renderer/particles.js';
 import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
 import { ProximityManager } from '@interaction/proximityManager.js';
 import { AUDIO, ANIMATION, INSPECT, LOADING_TIMEOUT_MS, TIMELINE } from '@config/constants.js';
 import { START_SHELL_CONTENT } from '@config/startShellContent.js';
+import { LANDING_CONTENT } from '@config/landingContent.js';
 import lettersData from '@data/letters.json';
 import { validatedProvisionalChronology } from '@data/provisionalChronology.js';
 
@@ -61,11 +64,12 @@ const timelineRequiredLetterIds = validatedProvisionalChronology
 // Loading Scene Elements
 const loadingSceneContainer = document.getElementById('loading-scene-container');
 const loadingProgress = document.getElementById('loading-progress');
+const loadingProgressBar = document.getElementById('loading-progress-bar');
 const loadingStatus = document.getElementById('loading-status');
 const skipBtn = document.getElementById('skip-intro-btn');
 
-// Create the 3D loading scene
-const loadingScene = new LoadingScene(loadingSceneContainer);
+// Loading scene created on demand when landing CTA is clicked
+let loadingScene = null;
 
 // Main game state
 let assetsLoaded = false;
@@ -92,10 +96,14 @@ const letterLoadStageState = {
 };
 
 // 1. Initialize Scene (hidden until loading complete)
-const { scene, camera, renderer, setInspectQuality } = initScene();
+const { scene, camera, renderer, composer, setInspectQuality } = initScene();
 
 // 2. Lighting
-initLighting(scene);
+const lights = initLighting(scene);
+
+// 2b. Atmosphere (zone-adaptive lighting/fog) & dust particles
+const dustParticles = createDust(scene);
+initAtmosphere(lights, scene.fog);
 
 // 3. Controls
 const {
@@ -134,6 +142,7 @@ let deferredLetterLoadPromise = null;
 let hasTriggeredDeferredLetterLoad = false;
 
 const UI_STATE = Object.freeze({
+  LANDING: 'landing',
   LOADING: 'loading',
   START: 'start',
   ACTIVE: 'active',
@@ -155,6 +164,8 @@ const INSPECT_PHASE = Object.freeze({
 
 const POINTER_LOCK_FALLBACK_MS = 1800;
 
+const landingScreen = document.getElementById('landing-screen');
+const landingCta = document.getElementById('landing-cta');
 const loadingScreen = document.getElementById('loading-screen');
 const startScreen = document.getElementById('start-screen');
 const startKicker = document.getElementById('start-kicker');
@@ -206,7 +217,7 @@ subtitleElement.className = 'subtitle';
 subtitleElement.hidden = true;
 subtitleContainer.appendChild(subtitleElement);
 
-let uiState = UI_STATE.LOADING;
+let uiState = UI_STATE.LANDING;
 let viewMode = VIEW_MODE.IMMERSIVE;
 let hasBootstrappedExperience = false;
 let pendingDesktopState = UI_STATE.START;
@@ -263,6 +274,17 @@ function createEmptyTargetState() {
 
 const EMPTY_TARGET_STATE = Object.freeze(createEmptyTargetState());
 currentTargetState = EMPTY_TARGET_STATE;
+
+function computeNarrationVolume(letterId) {
+  if (!letterId) return 0;
+  const letterObj = letterObjectById.get(letterId);
+  if (!letterObj) return 0;
+  const distance = camera.position.distanceTo(letterObj.position);
+  if (distance <= AUDIO.NARRATION_FADE_NEAR) return AUDIO.NARRATION_VOLUME;
+  if (distance >= AUDIO.NARRATION_FADE_FAR) return 0;
+  const t = (distance - AUDIO.NARRATION_FADE_NEAR) / (AUDIO.NARRATION_FADE_FAR - AUDIO.NARRATION_FADE_NEAR);
+  return AUDIO.NARRATION_VOLUME * Math.pow(1 - t, AUDIO.NARRATION_FADE_EXPONENT);
+}
 
 function getLetterImagePaths(letterData) {
   return {
@@ -804,6 +826,59 @@ function syncStartShellContent() {
   setElementHidden(startContextBlock, !START_SHELL_CONTENT.context);
 }
 
+function syncLandingContent() {
+  if (!landingScreen) return;
+  const subtitleEl = landingScreen.querySelector('.landing-subtitle');
+  if (subtitleEl) subtitleEl.textContent = LANDING_CONTENT.subtitle;
+
+  LANDING_CONTENT.panels.forEach((panel) => {
+    const panelEl = landingScreen.querySelector(`[data-panel="${panel.id}"]`);
+    if (!panelEl) return;
+    const body = panelEl.querySelector('.landing-panel-body');
+    const kicker = panelEl.querySelector('.shell-kicker');
+    const readMore = panelEl.querySelector('.landing-read-more');
+    if (kicker) kicker.textContent = panel.kicker;
+    if (body) body.textContent = panel.body;
+    // Show "Read more" only if text overflows collapsed height
+    if (body && readMore) {
+      requestAnimationFrame(() => {
+        if (body.scrollHeight > body.clientHeight) {
+          readMore.hidden = false;
+        }
+      });
+    }
+  });
+}
+
+function handleLandingReadMore(e) {
+  const panel = e.target.closest('.landing-panel');
+  if (!panel) return;
+  const expanded = panel.classList.toggle('expanded');
+  e.target.textContent = expanded ? 'Read less' : 'Read more';
+}
+
+let hasLeftLanding = false;
+
+function handleEnterFromLanding() {
+  if (hasLeftLanding) return;
+  hasLeftLanding = true;
+
+  // Reveal loading screen behind landing (needs dimensions for LoadingScene renderer)
+  if (loadingScreen) loadingScreen.hidden = false;
+
+  // Start loading behind the landing page (both execute while landing fades)
+  beginLoadingSequence();
+
+  // Fade out landing screen
+  if (landingScreen) {
+    landingScreen.style.opacity = '0';
+    setTimeout(() => {
+      landingScreen.hidden = true;
+      setUiState(UI_STATE.LOADING);
+    }, 600);
+  }
+}
+
 function setStartStatus(message = DEFAULT_START_STATUS) {
   if (startStatus) {
     startStatus.textContent = message;
@@ -1081,6 +1156,7 @@ function enterInspectMode() {
   startInspectTransition(target.pose, INSPECT_PHASE.ENTERING);
   setViewMode(VIEW_MODE.INSPECT);
   clearRuntimeTargeting();
+  audioEngine.restartNarration(inspectState.letterId);
   return true;
 }
 
@@ -1202,6 +1278,11 @@ function transitionToGame() {
 
     setStartPendingState(false);
     setUiState(UI_STATE.START);
+
+    // Trigger staggered reveal on next frame (after browser processes hidden removal)
+    requestAnimationFrame(() => {
+      startScreen.classList.add('shell-revealed');
+    });
   }, 800);
 }
 
@@ -1473,118 +1554,142 @@ if (inspectExitBtn) {
   inspectExitBtn.addEventListener('click', handleTouchInspectExit);
 }
 
+// Landing screen event delegation
+if (landingScreen) {
+  landingScreen.addEventListener('click', (e) => {
+    if (e.target.classList.contains('landing-read-more')) {
+      handleLandingReadMore(e);
+    }
+  });
+}
+
+if (landingCta) {
+  landingCta.addEventListener('click', handleEnterFromLanding);
+}
+
 setStartPendingState(false);
 setPausePendingState(false);
 syncStartShellContent();
+syncLandingContent();
 syncLetterLoadStageUi();
 syncUiChrome();
 
-// Start the loading scene animation
-loadingScene.start(() => {
-  loadingSceneComplete = true;
-  if (loadingStatus) {
-    loadingStatus.textContent = 'Ready to enter...';
-  }
-  transitionToGame();
-});
+// Deferred boot: loading starts only when landing CTA is clicked
+if (uiState === UI_STATE.LANDING) {
+  requestAnimationFrame(() => {
+    if (landingScreen) landingScreen.classList.add('landing-revealed');
+  });
+} else {
+  beginLoadingSequence();
+}
 
-(async () => {
-  try {
-    const startupLetters = letterLoadStageData[LETTER_LOAD_STAGE.CORE];
-    setLetterLoadStageStatus(LETTER_LOAD_STAGE.CORE, LETTER_LOAD_STAGE_STATUS.PENDING, {
-      loadedCount: 0,
-      errorMessage: null,
-    });
-
-    console.log('Loading letter models...');
-    
-    // Track loading start time for slow connection detection
-    const loadingStartTime = Date.now();
-    let slowConnectionWarningShown = false;
-    
-    // Progress callback to update UI
-    const updateProgress = (loaded, total) => {
-      if (loadingProgress) {
-        loadingProgress.textContent = `${loaded}/${total} models`;
-      }
-      if (loadingStatus) {
-        const elapsedSeconds = Math.floor((Date.now() - loadingStartTime) / 1000);
-        
-        // Show slow connection message after 30 seconds
-        if (elapsedSeconds > 30 && !slowConnectionWarningShown) {
-          slowConnectionWarningShown = true;
-          console.log('Slow connection detected, showing patience message');
-        }
-        
-        if (slowConnectionWarningShown) {
-          loadingStatus.textContent = `Loading... ${Math.round((loaded/total) * 100)}% (slow connection detected - please be patient)`;
-        } else {
-          loadingStatus.textContent = `Loading experience... ${Math.round((loaded/total) * 100)}%`;
-        }
-      }
-    };
-    
-    // Add a timeout to prevent infinite loading (configurable - now 10 minutes)
-    const loadingTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Loading timeout - assets took too long to load')), LOADING_TIMEOUT_MS);
-    });
-    
-    letterObjects = await Promise.race([
-      loadLetters(scene, startupLetters, renderer, updateProgress),
-      loadingTimeout
-    ]);
-    
-    const loadingDuration = Math.floor((Date.now() - loadingStartTime) / 1000);
-    console.log(`Loaded ${letterObjects.length} letters successfully in ${loadingDuration}s!`);
-    letterObjectById.clear();
-    letterObjects.forEach((letter) => {
-      letterObjectById.set(letter.userData.id, letter);
-    });
-
-    // 5. Interaction
-    proximityManager = new ProximityManager(camera, letterObjects);
-    tryInitializeGroundTimeline();
-
-    setLetterLoadStageStatus(LETTER_LOAD_STAGE.CORE, LETTER_LOAD_STAGE_STATUS.READY, {
-      loadedCount: letterObjects.length,
-      errorMessage: null,
-    });
-
-    // Mark assets as loaded
-    assetsLoaded = true;
-    
-    // Try to transition (will wait for loading scene to complete)
+function beginLoadingSequence() {
+  // Create and start the 3D loading scene
+  loadingScene = new LoadingScene(loadingSceneContainer);
+  loadingScene.start(() => {
+    loadingSceneComplete = true;
+    if (loadingStatus) {
+      loadingStatus.textContent = 'Ready to enter...';
+    }
     transitionToGame();
+  });
 
-  } catch (error) {
-    setLetterLoadStageStatus(LETTER_LOAD_STAGE.CORE, LETTER_LOAD_STAGE_STATUS.FAILED, {
-      errorMessage: error.message || 'Failed to load startup letters.',
-    });
-    console.error('Error loading letters:', error);
-    const isTimeoutError = error.message?.includes('timeout');
-    
-    loadingScreen.innerHTML = `
-      <div style="color: #ff6b6b; text-align: center; padding: 20px; max-width: 400px; margin: 0 auto;">
-        <h2 style="margin-bottom: 15px;">Error Loading Experience</h2>
-        <p style="margin: 10px 0; font-size: 16px;">${error.message || 'Failed to load assets'}</p>
-        ${isTimeoutError ? `
-          <p style="font-size: 14px; opacity: 0.9; margin: 15px 0; color: #ffd93d;">
-            Your internet connection appears to be slow. Please try:
-          </p>
-          <ul style="text-align: left; font-size: 13px; opacity: 0.8; padding-left: 20px;">
-            <li>Refreshing the page and waiting longer</li>
-            <li>Connecting to a faster network if available</li>
-            <li>Trying again at a different time</li>
-          </ul>
-        ` : ''}
-        <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">Check the browser console for details (F12)</p>
-        <button onclick="location.reload()" style="margin-top: 20px; padding: 12px 30px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 16px;">
-          Try Again
-        </button>
-      </div>
-    `;
-  }
-})();
+  // Start asset loading
+  (async () => {
+    try {
+      const startupLetters = letterLoadStageData[LETTER_LOAD_STAGE.CORE];
+      setLetterLoadStageStatus(LETTER_LOAD_STAGE.CORE, LETTER_LOAD_STAGE_STATUS.PENDING, {
+        loadedCount: 0,
+        errorMessage: null,
+      });
+
+      console.log('Loading letter models...');
+
+      const loadingStartTime = Date.now();
+      let slowConnectionWarningShown = false;
+
+      const updateProgress = (loaded, total) => {
+        if (loadingProgress) {
+          // Progress text hidden — bar-only feedback during loading
+        }
+        if (loadingProgressBar) {
+          loadingProgressBar.style.transform = 'scaleX(' + (loaded / total) + ')';
+        }
+        if (loadingStatus) {
+          const elapsedSeconds = Math.floor((Date.now() - loadingStartTime) / 1000);
+
+          if (elapsedSeconds > 30 && !slowConnectionWarningShown) {
+            slowConnectionWarningShown = true;
+            console.log('Slow connection detected, showing patience message');
+          }
+
+          if (slowConnectionWarningShown) {
+            loadingStatus.textContent = `Loading... ${Math.round((loaded/total) * 100)}% (slow connection detected - please be patient)`;
+          } else {
+            loadingStatus.textContent = `Loading experience... ${Math.round((loaded/total) * 100)}%`;
+          }
+        }
+      };
+
+      const loadingTimeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Loading timeout - assets took too long to load')), LOADING_TIMEOUT_MS);
+      });
+
+      letterObjects = await Promise.race([
+        loadLetters(scene, startupLetters, renderer, updateProgress),
+        loadingTimeout
+      ]);
+
+      const loadingDuration = Math.floor((Date.now() - loadingStartTime) / 1000);
+      console.log(`Loaded ${letterObjects.length} letters successfully in ${loadingDuration}s!`);
+      letterObjectById.clear();
+      letterObjects.forEach((letter) => {
+        letterObjectById.set(letter.userData.id, letter);
+      });
+
+      proximityManager = new ProximityManager(camera, letterObjects);
+      tryInitializeGroundTimeline();
+
+      setLetterLoadStageStatus(LETTER_LOAD_STAGE.CORE, LETTER_LOAD_STAGE_STATUS.READY, {
+        loadedCount: letterObjects.length,
+        errorMessage: null,
+      });
+
+      assetsLoaded = true;
+      transitionToGame();
+
+    } catch (error) {
+      setLetterLoadStageStatus(LETTER_LOAD_STAGE.CORE, LETTER_LOAD_STAGE_STATUS.FAILED, {
+        errorMessage: error.message || 'Failed to load startup letters.',
+      });
+      console.error('Error loading letters:', error);
+      const isTimeoutError = error.message?.includes('timeout');
+
+      if (loadingScreen) {
+        loadingScreen.innerHTML = `
+          <div style="color: #ff6b6b; text-align: center; padding: 20px; max-width: 400px; margin: 0 auto;">
+            <h2 style="margin-bottom: 15px;">Error Loading Experience</h2>
+            <p style="margin: 10px 0; font-size: 16px;">${error.message || 'Failed to load assets'}</p>
+            ${isTimeoutError ? `
+              <p style="font-size: 14px; opacity: 0.9; margin: 15px 0; color: #ffd93d;">
+                Your internet connection appears to be slow. Please try:
+              </p>
+              <ul style="text-align: left; font-size: 13px; opacity: 0.8; padding-left: 20px;">
+                <li>Refreshing the page and waiting longer</li>
+                <li>Connecting to a faster network if available</li>
+                <li>Trying again at a different time</li>
+              </ul>
+            ` : ''}
+            <p style="font-size: 12px; opacity: 0.7; margin-top: 15px;">Check the browser console for details (F12)</p>
+            <button onclick="location.reload()" style="margin-top: 20px; padding: 12px 30px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; font-size: 16px;">
+              Try Again
+            </button>
+          </div>
+        `;
+      }
+    }
+  })();
+}
 
 // 7. Animation Loop
 const clock = new THREE.Clock();
@@ -1691,6 +1796,14 @@ function animate() {
   }
 
   updateActiveLetterUI(currentTargetState?.activeId ?? null);
+
+  // Spatial narration volume — only during immersive play, not during inspect
+  if (inspectState.phase === INSPECT_PHASE.IDLE) {
+    audioEngine.setNarrationVolume(
+      computeNarrationVolume(currentTargetState?.activeId ?? null)
+    );
+  }
+
   syncInspectUi();
   if (groundTimeline) {
     groundTimeline.update({
@@ -1744,8 +1857,12 @@ function animate() {
     });
   }
 
-  // Render
-  renderer.render(scene, camera);
+  // Update atmosphere zone colors and dust animation
+  updateAtmosphere(camera.position.z, delta);
+  updateDust(dustParticles, elapsedTime);
+
+  // Render via post-processing composer
+  composer.render(delta);
 }
 
 animate();
@@ -1811,6 +1928,10 @@ function cleanupRuntime() {
 
   window.removeEventListener('resize', handleInspectViewportResize);
 
+  if (landingCta) {
+    landingCta.removeEventListener('click', handleEnterFromLanding);
+  }
+
   if (!isTouchDevice) {
     controls.removeEventListener('lock', handleDesktopLock);
     controls.removeEventListener('unlock', handleDesktopUnlock);
@@ -1850,10 +1971,15 @@ function cleanupRuntime() {
     });
   });
 
-  if (!loadingScene.isDisposed) {
+  if (loadingScene && !loadingScene.isDisposed) {
     loadingScene.dispose();
   }
-  
+
+  // Dispose post-processing and dust
+  composer.dispose();
+  dustParticles.geometry.dispose();
+  dustParticles.material.dispose();
+
   // Dispose renderer
   renderer.dispose();
   

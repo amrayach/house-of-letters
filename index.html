@@ -10,8 +10,39 @@
     <link rel="stylesheet" href="/src/styles/main.css">
   </head>
   <body>
-    <!-- Loading Screen with 3D Building Scene -->
-    <div id="loading-screen">
+    <!-- Landing Screen (first screen the user sees) -->
+    <div id="landing-screen">
+      <div class="landing-grid">
+        <div class="landing-panel landing-panel-tl" data-panel="project">
+          <p class="shell-kicker"></p>
+          <div class="landing-panel-body"></div>
+          <button class="landing-read-more" type="button" hidden>Read more</button>
+        </div>
+        <div class="landing-panel landing-panel-tr" data-panel="ahed">
+          <p class="shell-kicker"></p>
+          <div class="landing-panel-body"></div>
+          <button class="landing-read-more" type="button" hidden>Read more</button>
+        </div>
+        <div class="landing-center">
+          <h1 class="landing-title">House of Dreams</h1>
+          <p class="landing-subtitle"></p>
+          <button id="landing-cta" class="btn">Enter the Archive</button>
+        </div>
+        <div class="landing-panel landing-panel-bl" data-panel="party">
+          <p class="shell-kicker"></p>
+          <div class="landing-panel-body"></div>
+          <button class="landing-read-more" type="button" hidden>Read more</button>
+        </div>
+        <div class="landing-panel landing-panel-br" data-panel="papers">
+          <p class="shell-kicker"></p>
+          <div class="landing-panel-body"></div>
+          <button class="landing-read-more" type="button" hidden>Read more</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading Screen with 3D Building Scene (hidden until landing CTA clicked) -->
+    <div id="loading-screen" hidden>
       <!-- 3D Scene Container -->
       <div id="loading-scene-container"></div>
       
@@ -28,17 +59,20 @@
           <button id="skip-intro-btn" class="btn btn-skip">Skip Intro</button>
         </div>
       </div>
+      <div id="loading-progress-bar"></div>
     </div>
 
     <!-- Start Screen -->
     <div id="start-screen" hidden> <!-- Initially hidden, shown after load -->
       <div class="shell-panel shell-panel-start">
         <div class="start-shell-primary">
-          <p id="start-kicker" class="shell-kicker">Archive Entry</p>
-          <h1 id="start-title">House of Dreams</h1>
-          <p id="start-lede" class="shell-lede">Explore the archive. Listen to the stories.</p>
+          <div class="start-shell-copy">
+            <p id="start-kicker" class="shell-kicker">Archive Entry</p>
+            <h1 id="start-title">House of Dreams</h1>
+            <p id="start-lede" class="shell-lede">Explore the archive. Listen to the stories.</p>
+          </div>
           <div class="start-shell-entry">
-            <p id="start-status" class="screen-status" aria-live="polite">Click to enter. The archive will take control of your pointer.</p>
+            <p id="start-status" class="screen-status" aria-live="polite">Click to begin.</p>
             <button id="start-btn" class="btn">Enter Archive</button>
           </div>
         </div>
@@ -93,8 +127,8 @@
       <div class="debug-title">Debug Controls</div>
       <div class="debug-row">
         <label for="speed-slider">Walking Speed:</label>
-        <input type="range" id="speed-slider" min="5" max="300" value="100" step="5">
-        <span id="speed-value">100</span>
+        <input type="range" id="speed-slider" min="5" max="300" value="40" step="5">
+        <span id="speed-value">40</span>
       </div>
       <div class="debug-row">
         <span>Current Speed:</span>
@@ -137,7 +171,13 @@
             </div>
             <p id="inspect-status" class="screen-status">Press E to return to the archive.</p>
           </div>
-          <button id="inspect-header-exit-btn" class="btn btn-inspect-secondary inspect-header-exit-btn" type="button">Back</button>
+          <button
+            id="inspect-header-exit-btn"
+            class="btn btn-inspect-secondary inspect-header-exit-btn"
+            type="button"
+            aria-label="Close inspection mode"
+            title="Close inspection mode"
+          >X</button>
         </div>
 
         <div id="inspect-scan-viewport">

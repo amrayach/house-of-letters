@@ -422,7 +422,7 @@ export class ProximityManager {
   }
 
   activateLetter(letter) {
-    audioEngine.playNarration(letter.userData.id);
+    audioEngine.activateNarration(letter.userData.id);
 
     letter.traverse((child) => {
       if (!child.isMesh || child.userData.isFocusHelper || !child.material) {
@@ -448,7 +448,7 @@ export class ProximityManager {
   }
 
   deactivateLetter(letter) {
-    audioEngine.stopNarration();
+    audioEngine.deactivateNarration();
 
     letter.traverse((child) => {
       if (!child.isMesh || child.userData.isFocusHelper) {

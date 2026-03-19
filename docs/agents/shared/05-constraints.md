@@ -45,12 +45,17 @@
 ## Likely regressions
 
 - Breaking the `assetsLoaded && loadingSceneComplete` gate and trapping the user on loading/start screens
+- Starting the LoadingScene or asset loading before the landing CTA is clicked — the landing page must be instant with no GPU-heavy work
+- Creating the LoadingScene while `#loading-screen` is still hidden — the container needs non-zero dimensions for the renderer
 - Starting audio before a user gesture and losing playback on mobile/Chrome/Safari
 - Regressing pointer-lock pause/resume while fixing mobile controls, or vice versa
 - Letting bird's-eye survive pause/unlock and re-enter the archive in the wrong camera mode
 - Reintroducing split ownership where touch controls toggle joystick/look visibility independently of shell state
 - Letting `visibilitychange` resume audio while the runtime is in `start` or `paused`
 - Letting proximity evaluation trigger narration or letter activation behind loading, start, or pause shells
+- Letting stale async narration loads start after proximity was cleared or switched to another letter
+- Letting per-frame `setNarrationVolume` use `audioEngine.currentNarrationLetterId` instead of `currentTargetState.activeId` — the former would auto-resume narrations that `deactivateNarration` just paused
+- Letting per-frame `setNarrationVolume` run during non-IDLE inspect phases — inspect sets full volume via `restartNarration`, per-frame updates must not override it
 - Letting candidate scoring drift back to raw root-center distance and ignoring readable-side metadata
 - Letting focus scoring depend on display-mesh raycasting instead of the dedicated side colliders
 - Regressing readable-side normals back to averaged display-mesh normals when `Front` and `Back` node transforms are present

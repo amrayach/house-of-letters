@@ -6,7 +6,40 @@
 export const SCENE = {
   BACKGROUND_COLOR: 0x000000,
   FOG_NEAR: 1,
-  FOG_FAR: 100
+  FOG_FAR: 100,
+  ZONE_LERP_SPEED: 2.0,
+};
+
+// Zone-adaptive atmosphere colors (blue → green → amber → red across the archive Z axis)
+export const ATMOSPHERE_ZONES = [
+  { id: 1, zMin: -Infinity, zMax: -30, ambientColor: 0x1a1a2e, directionalColor: 0x6688cc, fogColor: 0x0a0a18 },
+  { id: 2, zMin: -30,       zMax: -5,  ambientColor: 0x1a2218, directionalColor: 0x7ba67a, fogColor: 0x0a100a },
+  { id: 3, zMin: -5,        zMax: 25,  ambientColor: 0x221a10, directionalColor: 0xcc9944, fogColor: 0x18100a },
+  { id: 4, zMin: 25,        zMax: Infinity, ambientColor: 0x221414, directionalColor: 0xcc6644, fogColor: 0x180a0a },
+];
+
+// Post-processing tuning (bloom + vignette only — stays within 60fps budget)
+export const POST_PROCESSING = {
+  BLOOM_INTENSITY: 0.3,
+  BLOOM_LUMINANCE_THRESHOLD: 0.6,
+  BLOOM_LUMINANCE_SMOOTHING: 0.7,
+  VIGNETTE_DARKNESS: 0.4,
+  VIGNETTE_OFFSET: 0.3,
+};
+
+// Animated dust particles
+export const DUST = {
+  COUNT: 500,
+  SPREAD_X: 40,
+  SPREAD_Y: 10,
+  SPREAD_Z: 200,
+  CENTER_Z: 10,
+  SIZE: 0.05,
+  OPACITY: 0.4,
+  DRIFT_SPEED: 0.15,
+  DRIFT_AMPLITUDE_X: 0.03,
+  DRIFT_AMPLITUDE_Y: 0.02,
+  DRIFT_AMPLITUDE_Z: 0.01,
 };
 
 export const RENDERER_QUALITY = {
@@ -36,7 +69,9 @@ export const AUDIO = {
   NARRATION_VOLUME: 1.0,
   FADE_DURATION: 500,
   DUCKING_VOLUME: 0.3,
-  MAX_DISTANCE: 10 // Spatial audio falloff distance
+  NARRATION_FADE_NEAR: 2,      // full volume at this distance
+  NARRATION_FADE_FAR: 10,      // volume reaches 0 at this distance
+  NARRATION_FADE_EXPONENT: 1.5  // falloff curve (1=linear, >1=faster initial drop)
 };
 
 // Interaction
@@ -82,31 +117,20 @@ export const TIMELINE = {
   LABEL_Y: 0.085,
   SPINE_HEAD_PADDING: 18,
   SPINE_TAIL_PADDING: 18,
-  SPINE_X_ATTRACTION: 0.18,
-  SPINE_MAX_X_STEP: 6,
-  SPINE_SAMPLES: 360,
   SPINE_RADIAL_SEGMENTS: 10,
   SPINE_SEGMENTS: 720,
-  SPINE_CORE_RADIUS: 0.12,
-  SPINE_HALO_RADIUS: 0.28,
-  SPINE_DISTORTED_RADIUS: 0.36,
-  CONNECTOR_CORE_RADIUS: 0.075,
-  CONNECTOR_HALO_RADIUS: 0.16,
-  CONNECTOR_SEGMENTS: 24,
-  CONNECTOR_CURVE_LIFT: 0.22,
-  ANCHOR_CORE_RADIUS: 0.36,
-  ANCHOR_RING_INNER_RADIUS: 0.54,
-  ANCHOR_RING_OUTER_RADIUS: 0.76,
+  SPINE_CORE_RADIUS: 0.04,
+  SPINE_HALO_RADIUS: 0.10,
+  SPINE_DISTORTED_RADIUS: 0.14,
+  ANCHOR_CORE_RADIUS: 0.22,
+  ANCHOR_RING_INNER_RADIUS: 0.34,
+  ANCHOR_RING_OUTER_RADIUS: 0.48,
   FOCUS_SPEED_MAX: 4.0,
-  AMBIENT_CORE_OPACITY: 0.24,
-  AMBIENT_HALO_OPACITY: 0.12,
+  AMBIENT_CORE_OPACITY: 0.16,
+  AMBIENT_HALO_OPACITY: 0.08,
   AMBIENT_DISTORTED_OPACITY: 0.14,
   FOCUSED_CORE_OPACITY: 0.84,
   FOCUSED_HALO_OPACITY: 0.34,
-  FOCUSED_CONNECTOR_OPACITY: 0.88,
-  FOCUSED_CONNECTOR_HALO_OPACITY: 0.28,
-  AMBIENT_CONNECTOR_OPACITY: 0.18,
-  AMBIENT_CONNECTOR_HALO_OPACITY: 0.1,
   AMBIENT_ANCHOR_OPACITY: 0.22,
   AMBIENT_ANCHOR_RING_OPACITY: 0.12,
   FOCUSED_ANCHOR_OPACITY: 0.92,

@@ -1,5 +1,12 @@
 import * as THREE from 'three';
-import { CAMERA, RENDERER_QUALITY } from '@config/constants.js';
+import {
+  EffectComposer,
+  EffectPass,
+  RenderPass,
+  BloomEffect,
+  VignetteEffect,
+} from 'postprocessing';
+import { CAMERA, RENDERER_QUALITY, POST_PROCESSING } from '@config/constants.js';
 
 function applyRendererViewport(renderer, camera, pixelRatioCap) {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
@@ -38,6 +45,24 @@ export function initScene() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.body.appendChild(renderer.domElement);
 
+  // Post-processing composer (bloom + vignette)
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+
+  const bloomEffect = new BloomEffect({
+    intensity: POST_PROCESSING.BLOOM_INTENSITY,
+    luminanceThreshold: POST_PROCESSING.BLOOM_LUMINANCE_THRESHOLD,
+    luminanceSmoothing: POST_PROCESSING.BLOOM_LUMINANCE_SMOOTHING,
+    mipmapBlur: true,
+  });
+
+  const vignetteEffect = new VignetteEffect({
+    darkness: POST_PROCESSING.VIGNETTE_DARKNESS,
+    offset: POST_PROCESSING.VIGNETTE_OFFSET,
+  });
+
+  composer.addPass(new EffectPass(camera, bloomEffect, vignetteEffect));
+
   // Ground (large enough to cover play area)
   const groundGeometry = new THREE.PlaneGeometry(1000, 1000); // Increased from 200 to prevent black screen
   const groundMaterial = new THREE.MeshBasicMaterial({
@@ -55,6 +80,7 @@ export function initScene() {
   // Handle resize
   window.addEventListener('resize', () => {
     applyRendererViewport(renderer, camera, pixelRatioCap);
+    composer.setSize(window.innerWidth, window.innerHeight);
   });
 
   const setInspectQuality = (enabled) => {
@@ -68,7 +94,8 @@ export function initScene() {
 
     pixelRatioCap = nextPixelRatioCap;
     applyRendererViewport(renderer, camera, pixelRatioCap);
+    composer.setSize(window.innerWidth, window.innerHeight);
   };
 
-  return { scene, camera, renderer, setInspectQuality };
+  return { scene, camera, renderer, composer, setInspectQuality };
 }

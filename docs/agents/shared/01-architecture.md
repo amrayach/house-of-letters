@@ -14,16 +14,16 @@
 
 | Layer | Owner files | Owns | Does not own |
 | --- | --- | --- | --- |
-| Boot + UI shell | `index.html`, `src/main.js`, `src/styles/main.css` | overlay DOM, start/pause/loading screens, preview/subtitle HUD, inspect prompt/overlay, top-level sequencing | scene internals, audio internals, per-letter proximity math |
+| Boot + UI shell | `index.html`, `src/main.js`, `src/styles/main.css` | overlay DOM, landing/start/pause/loading screens, preview/subtitle HUD, inspect prompt/overlay, top-level sequencing, deferred loading trigger from landing CTA | scene internals, audio internals, per-letter proximity math |
 | Archive rendering | `src/renderer/sceneSetup.js`, `src/renderer/lighting.js` | archive `scene`, `camera`, `renderer`, inspect-quality pixel-ratio switching, ground/grid, resize handling, base light rig | GLB loading, audio, DOM flow |
 | Controls + movement | `src/renderer/controls.js`, `src/interaction/touchControls.js` | pointer lock, touch UI, camera movement, bird's-eye mode, inspect suppression seam, key state | narration selection, preview UI, asset loading |
 | Letter loading + scene content | `src/renderer/letters.js`, `src/utils/loaders.js` | GLB fetch/retry, model transforms, material replacement, string geometry, interaction metadata/focus helpers, `userData` attachment | DOM preview/subtitles, audio playback decisions |
-| Ground chronology | `src/renderer/groundTimeline.js`, `src/data/provisionalChronology.js` | grouped chronology spine, per-letter anchors/connectors, cached ground label textures, safe disable when chronology or loaded-letter coverage is incomplete | exact per-letter dates, DOM UI, movement math, target scoring |
+| Ground chronology | `src/renderer/groundTimeline.js`, `src/data/provisionalChronology.js` | sequential floor spine through all letters in ID order, per-letter anchors, cached ground label textures, safe disable when chronology or loaded-letter coverage is incomplete | exact per-letter dates, DOM UI, movement math, target scoring |
 | Loading intro | `src/renderer/loadingScene.js` | Sednaya intro scene, postprocessing, separate renderer lifecycle, skip/completion callbacks | archive gameplay loop, letter data, pause/start UI |
 | Audio | `src/audio/audioEngine.js` | background theme playback, narration lazy loading, ducking, pause/resume, unload | active-letter detection, visual highlighting, theme choice policy |
 | Theme mixing | `src/audio/themeMixer.js` | only current active-letter/theme bookkeeping and logging | actual crossfade or soundtrack switching |
 | Proximity | `src/interaction/proximityManager.js` | readable-side candidate/active scoring, narration trigger, highlight/unhighlight hooks, minimal targeting snapshot | DOM preview/subtitles, theme selection, movement, inspect UI |
-| Data + config | `src/data/letters.json`, `src/config/constants.js` | metadata schema, asset paths, positions/zones, tuning constants | renderer or audio lifecycle logic |
+| Data + config | `src/data/letters.json`, `src/config/constants.js`, `src/config/landingContent.js`, `src/config/startShellContent.js` | metadata schema, asset paths, positions/zones, tuning constants, landing/start screen text content | renderer or audio lifecycle logic |
 | Build + deploy | `package.json`, `vite.config.js`, `public/_headers`, `public/_redirects` | local scripts, aliases, static asset copying, Pages routing/headers | runtime sequencing decisions |
 
 ## Dependency flow from `src/main.js`
@@ -48,6 +48,8 @@ flowchart LR
   PROX --> AUDIO
   MAIN --> DATA["data/letters.json"]
   MAIN --> CONST
+  MAIN --> LANDING["config/landingContent.js"]
+  MAIN --> STARTCFG["config/startShellContent.js"]
   MAIN --> DOM["overlay DOM in index.html"]
 ```
 
@@ -59,7 +61,7 @@ flowchart LR
 - `sceneSetup.js` may expose renderer-quality toggles used by inspect mode, but `main.js` still decides when inspect is active.
 - `loadingScene.js` is intentionally separate and should stay separate unless the intro is redesigned end-to-end.
 - `letters.js` may mutate loaded model materials and transforms, but it should not own screen overlays or audio policy.
-- `groundTimeline.js` owns the chronology thread meshes, anchor meshes, connector meshes, and label-plane textures once the scene is active.
+- `groundTimeline.js` owns the sequential spine meshes, anchor meshes, and label-plane textures once the scene is active.
 - `groundTimeline.js` should stay scene-native and should not absorb DOM, input, or targeting ownership.
 
 ### Controls

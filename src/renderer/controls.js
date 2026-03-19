@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { TouchControls } from '../interaction/touchControls.js';
 
 // Debug: Walking speed configuration
-let walkingSpeed = 100.0;
+let walkingSpeed = 40.0;
 const TRACKPAD_LOOK_SENSITIVITY = 0.0015;
 const PI_2 = Math.PI / 2;
 

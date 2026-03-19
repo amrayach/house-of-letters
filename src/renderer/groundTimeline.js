@@ -7,31 +7,20 @@ const TIMELINE_DEFAULTS = Object.freeze({
   LABEL_Y: 0.085,
   SPINE_HEAD_PADDING: 18,
   SPINE_TAIL_PADDING: 18,
-  SPINE_X_ATTRACTION: 0.18,
-  SPINE_MAX_X_STEP: 6,
-  SPINE_SAMPLES: 360,
   SPINE_RADIAL_SEGMENTS: 10,
   SPINE_SEGMENTS: 720,
-  SPINE_CORE_RADIUS: 0.12,
-  SPINE_HALO_RADIUS: 0.28,
-  SPINE_DISTORTED_RADIUS: 0.36,
-  CONNECTOR_CORE_RADIUS: 0.075,
-  CONNECTOR_HALO_RADIUS: 0.16,
-  CONNECTOR_SEGMENTS: 24,
-  CONNECTOR_CURVE_LIFT: 0.22,
-  ANCHOR_CORE_RADIUS: 0.36,
-  ANCHOR_RING_INNER_RADIUS: 0.54,
-  ANCHOR_RING_OUTER_RADIUS: 0.76,
+  SPINE_CORE_RADIUS: 0.04,
+  SPINE_HALO_RADIUS: 0.10,
+  SPINE_DISTORTED_RADIUS: 0.14,
+  ANCHOR_CORE_RADIUS: 0.22,
+  ANCHOR_RING_INNER_RADIUS: 0.34,
+  ANCHOR_RING_OUTER_RADIUS: 0.48,
   FOCUS_SPEED_MAX: 4.0,
-  AMBIENT_CORE_OPACITY: 0.24,
-  AMBIENT_HALO_OPACITY: 0.12,
+  AMBIENT_CORE_OPACITY: 0.16,
+  AMBIENT_HALO_OPACITY: 0.08,
   AMBIENT_DISTORTED_OPACITY: 0.14,
   FOCUSED_CORE_OPACITY: 0.84,
   FOCUSED_HALO_OPACITY: 0.34,
-  FOCUSED_CONNECTOR_OPACITY: 0.88,
-  FOCUSED_CONNECTOR_HALO_OPACITY: 0.28,
-  AMBIENT_CONNECTOR_OPACITY: 0.18,
-  AMBIENT_CONNECTOR_HALO_OPACITY: 0.1,
   AMBIENT_ANCHOR_OPACITY: 0.22,
   AMBIENT_ANCHOR_RING_OPACITY: 0.12,
   FOCUSED_ANCHOR_OPACITY: 0.92,
@@ -258,70 +247,69 @@ function getTextureEntry(cache, key, factory) {
   return cache.get(key);
 }
 
-function buildOrderedAnchors(lettersById, chronology, groundY) {
-  const orderedAnchors = [];
+function buildSequentialAnchors(lettersById, chronology, groundY) {
+  const labelByLetterId = new Map();
 
   chronology.forEach((group) => {
-    const groupAnchors = group.letterIds
-      .map((letterId) => {
-        const letter = lettersById.get(letterId);
-
-        if (!letter) {
-          return null;
-        }
-
-        return {
-          id: letterId,
-          zone: group.zone,
-          ambientLabel: group.ambientLabel,
-          focusedLabel: group.focusedLabel,
-          letter,
-          anchorPosition: new THREE.Vector3(letter.position.x, groundY, letter.position.z),
-        };
-      })
-      .filter(Boolean)
-      .sort((left, right) => left.anchorPosition.z - right.anchorPosition.z || left.anchorPosition.x - right.anchorPosition.x);
-
-    orderedAnchors.push(...groupAnchors);
+    group.letterIds.forEach((id) => {
+      labelByLetterId.set(id, {
+        zone: group.zone,
+        ambientLabel: group.ambientLabel,
+        focusedLabel: group.focusedLabel,
+      });
+    });
   });
 
-  return orderedAnchors;
+  return [...lettersById.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([id, letter]) => {
+      const labels = labelByLetterId.get(id) || { zone: 0, ambientLabel: '', focusedLabel: '' };
+      return {
+        id,
+        zone: labels.zone,
+        ambientLabel: labels.ambientLabel,
+        focusedLabel: labels.focusedLabel,
+        letter,
+        anchorPosition: new THREE.Vector3(letter.position.x, groundY, letter.position.z),
+      };
+    });
 }
 
-function buildSpineControlPoints(anchors, cfg) {
-  if (anchors.length === 0) {
-    return [];
-  }
+function buildSequentialSpinePoints(anchors, cfg) {
+  if (anchors.length === 0) return [];
 
-  const controlPoints = [];
-  let smoothedX = anchors[0].anchorPosition.x;
+  const points = [];
 
-  controlPoints.push(new THREE.Vector3(
-    smoothedX,
+  // Head padding — extend along the direction of the first segment
+  const first = anchors[0].anchorPosition;
+  const second = anchors.length > 1 ? anchors[1].anchorPosition : first;
+  const headDir = new THREE.Vector3().subVectors(first, second).normalize();
+  if (headDir.lengthSq() < 0.0001) headDir.set(0, 0, -1);
+  points.push(new THREE.Vector3(
+    first.x + headDir.x * cfg.SPINE_HEAD_PADDING,
     cfg.GROUND_Y,
-    anchors[0].anchorPosition.z - cfg.SPINE_HEAD_PADDING,
+    first.z + headDir.z * cfg.SPINE_HEAD_PADDING,
   ));
 
+  // Letter positions in ID order
   anchors.forEach((anchor) => {
-    const desiredX = anchor.anchorPosition.x;
-    const step = THREE.MathUtils.clamp(
-      (desiredX - smoothedX) * cfg.SPINE_X_ATTRACTION,
-      -cfg.SPINE_MAX_X_STEP,
-      cfg.SPINE_MAX_X_STEP,
-    );
-
-    smoothedX += step;
-    controlPoints.push(new THREE.Vector3(smoothedX, cfg.GROUND_Y, anchor.anchorPosition.z));
+    points.push(new THREE.Vector3(
+      anchor.anchorPosition.x, cfg.GROUND_Y, anchor.anchorPosition.z,
+    ));
   });
 
-  const lastAnchor = anchors[anchors.length - 1];
-  controlPoints.push(new THREE.Vector3(
-    smoothedX,
+  // Tail padding — extend along the direction of the last segment
+  const last = anchors[anchors.length - 1].anchorPosition;
+  const secondLast = anchors.length > 1 ? anchors[anchors.length - 2].anchorPosition : last;
+  const tailDir = new THREE.Vector3().subVectors(last, secondLast).normalize();
+  if (tailDir.lengthSq() < 0.0001) tailDir.set(0, 0, 1);
+  points.push(new THREE.Vector3(
+    last.x + tailDir.x * cfg.SPINE_TAIL_PADDING,
     cfg.GROUND_Y,
-    lastAnchor.anchorPosition.z + cfg.SPINE_TAIL_PADDING,
+    last.z + tailDir.z * cfg.SPINE_TAIL_PADDING,
   ));
 
-  return controlPoints;
+  return points;
 }
 
 function buildDistortedControlPoints(controlPoints, cfg) {
@@ -336,38 +324,6 @@ function buildDistortedControlPoints(controlPoints, cfg) {
   });
 }
 
-function sampleCurve(curve, samples) {
-  const points = [];
-
-  for (let index = 0; index <= samples; index += 1) {
-    const t = index / samples;
-    points.push({
-      t,
-      point: curve.getPointAt(t),
-      tangent: curve.getTangentAt(t),
-    });
-  }
-
-  return points;
-}
-
-function findNearestSample(anchorPosition, samples) {
-  let nearestSample = samples[0];
-  let nearestDistanceSq = anchorPosition.distanceToSquared(nearestSample.point);
-
-  for (let index = 1; index < samples.length; index += 1) {
-    const sample = samples[index];
-    const distanceSq = anchorPosition.distanceToSquared(sample.point);
-
-    if (distanceSq < nearestDistanceSq) {
-      nearestDistanceSq = distanceSq;
-      nearestSample = sample;
-    }
-  }
-
-  return nearestSample;
-}
-
 function createTubeMesh(curve, radius, tubularSegments, radialSegments, color, opacity) {
   const geometry = new THREE.TubeGeometry(curve, tubularSegments, radius, radialSegments, false);
   const material = createMaterial(color, opacity);
@@ -376,62 +332,7 @@ function createTubeMesh(curve, radius, tubularSegments, radialSegments, color, o
   return mesh;
 }
 
-function createAnchorRecord(anchor, curveSamples, textureCache, cfg, sharedGeometry) {
-  const nearestSample = findNearestSample(anchor.anchorPosition, curveSamples);
-  const connectorDirection = nearestSample.point.clone().sub(anchor.anchorPosition);
-  connectorDirection.y = 0;
-  const connectorDistance = connectorDirection.length();
-  const suppressConnector = connectorDistance <= (cfg.ANCHOR_RING_OUTER_RADIUS + cfg.SPINE_HALO_RADIUS);
-  const tangent = nearestSample.tangent.clone();
-  tangent.y = 0;
-
-  if (tangent.lengthSq() > 0.0001) {
-    tangent.normalize();
-  } else {
-    tangent.set(0, 0, 1);
-  }
-
-  if (connectorDistance > 0.0001) {
-    connectorDirection.divideScalar(connectorDistance);
-  } else {
-    connectorDirection.set(tangent.z, 0, -tangent.x).normalize();
-  }
-
-  const connectorStart = anchor.anchorPosition.clone().addScaledVector(
-    connectorDirection,
-    cfg.ANCHOR_RING_OUTER_RADIUS * 0.92,
-  );
-  const connectorEnd = nearestSample.point.clone().addScaledVector(
-    connectorDirection,
-    connectorDistance > cfg.ANCHOR_RING_OUTER_RADIUS
-      ? -cfg.SPINE_HALO_RADIUS * 0.72
-      : cfg.SPINE_HALO_RADIUS * 0.72,
-  );
-  const connectorMidpoint = connectorStart.clone().lerp(connectorEnd, 0.55);
-
-  const connectorCurve = new THREE.QuadraticBezierCurve3(
-    connectorStart,
-    connectorMidpoint,
-    connectorEnd,
-  );
-
-  const connectorHalo = createTubeMesh(
-    connectorCurve,
-    cfg.CONNECTOR_HALO_RADIUS,
-    cfg.CONNECTOR_SEGMENTS,
-    cfg.SPINE_RADIAL_SEGMENTS,
-    cfg.COLOR_HALO,
-    cfg.AMBIENT_CONNECTOR_HALO_OPACITY,
-  );
-  const connectorCore = createTubeMesh(
-    connectorCurve,
-    cfg.CONNECTOR_CORE_RADIUS,
-    cfg.CONNECTOR_SEGMENTS,
-    cfg.SPINE_RADIAL_SEGMENTS,
-    cfg.COLOR_CORE,
-    cfg.AMBIENT_CONNECTOR_OPACITY,
-  );
-
+function createAnchorRecord(anchor, textureCache, cfg, sharedGeometry) {
   const anchorRing = new THREE.Mesh(
     sharedGeometry.anchorRingGeometry,
     createMaterial(cfg.COLOR_HALO, cfg.AMBIENT_ANCHOR_RING_OPACITY),
@@ -469,10 +370,6 @@ function createAnchorRecord(anchor, curveSamples, textureCache, cfg, sharedGeome
 
   return {
     ...anchor,
-    nearestSample,
-    suppressConnector,
-    connectorHalo,
-    connectorCore,
     anchorRing,
     anchorCore,
     labelPlane,
@@ -540,16 +437,7 @@ function updateLabelPlacement(record, cameraPosition, cfg) {
 }
 
 function applyAnchorState(record, mode, cfg) {
-  if (record.suppressConnector) {
-    setMeshOpacity(record.connectorCore, 0);
-    setMeshOpacity(record.connectorHalo, 0);
-  }
-
   if (mode === 'focused') {
-    if (!record.suppressConnector) {
-      setMeshOpacity(record.connectorCore, cfg.FOCUSED_CONNECTOR_OPACITY);
-      setMeshOpacity(record.connectorHalo, cfg.FOCUSED_CONNECTOR_HALO_OPACITY);
-    }
     setMeshOpacity(record.anchorCore, cfg.FOCUSED_ANCHOR_OPACITY);
     setMeshOpacity(record.anchorRing, cfg.FOCUSED_ANCHOR_RING_OPACITY);
     record.anchorCore.scale.setScalar(1.12);
@@ -559,10 +447,6 @@ function applyAnchorState(record, mode, cfg) {
   }
 
   if (mode === 'ambient-highlight') {
-    if (!record.suppressConnector) {
-      setMeshOpacity(record.connectorCore, cfg.AMBIENT_CONNECTOR_OPACITY * 1.45);
-      setMeshOpacity(record.connectorHalo, cfg.AMBIENT_CONNECTOR_HALO_OPACITY * 1.6);
-    }
     setMeshOpacity(record.anchorCore, cfg.AMBIENT_ANCHOR_OPACITY * 1.6);
     setMeshOpacity(record.anchorRing, cfg.AMBIENT_ANCHOR_RING_OPACITY * 1.75);
     record.anchorCore.scale.setScalar(1.04);
@@ -571,10 +455,6 @@ function applyAnchorState(record, mode, cfg) {
     return;
   }
 
-  if (!record.suppressConnector) {
-    setMeshOpacity(record.connectorCore, cfg.AMBIENT_CONNECTOR_OPACITY);
-    setMeshOpacity(record.connectorHalo, cfg.AMBIENT_CONNECTOR_HALO_OPACITY);
-  }
   setMeshOpacity(record.anchorCore, cfg.AMBIENT_ANCHOR_OPACITY);
   setMeshOpacity(record.anchorRing, cfg.AMBIENT_ANCHOR_RING_OPACITY);
   record.anchorCore.scale.setScalar(1);
@@ -615,12 +495,11 @@ export function createGroundTimeline({ scene, letters, chronology, constants } =
   rootGroup.visible = false;
 
   const textureCache = new Map();
-  const orderedAnchors = buildOrderedAnchors(lettersById, chronology, cfg.GROUND_Y);
-  const spineControlPoints = buildSpineControlPoints(orderedAnchors, cfg);
+  const orderedAnchors = buildSequentialAnchors(lettersById, chronology, cfg.GROUND_Y);
+  const spineControlPoints = buildSequentialSpinePoints(orderedAnchors, cfg);
   const distortedControlPoints = buildDistortedControlPoints(spineControlPoints, cfg);
   const spineCurve = new THREE.CatmullRomCurve3(spineControlPoints, false, 'centripetal', 0.2);
   const distortedCurve = new THREE.CatmullRomCurve3(distortedControlPoints, false, 'centripetal', 0.2);
-  const curveSamples = sampleCurve(spineCurve, cfg.SPINE_SAMPLES);
 
   const spineHalo = createTubeMesh(
     spineCurve,
@@ -653,7 +532,7 @@ export function createGroundTimeline({ scene, letters, chronology, constants } =
     labelPlaneGeometry: new THREE.PlaneGeometry(1, 1),
   };
 
-  const anchorRecords = orderedAnchors.map((anchor) => createAnchorRecord(anchor, curveSamples, textureCache, cfg, sharedGeometry));
+  const anchorRecords = orderedAnchors.map((anchor) => createAnchorRecord(anchor, textureCache, cfg, sharedGeometry));
   const anchorRecordById = new Map(anchorRecords.map((record) => [record.id, record]));
 
   rootGroup.add(spineHalo);
@@ -661,8 +540,6 @@ export function createGroundTimeline({ scene, letters, chronology, constants } =
   rootGroup.add(spineCore);
 
   anchorRecords.forEach((record) => {
-    rootGroup.add(record.connectorHalo);
-    rootGroup.add(record.connectorCore);
     rootGroup.add(record.anchorRing);
     rootGroup.add(record.anchorCore);
     rootGroup.add(record.labelPlane);
@@ -761,10 +638,6 @@ export function createGroundTimeline({ scene, letters, chronology, constants } =
     scene.remove(rootGroup);
 
     anchorRecords.forEach((record) => {
-      record.connectorCore.geometry.dispose();
-      record.connectorHalo.geometry.dispose();
-      disposeMaterial(record.connectorCore.material);
-      disposeMaterial(record.connectorHalo.material);
       disposeMaterial(record.anchorCore.material);
       disposeMaterial(record.anchorRing.material);
       disposeMaterial(record.labelPlane.material, { disposeMap: false });

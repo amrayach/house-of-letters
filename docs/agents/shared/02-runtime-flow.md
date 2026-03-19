@@ -4,35 +4,59 @@
 
 1. `index.html` loads the overlay DOM, links `/src/styles/main.css`, and boots `/src/main.js`.
 2. `src/main.js` immediately creates:
-   - the cinematic `LoadingScene`
    - the archive `scene`, `camera`, and `renderer`
    - lighting and controls
-3. Two async tracks then run in parallel:
+   - the archive render loop starts immediately (behind the landing page)
+3. The user sees the landing screen with four text panels and "Enter the Archive" CTA. No heavy loading happens yet.
+4. The user clicks "Enter the Archive":
+   - the loading screen is unhidden (was hidden on boot)
+   - `LoadingScene` is created and started
+   - core archive letter/model loading begins for zones 1 and 2
+   - the landing screen fades out, revealing the loading screen
+   - `uiState` moves from `landing` to `loading`
+5. Two async tracks then run in parallel:
    - intro camera sequence in `LoadingScene.start(...)`
    - core archive letter/model loading for zones 1 and 2 via `loadLetters(...)`
-4. Only when both tracks complete does `transitionToGame()` hide the loading screen and move the overlay shell into `start`.
-5. The user clicks `Enter Archive`, which bootstraps audio and then:
+6. Only when both tracks complete does `transitionToGame()` hide the loading screen and move the overlay shell into `start`.
+7. The user clicks `Enter Archive`, which bootstraps audio and then:
    - on desktop, waits for pointer lock before moving into `active`
    - on mobile, activates touch controls immediately and moves into `active`
-6. The first successful move into `active` also triggers one deferred background load for zones 3 and 4.
-7. Successful deferred loads integrate directly into the live runtime, and `groundTimeline` initializes only if chronology-required coverage becomes complete.
-8. The archive render loop keeps running until page unload, but shell overlays are now explicitly state-gated.
+8. The first successful move into `active` also triggers one deferred background load for zones 3 and 4.
+9. Successful deferred loads integrate directly into the live runtime, and `groundTimeline` initializes only if chronology-required coverage becomes complete.
+10. The archive render loop keeps running until page unload, but shell overlays are now explicitly state-gated.
 
 ## Detailed flow
 
 ### 1. Initial HTML load
 
 - `index.html` defines:
-  - `#loading-screen` and `#loading-scene-container`
+  - `#landing-screen` (visible by default, z-index 3000)
+  - `#loading-screen` and `#loading-scene-container` (hidden on boot)
   - `#start-screen` and `#pause-screen`
   - HUD/debug/subtitle/preview DOM
 - Most overlay elements now start `hidden` and are revealed by `main.js` state sync rather than ad hoc inline `display` toggles.
 - `main.js` resolves those DOM nodes up front.
 - Important: the archive renderer is appended to `document.body` immediately, not after the intro.
 
+### 1b. Landing screen
+
+- The landing screen is the first thing the user sees: four text panels in corners (desktop) or stacked vertically (mobile), with a centered "Enter the Archive" CTA.
+- `uiState` starts as `LANDING`; no loading scene or asset loading happens yet.
+- `syncLandingContent()` populates panel text from `src/config/landingContent.js`.
+- Panels have a collapsed max-height (~3 lines). A "Read more" button appears only when text overflows.
+- The landing screen has a staggered entrance animation (`landing-revealed` class triggers CSS keyframes).
+- Clicking the CTA calls `handleEnterFromLanding()`:
+  - Unhides `#loading-screen` (so the LoadingScene container has correct dimensions)
+  - Creates the `LoadingScene` and starts it
+  - Starts the async asset loading
+  - Fades out the landing screen (opacity → 0 → hidden)
+  - After fade: sets `uiState` to `LOADING`
+- `handleEnterFromLanding()` is guarded by `hasLeftLanding` to prevent double-click issues.
+- The landing screen is NOT managed by `syncUiChrome()` — its visibility uses manual opacity transition + hidden, same pattern as the loading screen in `transitionToGame()`.
+
 ### 2. Loading scene boot
 
-- `new LoadingScene(loadingSceneContainer)` creates a separate Three.js scene/camera/renderer/composer.
+- `new LoadingScene(loadingSceneContainer)` creates a separate Three.js scene/camera/renderer/composer. This is now deferred until the landing CTA is clicked, not created at module load.
 - `loadingScene.start(onComplete)` starts a dedicated `requestAnimationFrame` loop for the intro.
 - The intro loads 6 legacy JSON assets under `/3d_sednaya/` and starts the camera transition once those callbacks complete, even if some assets degraded or failed.
 - `skip-intro-btn` calls `loadingScene.skipTransition()`, which completes the intro gate early but does not bypass archive asset loading.
@@ -187,13 +211,21 @@
 - Background theme:
   - one theme starts on `startBtn` click
   - it uses `Howl({ html5: true, loop: true })`
-  - it ducks while narration plays
+  - it ducks proportionally while narration plays — theme volume interpolates between `AUDIO.THEME_VOLUME` and `AUDIO.DUCKING_VOLUME` based on narration volume ratio
   - document visibility always pauses it when the tab is hidden
   - document visibility only resumes it automatically when `main.js` still reports `uiState === active`
 - Narration:
   - URLs are registered at start
   - actual `Howl` objects are created lazily on first proximity trigger
-  - narration stop or `onend` restores theme volume
+  - pending narration requests are invalidated on focus loss or target switches, so late audio loads cannot start after the user has already left that letter
+  - narration volume scales with distance from the active letter per frame (`AUDIO.NARRATION_FADE_NEAR` to `AUDIO.NARRATION_FADE_FAR` with configurable exponent)
+  - `activateNarration(letterId)` resumes from the paused position for the same letter, or pauses the old narration and starts fresh for a different letter
+  - `deactivateNarration()` pauses (not stops) the narration, preserving the playhead position for later resume
+  - `restartNarration(letterId)` always seeks to the beginning and plays at full volume — used when entering inspect mode
+  - `setNarrationVolume(volume)` is called per-frame from `main.js` using `currentTargetState.activeId` and auto-pauses when volume reaches 0, auto-resumes when volume rises above 0
+  - per-frame volume updates are skipped during inspect mode (`inspectState.phase !== IDLE`) — `restartNarration` sets full volume directly
+  - `isGloballyPaused` prevents per-frame volume updates from interfering with the global pause/visibility system
+  - narration `onend` restores theme volume and clears current narration state
 - Theme mixing:
   - `letter.theme` exists in data
   - `themeMixer.update(...)` only logs/state-tracks
@@ -208,7 +240,7 @@
   - debug HUD update
   - active-gated proximity update, suspended while inspect is active
   - preview/subtitle/theme updates when the active letter changes
-  - grouped chronology thread update from `uiState`, `viewMode`, `inspectState.phase`, `candidateId`, `activeId`, and current movement speed
+  - sequential chronology spine update from `uiState`, `viewMode`, `inspectState.phase`, `candidateId`, `activeId`, and current movement speed
   - near-letter sway/bob/rotation animation around stored base transforms
   - `renderer.render(scene, camera)`
 
@@ -227,7 +259,7 @@
   - per-frame orchestration
   - derived shell-facing `viewMode`
 - Ground chronology ownership: `src/renderer/groundTimeline.js`
-  - grouped floor spine, per-letter anchors, per-letter connectors, and cached ground labels
+  - sequential floor spine through all letters in ID order, per-letter anchors, and cached ground labels
   - construction is delayed until `main.js` confirms full chronology coverage from the currently integrated letters
   - hidden outside active play and in bird's-eye
   - ambient vs focused emphasis based only on frame state passed from `main.js`
