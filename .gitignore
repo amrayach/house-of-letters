@@ -36,3 +36,9 @@ tmp-*.png
 uiux-*.png
 uiux-*.txt
 output/playwright/
+
+# Tooling artifacts
+.playwright-cli/
+.playwright-mcp/
+.superpowers/
+docs/superpowers/
