@@ -60,6 +60,16 @@ const deferredRequestedLetterIds = Object.freeze(
 const timelineRequiredLetterIds = validatedProvisionalChronology
   ? new Set(validatedProvisionalChronology.flatMap((group) => group.letterIds))
   : null;
+const chronologyLabelByLetterId = (() => {
+  if (!validatedProvisionalChronology) return new Map();
+  const map = new Map();
+  for (const group of validatedProvisionalChronology) {
+    for (const id of group.letterIds) {
+      map.set(id, group.focusedLabel);
+    }
+  }
+  return map;
+})();
 
 // Loading Scene Elements
 const loadingSceneContainer = document.getElementById('loading-scene-container');
@@ -95,8 +105,33 @@ const letterLoadStageState = {
   },
 };
 
+// 0. WebGL capability check — must precede initScene()
+function checkWebGLSupport() {
+  try {
+    const canvas = document.createElement('canvas');
+    return !!(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+  } catch (e) {
+    return false;
+  }
+}
+
+if (!checkWebGLSupport()) {
+  document.getElementById('landing-screen').hidden = true;
+  document.getElementById('webgl-fallback').hidden = false;
+  // Intentional: halt module execution — WebGL is required for the entire experience
+  throw new Error('WebGL not supported');
+}
+
 // 1. Initialize Scene (hidden until loading complete)
-const { scene, camera, renderer, composer, setInspectQuality } = initScene();
+let scene, camera, renderer, composer, setInspectQuality;
+try {
+  ({ scene, camera, renderer, composer, setInspectQuality } = initScene());
+} catch (e) {
+  document.getElementById('landing-screen').hidden = true;
+  document.getElementById('webgl-fallback').hidden = false;
+  // Intentional: halt module execution — renderer creation failed
+  throw e;
+}
 
 // 2. Lighting
 const lights = initLighting(scene);
@@ -184,6 +219,9 @@ const resumeBtn = document.getElementById('resume-btn');
 const pauseStatus = document.getElementById('pause-status');
 const pauseBtn = document.getElementById('mobile-pause-btn');
 const touchDeferredStatus = document.getElementById('touch-deferred-status');
+const deferredLoadNotice = document.getElementById('deferred-load-notice');
+const deferredLoadNoticeText = document.getElementById('deferred-load-notice-text');
+const deferredLoadNoticeClose = document.getElementById('deferred-load-notice-close');
 const reticle = document.getElementById('reticle');
 const controlsHint = document.getElementById('controls-hint');
 const debugPanel = document.getElementById('debug-panel');
@@ -223,7 +261,6 @@ let hasBootstrappedExperience = false;
 let pendingDesktopState = UI_STATE.START;
 let pointerLockFallbackTimer = null;
 let isTransitioningOutOfLoading = false;
-let suppressPauseOnNextDesktopUnlock = false;
 const inspectState = {
   phase: INSPECT_PHASE.IDLE,
   letterId: null,
@@ -244,7 +281,9 @@ const inspectDirectionWorld = new THREE.Vector3();
 const inspectTargetPosition = new THREE.Vector3();
 const inspectLookObject = new THREE.Object3D();
 
-const debugQuery = new URLSearchParams(window.location.search).get('debug');
+const debugQuery = new URLSearchParams(window.location.search);
+const debugParamValue = debugQuery.get('debug');
+const hasDebugParam = debugQuery.has('debug');
 const storedDebugPreference = (() => {
   try {
     return window.localStorage.getItem('hod:debug');
@@ -252,7 +291,11 @@ const storedDebugPreference = (() => {
     return null;
   }
 })();
-const debugUiEnabled = !isTouchDevice && (debugQuery === '1' || (debugQuery !== '0' && storedDebugPreference === '1'));
+const debugUiEnabled = !isTouchDevice && (
+  import.meta.env.DEV
+  || (hasDebugParam && debugParamValue !== '0')
+  || (!hasDebugParam && storedDebugPreference === '1')
+);
 const DEFAULT_START_STATUS = isTouchDevice
   ? 'Tap to enter. Touch controls appear once the archive is active.'
   : 'Click to enter. The archive will take control of your pointer.';
@@ -391,6 +434,43 @@ function syncLetterLoadStageUi() {
   syncTouchDeferredStatusUi(deferredStatusText);
 }
 
+let deferredLoadNoticeTimer = null;
+
+function showDeferredLoadNotice(message) {
+  if (!deferredLoadNotice || !deferredLoadNoticeText) return;
+
+  if (deferredLoadNoticeTimer) {
+    clearTimeout(deferredLoadNoticeTimer);
+    deferredLoadNoticeTimer = null;
+  }
+
+  deferredLoadNoticeText.textContent = message;
+  deferredLoadNotice.hidden = false;
+
+  // Force reflow before adding class for CSS transition
+  void deferredLoadNotice.offsetHeight;
+  deferredLoadNotice.classList.add('notice-visible');
+
+  function dismissNotice() {
+    deferredLoadNotice.classList.remove('notice-visible');
+    deferredLoadNoticeTimer = setTimeout(() => {
+      deferredLoadNotice.hidden = true;
+      deferredLoadNoticeTimer = null;
+    }, 400);
+  }
+
+  deferredLoadNoticeTimer = setTimeout(dismissNotice, 8000);
+
+  if (deferredLoadNoticeClose) {
+    deferredLoadNoticeClose.onclick = () => {
+      if (deferredLoadNoticeTimer) {
+        clearTimeout(deferredLoadNoticeTimer);
+      }
+      dismissNotice();
+    };
+  }
+}
+
 function setLetterLoadStageStatus(stage, nextStatus, updates = {}) {
   const stageState = letterLoadStageState[stage];
 
@@ -511,6 +591,10 @@ function finalizeDeferredLetterLoad({ loadedLetters = [], error = null } = {}) {
     settledAt: Date.now(),
     hasFullCoverage,
   });
+
+  if (status !== LETTER_LOAD_STAGE_STATUS.READY) {
+    showDeferredLoadNotice(statusMessage);
+  }
 
   if (missingLetterIds.length > 0) {
     console.warn(
@@ -796,7 +880,9 @@ if (debugUiEnabled) {
 }
 
 function getSubtitleText(letterData) {
-  return letterData.text || `Listening to Letter ${letterData.id}...`;
+  if (letterData.text) return letterData.text;
+  const dateRange = chronologyLabelByLetterId.get(letterData.id);
+  return dateRange ? `Letter ${letterData.id} · ${dateRange}` : `Letter ${letterData.id}`;
 }
 
 function setElementHidden(element, hidden) {
@@ -1150,7 +1236,6 @@ function enterInspectMode() {
   }
   setInspectSuppressed(true);
   if (inspectState.restorePointerLockOnExit) {
-    suppressPauseOnNextDesktopUnlock = true;
     controls.unlock();
   }
   startInspectTransition(target.pose, INSPECT_PHASE.ENTERING);
@@ -1307,8 +1392,7 @@ function handleDesktopUnlock() {
   setStartPendingState(false);
   setPausePendingState(false);
 
-  if (suppressPauseOnNextDesktopUnlock) {
-    suppressPauseOnNextDesktopUnlock = false;
+  if (inspectState.phase !== INSPECT_PHASE.IDLE) {
     return;
   }
 
@@ -1753,116 +1837,120 @@ function updateInspectTransition(delta) {
 function animate() {
   requestAnimationFrame(animate);
 
-  const delta = clock.getDelta();
-  const elapsedTime = clock.getElapsedTime();
-  const nextViewMode = inspectState.phase !== INSPECT_PHASE.IDLE
-    ? VIEW_MODE.INSPECT
-    : (isBirdEyeView() ? VIEW_MODE.BIRD_EYE : VIEW_MODE.IMMERSIVE);
+  try {
+    const delta = clock.getDelta();
+    const elapsedTime = clock.getElapsedTime();
+    const nextViewMode = inspectState.phase !== INSPECT_PHASE.IDLE
+      ? VIEW_MODE.INSPECT
+      : (isBirdEyeView() ? VIEW_MODE.BIRD_EYE : VIEW_MODE.IMMERSIVE);
 
-  if (viewMode !== nextViewMode) {
-    setViewMode(nextViewMode);
-  }
+    if (viewMode !== nextViewMode) {
+      setViewMode(nextViewMode);
+    }
 
-  // Update Controls
-  if (uiState === UI_STATE.ACTIVE) {
-    updateControls(delta);
-  } else if (currentSpeedDisplay) {
-    currentSpeedDisplay.textContent = '0.00';
-  }
-  
-  // Update debug speed display
-  if (uiState === UI_STATE.ACTIVE) {
-    currentSpeedDisplay.textContent = getVelocity().toFixed(2);
-  }
+    // Update Controls
+    if (uiState === UI_STATE.ACTIVE) {
+      updateControls(delta);
+    } else if (currentSpeedDisplay) {
+      currentSpeedDisplay.textContent = '0.00';
+    }
 
-  updateInspectTransition(delta);
-  
-  // Update debug position display
-  if (debugPositionDisplay) {
-    debugPositionDisplay.textContent = `X: ${camera.position.x.toFixed(1)} Y: ${camera.position.y.toFixed(1)} Z: ${camera.position.z.toFixed(1)}`;
-  }
+    // Update debug speed display
+    if (uiState === UI_STATE.ACTIVE && currentSpeedDisplay) {
+      currentSpeedDisplay.textContent = getVelocity().toFixed(2);
+    }
 
-  // Check Proximity
-  if (proximityManager) {
-    if (uiState === UI_STATE.ACTIVE && inspectState.phase === INSPECT_PHASE.IDLE) {
-      currentTargetState = proximityManager.update();
-    } else if (currentTargetState.activeId || currentTargetState.candidateId) {
-      currentTargetState = proximityManager.clearTargeting();
+    updateInspectTransition(delta);
+
+    // Update debug position display
+    if (debugPositionDisplay) {
+      debugPositionDisplay.textContent = `X: ${camera.position.x.toFixed(1)} Y: ${camera.position.y.toFixed(1)} Z: ${camera.position.z.toFixed(1)}`;
+    }
+
+    // Check Proximity
+    if (proximityManager) {
+      if (uiState === UI_STATE.ACTIVE && inspectState.phase === INSPECT_PHASE.IDLE) {
+        currentTargetState = proximityManager.update();
+      } else if (currentTargetState.activeId || currentTargetState.candidateId) {
+        currentTargetState = proximityManager.clearTargeting();
+      } else {
+        currentTargetState = EMPTY_TARGET_STATE;
+      }
     } else {
       currentTargetState = EMPTY_TARGET_STATE;
     }
-  } else {
-    currentTargetState = EMPTY_TARGET_STATE;
+
+    updateActiveLetterUI(currentTargetState?.activeId ?? null);
+
+    // Spatial narration volume — only during immersive play, not during inspect
+    if (inspectState.phase === INSPECT_PHASE.IDLE) {
+      audioEngine.setNarrationVolume(
+        computeNarrationVolume(currentTargetState?.activeId ?? null)
+      );
+    }
+
+    syncInspectUi();
+    if (groundTimeline) {
+      groundTimeline.update({
+        uiState,
+        viewMode,
+        inspectPhase: inspectState.phase,
+        activeId: currentTargetState?.activeId ?? null,
+        candidateId: currentTargetState?.candidateId ?? null,
+        movementSpeed: getVelocity(),
+        elapsedTime,
+        cameraPosition: camera.position,
+      });
+    }
+
+    // Animate Letters (Slight airflow)
+    const time = elapsedTime;
+
+    // Animate Lights - DISABLED to ensure consistent lighting on front/back
+    // No light animation code here anymore
+
+    if (letterObjects.length > 0) {
+      // Optimization: Only animate letters within view distance
+      const animationRadiusSq = ANIMATION.LETTER_ANIMATION_RADIUS * ANIMATION.LETTER_ANIMATION_RADIUS;
+
+      letterObjects.forEach((letter, i) => {
+        const distSq = camera.position.distanceToSquared(letter.position);
+
+        // Skip animation for distant letters to save CPU
+        if (distSq > animationRadiusSq) return;
+
+        const baseRotationY = letter.userData.baseRotationY ?? 0;
+        const basePositionY = letter.userData.basePositionY ?? letter.userData.position.y;
+
+        if (inspectState.phase !== INSPECT_PHASE.IDLE && letter.userData.id === inspectState.letterId) {
+          letter.rotation.y = baseRotationY;
+          letter.rotation.z = 0;
+          letter.position.y = basePositionY;
+          return;
+        }
+
+        const offset = i * 2; // Phase offset
+
+        // Gentle rotation (torsion)
+        letter.rotation.y = baseRotationY + Math.sin(time * ANIMATION.ROTATION_SPEED + offset) * ANIMATION.ROTATION_AMPLITUDE;
+
+        // Swaying (wind)
+        letter.rotation.z = Math.sin(time * ANIMATION.SWAY_SPEED + offset) * ANIMATION.SWAY_AMPLITUDE;
+
+        // Vertical bobbing (air currents)
+        letter.position.y = basePositionY + Math.sin(time * ANIMATION.BOB_SPEED + offset) * ANIMATION.BOB_AMPLITUDE;
+      });
+    }
+
+    // Update atmosphere zone colors and dust animation
+    updateAtmosphere(camera.position.z, delta);
+    updateDust(dustParticles, elapsedTime);
+
+    // Render via post-processing composer
+    composer.render(delta);
+  } catch (error) {
+    console.error('[animate] Frame error:', error);
   }
-
-  updateActiveLetterUI(currentTargetState?.activeId ?? null);
-
-  // Spatial narration volume — only during immersive play, not during inspect
-  if (inspectState.phase === INSPECT_PHASE.IDLE) {
-    audioEngine.setNarrationVolume(
-      computeNarrationVolume(currentTargetState?.activeId ?? null)
-    );
-  }
-
-  syncInspectUi();
-  if (groundTimeline) {
-    groundTimeline.update({
-      uiState,
-      viewMode,
-      inspectPhase: inspectState.phase,
-      activeId: currentTargetState?.activeId ?? null,
-      candidateId: currentTargetState?.candidateId ?? null,
-      movementSpeed: getVelocity(),
-      elapsedTime,
-      cameraPosition: camera.position,
-    });
-  }
-
-  // Animate Letters (Slight airflow)
-  const time = elapsedTime;
-
-  // Animate Lights - DISABLED to ensure consistent lighting on front/back
-  // No light animation code here anymore
-
-  if (letterObjects.length > 0) {
-    // Optimization: Only animate letters within view distance
-    const animationRadiusSq = ANIMATION.LETTER_ANIMATION_RADIUS * ANIMATION.LETTER_ANIMATION_RADIUS;
-
-    letterObjects.forEach((letter, i) => {
-      const distSq = camera.position.distanceToSquared(letter.position);
-
-      // Skip animation for distant letters to save CPU
-      if (distSq > animationRadiusSq) return;
-
-      const baseRotationY = letter.userData.baseRotationY ?? 0;
-      const basePositionY = letter.userData.basePositionY ?? letter.userData.position.y;
-
-      if (inspectState.phase !== INSPECT_PHASE.IDLE && letter.userData.id === inspectState.letterId) {
-        letter.rotation.y = baseRotationY;
-        letter.rotation.z = 0;
-        letter.position.y = basePositionY;
-        return;
-      }
-
-      const offset = i * 2; // Phase offset
-
-      // Gentle rotation (torsion)
-      letter.rotation.y = baseRotationY + Math.sin(time * ANIMATION.ROTATION_SPEED + offset) * ANIMATION.ROTATION_AMPLITUDE;
-
-      // Swaying (wind)
-      letter.rotation.z = Math.sin(time * ANIMATION.SWAY_SPEED + offset) * ANIMATION.SWAY_AMPLITUDE;
-
-      // Vertical bobbing (air currents)
-      letter.position.y = basePositionY + Math.sin(time * ANIMATION.BOB_SPEED + offset) * ANIMATION.BOB_AMPLITUDE;
-    });
-  }
-
-  // Update atmosphere zone colors and dust animation
-  updateAtmosphere(camera.position.z, delta);
-  updateDust(dustParticles, elapsedTime);
-
-  // Render via post-processing composer
-  composer.render(delta);
 }
 
 animate();
@@ -1876,6 +1964,11 @@ function cleanupRuntime() {
 
   hasCleanedUp = true;
   clearPointerLockFallbackTimer();
+
+  if (deferredLoadNoticeTimer) {
+    clearTimeout(deferredLoadNoticeTimer);
+    deferredLoadNoticeTimer = null;
+  }
 
   speedSlider.removeEventListener('input', handleSpeedSliderInput);
   startBtn.removeEventListener('click', handleStartExperience);

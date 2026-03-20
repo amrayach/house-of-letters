@@ -31,8 +31,10 @@
 
 - `index.html` defines:
   - `#landing-screen` (visible by default, z-index 3000)
+  - `#webgl-fallback` (hidden on boot, shown only when WebGL is unavailable)
   - `#loading-screen` and `#loading-scene-container` (hidden on boot)
   - `#start-screen` and `#pause-screen`
+  - `#deferred-load-notice` (hidden on boot, shown when deferred loading degrades or fails)
   - HUD/debug/subtitle/preview DOM
 - Most overlay elements now start `hidden` and are revealed by `main.js` state sync rather than ad hoc inline `display` toggles.
 - `main.js` resolves those DOM nodes up front.
@@ -63,6 +65,8 @@
 
 ### 3. Archive scene boot
 
+- Before `initScene()`, a proactive WebGL check validates that the browser can create a WebGL context. If not, `#landing-screen` is hidden, `#webgl-fallback` is shown, and module execution halts via throw.
+- `initScene()` is additionally wrapped in try-catch so GPU driver failures or context limit errors also show the fallback and halt execution.
 - `initScene()` creates the gameplay `scene`, `camera`, and `renderer`, plus a large ground plane and grid.
 - `initLighting(scene)` adds ambient + directional lights.
 - `initControls(camera, renderer.domElement)` prepares:
@@ -175,7 +179,7 @@
   - keep a shell-facing `displayedActiveLetterId`
   - update `themeMixer` when the active ID changes
   - populate preview images
-  - populate subtitle text
+  - populate subtitle text (with chronology date-range fallback from `provisionalChronology.js` when `letterData.text` is absent)
   - let `syncUiChrome()` reveal the preview/subtitle layer only when the runtime is in active immersive mode
 - `main.js` also passes the minimal targeting snapshot plus movement speed and inspect/view state into `groundTimeline.update(...)`; chronology visibility and emphasis stay scene-native and do not widen `proximityManager`'s public contract.
 
@@ -192,7 +196,7 @@
   - it is shell-owned in `main.js`
   - it is shown only for touch devices in `uiState === active` and `viewMode === immersive`
   - it hides during loading, start, pause, bird's-eye, and inspect
-- No new shell state or broader fallback system was added for deferred degraded handling.
+- A non-blocking notification bar (`#deferred-load-notice`) is shown at the top of the viewport when deferred loading settles as degraded or failed. It auto-dismisses after 8 seconds and has a manual close button. This supplements the existing minimal surfaces rather than replacing them.
 
 ### 10. Inspect mode
 

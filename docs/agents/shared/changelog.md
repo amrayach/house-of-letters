@@ -157,3 +157,82 @@ Client request series: movement speed / timeline / audio / landing page (session
 
 ### Part of
 Client request series: movement speed / timeline / audio / landing page (session 4 of 5)
+
+## Session 5a — Low-risk production fixes (Day 1)
+
+**Date:** 2026-03-20
+**Scope:** four isolated production fixes from audit + orphaned asset cleanup
+
+### Changes
+1. Console.log stripping: added `esbuild: { drop: ['console'] }` to vite.config.js for production builds. Dev server retains console output.
+2. Animate loop resilience: wrapped animate() body in try-catch so a single frame error doesn't kill the experience. `requestAnimationFrame` stays outside the try-catch to ensure the loop always continues.
+3. Null guard on currentSpeedDisplay: prevents throw when debug panel elements are missing (line 1775 was unguarded).
+4. Start screen content: added navigation instructions (WASD/mouse/E to inspect) and brief project context line to `startShellContent.js`.
+
+### Files changed
+- `vite.config.js` — esbuild console drop for production builds
+- `src/main.js` — animate try-catch + currentSpeedDisplay null guard
+- `src/config/startShellContent.js` — howToUse and context text
+
+### Validated
+- `npm run build` clean (2.31s)
+- Zero console.* calls in production bundle (confirmed via grep)
+- Both currentSpeedDisplay.textContent references guarded
+- requestAnimationFrame outside try-catch, body inside
+- Start screen wiring confirmed: syncStartShellContent() shows howToUse and context blocks
+
+### Part of
+Production audit Day 1 fixes (session 5a of 2)
+
+## Session 5b — Medium-risk production fixes (Day 1)
+
+**Date:** 2026-03-20
+**Scope:** four medium-risk production fixes from audit
+
+### Changes
+1. WebGL detection: proactive canvas check before `initScene()` plus try-catch around it. Shows styled `#webgl-fallback` message and halts module execution if WebGL unavailable. `const` destructure changed to `let` (safe — never reassigned).
+2. Inspect unlock race fix: replaced `suppressPauseOnNextDesktopUnlock` boolean flag with direct `inspectState.phase !== INSPECT_PHASE.IDLE` check in `handleDesktopUnlock()`. Removed 3 lines of flag logic. Handles ESC during 0.42s inspect transition correctly.
+3. Subtitle fallback: improved from "Listening to Letter N…" to "Letter N · [date range]" using chronology data from `provisionalChronology.js`. New `chronologyLabelByLetterId` lookup at module level.
+4. Deferred load notification: new `#deferred-load-notice` bar shown when zone 3+ letter loading degrades or fails. Auto-dismisses after 8s. Close button for immediate dismissal. Supplements existing controls-hint and touch-pill surfaces.
+
+### Files changed
+- `index.html` — `#webgl-fallback` div, `#deferred-load-notice` div
+- `src/styles/main.css` — WebGL fallback styles, deferred load notice styles
+- `src/main.js` — WebGL check + initScene try-catch, suppress flag removal (3 sites), subtitle lookup + function, deferred notice function + call site + timer cleanup
+
+### Files NOT changed
+- `src/audio/*` — no changes
+- `src/renderer/*` — no changes
+- `src/interaction/*` — no changes
+- `src/config/*` — no changes
+
+### Validated
+- `npm run build` clean (2.27s)
+- Zero `suppressPauseOnNextDesktopUnlock` references in src/
+- `webgl-fallback` present in index.html, main.css, main.js
+- `deferred-load-notice` present in index.html, main.css, main.js
+- `chronologyLabelByLetterId` present in main.js
+- Existing deferred status surfaces (controls-hint, touch pill) unchanged
+
+### Part of
+Production audit Day 1 fixes (session 5b of 2)
+
+## Session 5c — Debug panel production gating
+
+**Date:** 2026-03-20
+**Scope:** tiny fix
+
+### Changes
+- Debug panel (#debug-panel) now auto-shows during `npm run dev` via `import.meta.env.DEV` (Vite built-in, replaced at build time).
+- In production: hidden by default, visible with `?debug` in the URL (any value except `?debug=0`). localStorage preference (`hod:debug`) still respected as fallback.
+- `?debug` (no value), `?debug=1`, `?debug=true` all activate; `?debug=0` explicitly disables.
+
+### Files changed
+- `src/main.js` — `debugUiEnabled` flag updated with `import.meta.env.DEV` + improved URL param parsing (`has()` instead of `=== '1'`)
+
+### Validated
+- `npm run build` clean
+- `import.meta.env.DEV` absent from production bundle (Vite dead-code elimination confirmed)
+
+### Part of
+Production audit Day 1 fixes (session 5c)

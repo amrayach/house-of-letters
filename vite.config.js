@@ -3,6 +3,9 @@ import glsl from 'vite-plugin-glsl';
 import { resolve } from 'path';
 
 export default defineConfig({
+  esbuild: {
+    drop: process.env.NODE_ENV === 'production' ? ['console'] : [],
+  },
   plugins: [glsl()],
   publicDir: 'public',
   resolve: {

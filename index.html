@@ -41,6 +41,15 @@
       </div>
     </div>
 
+    <!-- WebGL Fallback -->
+    <div id="webgl-fallback" hidden>
+      <div class="webgl-fallback-content">
+        <h1>House of Dreams</h1>
+        <p>This experience requires WebGL, which your browser or device does not support.</p>
+        <p>Please try a recent version of Chrome, Firefox, or Safari on a desktop or modern mobile device.</p>
+      </div>
+    </div>
+
     <!-- Loading Screen with 3D Building Scene (hidden until landing CTA clicked) -->
     <div id="loading-screen" hidden>
       <!-- 3D Scene Container -->
@@ -140,6 +149,12 @@
       </div>
     </div>
     
+    <!-- Deferred Load Notice -->
+    <div id="deferred-load-notice" hidden>
+      <p id="deferred-load-notice-text"></p>
+      <button id="deferred-load-notice-close" type="button" aria-label="Dismiss">&times;</button>
+    </div>
+
     <!-- Subtitles -->
     <div id="subtitle-container" aria-live="polite" aria-atomic="true"></div>
 
