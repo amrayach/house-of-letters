@@ -703,7 +703,8 @@ body {
   color: #00ff88;
 }
 
-body.debug-enabled[data-ui-state="active"][data-view-mode="immersive"][data-input-mode="desktop"] #debug-panel:not([hidden]) {
+body.debug-enabled[data-ui-state="active"][data-input-mode="desktop"] #debug-panel:not([hidden]),
+body.debug-enabled[data-ui-state="paused"][data-input-mode="desktop"] #debug-panel:not([hidden]) {
   display: block;
 }
 

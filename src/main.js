@@ -15,6 +15,7 @@ import { START_SHELL_CONTENT } from '@config/startShellContent.js';
 import { LANDING_CONTENT } from '@config/landingContent.js';
 import lettersData from '@data/letters.json';
 import { validatedProvisionalChronology } from '@data/provisionalChronology.js';
+import { diag } from '@utils/diagnostics.js';
 
 const LETTER_LOAD_STAGE = Object.freeze({
   CORE: 'core',
@@ -198,6 +199,7 @@ const INSPECT_PHASE = Object.freeze({
 });
 
 const POINTER_LOCK_FALLBACK_MS = 1800;
+let perfFirstActiveFrame = false; // DEV: one-shot flag for first-frame-after-ACTIVE profiling
 
 const landingScreen = document.getElementById('landing-screen');
 const landingCta = document.getElementById('landing-cta');
@@ -510,19 +512,37 @@ function hasRequiredGroundTimelineCoverage() {
   return true;
 }
 
+let groundTimelineCoveredGroupCount = 0;
+
 function tryInitializeGroundTimeline() {
-  if (groundTimeline || !validatedProvisionalChronology || !hasRequiredGroundTimelineCoverage()) {
-    return false;
+  if (!validatedProvisionalChronology) return false;
+
+  // Filter to only chronology groups whose letters are all loaded
+  const available = validatedProvisionalChronology.filter((group) =>
+    group.letterIds.every((id) => letterObjectById.has(id)),
+  );
+
+  if (available.length === 0) return false;
+
+  // Already initialized with the same or more coverage — skip
+  if (groundTimeline && available.length <= groundTimelineCoveredGroupCount) return true;
+
+  // Dispose old partial timeline before rebuilding with expanded coverage
+  if (groundTimeline) {
+    diag.log('state', `groundTimeline rebuild: ${groundTimelineCoveredGroupCount}→${available.length} groups`);
+    groundTimeline.dispose();
+    groundTimeline = null;
   }
 
   groundTimeline = createGroundTimeline({
     scene,
     letters: letterObjects,
-    chronology: validatedProvisionalChronology,
+    chronology: available,
     constants: TIMELINE,
   });
 
-  console.log('[ground-timeline] Initialized after full chronology coverage became available.');
+  groundTimelineCoveredGroupCount = available.length;
+  diag.log('state', `groundTimeline init ${available.length}/${validatedProvisionalChronology.length} groups`);
   return true;
 }
 
@@ -949,6 +969,15 @@ function handleEnterFromLanding() {
   if (hasLeftLanding) return;
   hasLeftLanding = true;
 
+  // Warm up AudioContext on this user gesture (browsers require interaction)
+  audioEngine.init();
+  audioEngine.setupVisibilityHandler({
+    shouldResume: () => uiState === UI_STATE.ACTIVE,
+  });
+
+  // Buffer theme MP3 + register narration URLs in parallel with asset loading
+  prepareAudio();
+
   // Reveal loading screen behind landing (needs dimensions for LoadingScene renderer)
   if (loadingScreen) loadingScreen.hidden = false;
 
@@ -1027,13 +1056,14 @@ function syncInspectUi() {
 }
 
 function syncUiChrome() {
+  if (import.meta.env.DEV) performance.mark('hol:chrome-begin');
   const isActive = uiState === UI_STATE.ACTIVE;
   const immersiveActive = isActive && viewMode === VIEW_MODE.IMMERSIVE;
   const birdEyeActive = isActive && viewMode === VIEW_MODE.BIRD_EYE;
   const desktopImmersive = immersiveActive && !isTouchDevice;
   const mobileImmersive = immersiveActive && isTouchDevice;
   const shouldShowLetterUi = immersiveActive && inspectState.phase === INSPECT_PHASE.IDLE && Boolean(displayedActiveLetterId);
-  const shouldShowDebug = debugUiEnabled && desktopImmersive;
+  const shouldShowDebug = debugUiEnabled && !isTouchDevice && (isActive || uiState === UI_STATE.PAUSED);
 
   document.body.dataset.uiState = uiState;
   document.body.dataset.viewMode = viewMode;
@@ -1053,10 +1083,15 @@ function syncUiChrome() {
   previewContainer.classList.toggle('visible', shouldShowLetterUi);
   subtitleElement.hidden = !shouldShowLetterUi || !subtitleElement.textContent;
   syncInspectUi();
+  if (import.meta.env.DEV) {
+    performance.mark('hol:chrome-done');
+    performance.measure('hol:syncUiChrome', 'hol:chrome-begin', 'hol:chrome-done');
+  }
 }
 
 function setUiState(nextState) {
   if (uiState !== nextState) {
+    diag.log('state', `uiState ${uiState}→${nextState}`);
     uiState = nextState;
   }
 
@@ -1065,6 +1100,7 @@ function setUiState(nextState) {
 
 function setViewMode(nextMode) {
   if (viewMode !== nextMode) {
+    diag.log('state', `viewMode ${viewMode}→${nextMode}`);
     viewMode = nextMode;
   }
 
@@ -1087,22 +1123,26 @@ function blurActiveElement() {
   }
 }
 
-function bootstrapExperience() {
-  if (hasBootstrappedExperience) {
-    return;
-  }
-
-  audioEngine.init();
-  audioEngine.setupVisibilityHandler({
-    shouldResume: () => uiState === UI_STATE.ACTIVE,
-  });
-  audioEngine.playBackgroundTheme(AUDIO.THEME_PATH);
-
+function prepareAudio() {
+  audioEngine.prepareBackgroundTheme(AUDIO.THEME_PATH);
   lettersData.forEach((letter) => {
     if (letter.narration) {
       audioEngine.registerNarration(letter.id, letter.narration);
     }
   });
+}
+
+function bootstrapExperience() {
+  if (hasBootstrappedExperience) {
+    return;
+  }
+
+  // Fallback: init audio if landing CTA didn't run (edge case)
+  audioEngine.init();
+  audioEngine.setupVisibilityHandler({
+    shouldResume: () => uiState === UI_STATE.ACTIVE,
+  });
+  prepareAudio();
 
   hasBootstrappedExperience = true;
 }
@@ -1242,6 +1282,7 @@ function enterInspectMode() {
   setViewMode(VIEW_MODE.INSPECT);
   clearRuntimeTargeting();
   audioEngine.restartNarration(inspectState.letterId);
+  diag.log('inspect', `enter id=${inspectState.letterId} side=${inspectState.side}`);
   return true;
 }
 
@@ -1250,6 +1291,7 @@ function exitInspectMode() {
     return false;
   }
 
+  diag.log('inspect', `exit id=${inspectState.letterId}`);
   startInspectTransition(inspectState.returnPose, INSPECT_PHASE.EXITING);
   syncInspectUi();
   return true;
@@ -1378,13 +1420,27 @@ function handleSkipIntro() {
 }
 
 function handleDesktopLock() {
+  if (import.meta.env.DEV) performance.mark('hol:lock-begin');
   clearPointerLockFallbackTimer();
   blurActiveElement();
   setStartPendingState(false);
   setPausePendingState(false);
+  if (import.meta.env.DEV) performance.mark('hol:lock-before-ui');
+  perfFirstActiveFrame = true;
   setUiState(UI_STATE.ACTIVE);
+  if (import.meta.env.DEV) performance.mark('hol:lock-after-ui');
   audioEngine.resume();
-  void startDeferredLetterLoad();
+  if (import.meta.env.DEV) performance.mark('hol:lock-before-deferred');
+  // Defer deferred load to next macrotask so the first active frame paints without
+  // the synchronous cost of queuing 40 GLB fetch requests (~30ms measured).
+  setTimeout(() => void startDeferredLetterLoad(), 0);
+  if (import.meta.env.DEV) {
+    performance.mark('hol:lock-done');
+    performance.measure('hol:lock-pre-ui', 'hol:lock-begin', 'hol:lock-before-ui');
+    performance.measure('hol:lock-setUiState', 'hol:lock-before-ui', 'hol:lock-after-ui');
+    performance.measure('hol:lock-deferred-kickoff', 'hol:lock-before-deferred', 'hol:lock-done');
+    performance.measure('hol:lock-total', 'hol:lock-begin', 'hol:lock-done');
+  }
 }
 
 function handleDesktopUnlock() {
@@ -1438,23 +1494,42 @@ function handleMobilePause() {
 }
 
 function handleStartExperience() {
+  if (import.meta.env.DEV) performance.mark('hol:start-begin');
   bootstrapExperience();
+  if (import.meta.env.DEV) performance.mark('hol:start-after-bootstrap');
+  audioEngine.playBackgroundTheme(AUDIO.THEME_PATH);
+  if (import.meta.env.DEV) performance.mark('hol:start-after-audio');
 
   if (isTouchDevice) {
     activateControls();
     setStartPendingState(false);
+    perfFirstActiveFrame = true;
     setUiState(UI_STATE.ACTIVE);
     audioEngine.resume();
-    void startDeferredLetterLoad();
+    // Defer deferred load to next macrotask so the first active frame paints without
+    // the synchronous cost of queuing 40 GLB fetch requests (~30ms measured).
+    setTimeout(() => void startDeferredLetterLoad(), 0);
+    if (import.meta.env.DEV) {
+      performance.mark('hol:start-touch-done');
+      performance.measure('hol:start-bootstrap', 'hol:start-begin', 'hol:start-after-bootstrap');
+      performance.measure('hol:start-audio', 'hol:start-after-bootstrap', 'hol:start-after-audio');
+      performance.measure('hol:start-touch-total', 'hol:start-begin', 'hol:start-touch-done');
+    }
     return;
   }
 
-  audioEngine.pause();
+  // Desktop: theme plays through the pointer lock transition (no pause)
   requestDesktopPointerLock(
     UI_STATE.START,
     'Waiting for pointer capture...',
     'Pointer lock was unavailable. Click Enter Archive to try again.',
   );
+  if (import.meta.env.DEV) {
+    performance.mark('hol:start-desktop-requested');
+    performance.measure('hol:start-bootstrap', 'hol:start-begin', 'hol:start-after-bootstrap');
+    performance.measure('hol:start-audio', 'hol:start-after-bootstrap', 'hol:start-after-audio');
+    performance.measure('hol:start-desktop-to-lock-request', 'hol:start-begin', 'hol:start-desktop-requested');
+  }
 }
 
 function handlePointerLockError() {
@@ -1470,6 +1545,19 @@ function handlePointerLockError() {
 }
 
 function handleInspectKeyDown(event) {
+  // Ctrl+Shift+L → copy diagnostic logs to clipboard
+  if (event.ctrlKey && event.shiftKey && event.code === 'KeyL') {
+    event.preventDefault();
+    window.__hol.copy().then((result) => {
+      const toast = document.createElement('div');
+      toast.textContent = typeof result === 'string' && result.startsWith('Copied') ? result : 'Logs ready (check console)';
+      toast.style.cssText = 'position:fixed;top:16px;right:16px;background:#222;color:#0f0;padding:8px 16px;border-radius:6px;font:13px/1.4 monospace;z-index:99999;opacity:0.92;pointer-events:none';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2500);
+    });
+    return;
+  }
+
   if (event.metaKey || event.ctrlKey || event.altKey) {
     return;
   }
@@ -1838,6 +1926,9 @@ function animate() {
   requestAnimationFrame(animate);
 
   try {
+    const isFirstActiveFrame = perfFirstActiveFrame && uiState === UI_STATE.ACTIVE;
+    if (import.meta.env.DEV && isFirstActiveFrame) performance.mark('hol:first-active-frame-begin');
+
     const delta = clock.getDelta();
     const elapsedTime = clock.getElapsedTime();
     const nextViewMode = inspectState.phase !== INSPECT_PHASE.IDLE
@@ -1884,8 +1975,10 @@ function animate() {
 
     // Spatial narration volume — only during immersive play, not during inspect
     if (inspectState.phase === INSPECT_PHASE.IDLE) {
+      const activeId = currentTargetState?.activeId ?? null;
       audioEngine.setNarrationVolume(
-        computeNarrationVolume(currentTargetState?.activeId ?? null)
+        computeNarrationVolume(activeId),
+        activeId
       );
     }
 
@@ -1948,6 +2041,12 @@ function animate() {
 
     // Render via post-processing composer
     composer.render(delta);
+
+    if (import.meta.env.DEV && isFirstActiveFrame) {
+      perfFirstActiveFrame = false;
+      performance.mark('hol:first-active-frame-end');
+      performance.measure('hol:first-active-frame', 'hol:first-active-frame-begin', 'hol:first-active-frame-end');
+    }
   } catch (error) {
     console.error('[animate] Frame error:', error);
   }

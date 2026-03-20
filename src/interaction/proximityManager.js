@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { audioEngine } from '../audio/audioEngine.js';
 import { INTERACTION } from '../config/constants.js';
+import { diag } from '../utils/diagnostics.js';
 
 const ACTIVE_CUE_COLOR = 0xffd86b;
 const VIEW_ALIGNMENT_MIN_DOT = 0.35;
@@ -127,7 +128,7 @@ export class ProximityManager {
 
   clearTargeting() {
     if (this.activeLetter) {
-      console.log(`Cleared active targeting for Letter ${this.activeLetter.userData.id}`);
+      diag.log('proximity', `clearTargeting id=${this.activeLetter.userData.id}`);
       this.deactivateLetter(this.activeLetter);
     }
 
@@ -367,15 +368,13 @@ export class ProximityManager {
 
   activateNewLetter(candidate) {
     if (this.activeLetter && this.activeLetter !== candidate.letter) {
-      console.log(`Left proximity of Letter ${this.activeLetter.userData.id}`);
+      diag.log('proximity', `leave id=${this.activeLetter.userData.id}`);
       this.deactivateLetter(this.activeLetter);
     }
 
     if (this.activeLetter !== candidate.letter) {
       const pos = candidate.letter.position;
-      console.log(
-        `Entered focus of Letter ${candidate.letter.userData.id} (${candidate.side}) at X=${pos.x.toFixed(2)}, Y=${pos.y.toFixed(2)}, Z=${pos.z.toFixed(2)} (Score: ${candidate.score.toFixed(2)})`,
-      );
+      diag.log('proximity', `enter id=${candidate.letter.userData.id} side=${candidate.side} score=${candidate.score.toFixed(2)} pos=${pos.x.toFixed(1)},${pos.y.toFixed(1)},${pos.z.toFixed(1)}`);
       this.activateLetter(candidate.letter);
     }
 
@@ -387,7 +386,7 @@ export class ProximityManager {
 
   clearActiveLetter() {
     if (this.activeLetter) {
-      console.log(`Left proximity of Letter ${this.activeLetter.userData.id}`);
+      diag.log('proximity', `leave id=${this.activeLetter.userData.id} (cleared)`);
       this.deactivateLetter(this.activeLetter);
     }
 

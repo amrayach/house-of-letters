@@ -213,7 +213,7 @@
 ### 11. Narration and theme behavior
 
 - Background theme:
-  - one theme starts on `startBtn` click
+  - theme auto-plays once buffered after the landing CTA click (`prepareBackgroundTheme` `onload` callback); `playBackgroundTheme` on `startBtn` click is a no-op if already playing
   - it uses `Howl({ html5: true, loop: true })`
   - it ducks proportionally while narration plays — theme volume interpolates between `AUDIO.THEME_VOLUME` and `AUDIO.DUCKING_VOLUME` based on narration volume ratio
   - document visibility always pauses it when the tab is hidden
@@ -302,7 +302,8 @@
 | --- | --- | --- |
 | Intro gate = `assetsLoaded && loadingSceneComplete` | `assetsLoaded` now means the core startup subset only, so older "all letters before entry" assumptions are wrong and any missed callback still leaves the user stuck on loading/start flow | skip intro, slow network, partial startup model failure, timeout path |
 | Two render loops during loading | intro and archive both render before the start screen; performance changes hit load time too | FPS and CPU/GPU load during initial boot |
-| Audio starts only on `startBtn` click | browser autoplay rules require user interaction; moving this earlier will break playback | desktop click path, mobile first tap, resume after tab hide |
+| Theme auto-plays on buffer ready after landing CTA | AudioContext is resumed on landing CTA user gesture; `onload` callback plays if not globally paused; `playBackgroundTheme` on `startBtn` click is a no-op if already playing | desktop click path, mobile first tap, tab hide during buffering, resume after tab hide |
+| Deferred load is deferred to next macrotask | `startDeferredLetterLoad()` is wrapped in `setTimeout(0)` so the first active frame paints without the ~30ms cost of queuing 40 GLB fetches | deferred load still starts, late-letter integration still works, one-shot guard still prevents duplicates |
 | `themeMixer` vs `letter.theme` | metadata suggests per-letter themes, runtime does not implement them | do not assume JSON theme edits change audible behavior |
 | Highlight logic vs material replacement | the active-state cue now depends on lazily added outline geometry plus optional emissive tint | active-letter visual feedback after material or non-glass detection edits |
 | Letter animation vs loader orientation | loader stores the base facing angle and height, and `animate()` sways around those stored values | letter facing/orientation after motion changes |

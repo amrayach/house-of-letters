@@ -565,7 +565,7 @@ export function createGroundTimeline({ scene, letters, chronology, constants } =
     const targetId = activeId ?? candidateId ?? null;
     const isHidden = uiState !== 'active' || viewMode === 'bird-eye';
 
-    if (!hasBeenRevealed && uiState === 'active' && viewMode === 'immersive' && inspectPhase === 'idle' && targetId) {
+    if (!hasBeenRevealed && uiState === 'active' && viewMode === 'immersive' && inspectPhase === 'idle') {
       hasBeenRevealed = true;
     }
 

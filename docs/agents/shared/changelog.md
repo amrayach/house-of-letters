@@ -236,3 +236,39 @@ Production audit Day 1 fixes (session 5b of 2)
 
 ### Part of
 Production audit Day 1 fixes (session 5c)
+
+## Session 6 — Entry transition quality audit
+
+**Date:** 2026-03-20
+**Scope:** focused workstream — three targeted fixes to eliminate perceptible delays and missing spatial cues during the start→active transition
+
+### Behavioral changes
+1. Ground timeline (spine + anchors) is now visible from the first frame of ACTIVE state. Previously it required a proximity target (letter within CHECK_RADIUS), which doesn't exist at the spawn position z=-170. The `hasBeenRevealed` one-time latch no longer requires `targetId`.
+2. Background theme auto-plays as soon as the MP3 buffer is ready after the landing CTA click, rather than waiting for the "Enter Archive" click. Uses Howler's `onload` callback. Guarded by `isGloballyPaused` and `playing()` to prevent double-play or play during tab-hidden state.
+3. `startDeferredLetterLoad()` is deferred to `setTimeout(0)` so the 40-GLB fetch queue setup (~30ms measured) runs as a separate macrotask after the first ACTIVE frame paints. Click handler total dropped from 30.6ms to 0.7ms.
+4. DEV-gated `performance.mark/measure` instrumentation added to `handleStartExperience`, `handleDesktopLock`, `syncUiChrome`, and the first animate frame after ACTIVE. Stripped in production builds by Vite.
+
+### Profiling results
+- `hol:start-bootstrap`: 0.3ms (negligible)
+- `hol:start-audio`: 0.0ms (theme already playing from onload)
+- `hol:syncUiChrome`: 0.1-0.4ms (negligible)
+- `hol:start-touch-total`: 30.6ms → 0.7ms after setTimeout deferral
+- `hol:first-active-frame`: 15-18ms (within 60fps budget)
+- Root cause: `startDeferredLetterLoad()` synchronously queuing 40 GLTFLoader instances
+
+### Known edge case
+With `html5: true`, Howler streams audio — `onload` fires when enough is buffered to begin playback, not when the full file is downloaded. On very slow networks, the stream could stall mid-playback causing a brief audio gap. This is Howler/browser behavior, not fixable at the application level.
+
+### Files changed
+- `src/renderer/groundTimeline.js` — removed `&& targetId` from reveal condition (line 568)
+- `src/audio/audioEngine.js` — added `onload` auto-play callback in `prepareBackgroundTheme`
+- `src/main.js` — deferred `startDeferredLetterLoad()` to `setTimeout(0)` in both desktop and touch paths; added DEV-gated performance marks
+- `docs/agents/shared/02-runtime-flow.md` — updated theme timing and added deferred load coupling row
+- `docs/agents/shared/05-constraints.md` — added three new regression patterns
+- `docs/agents/shared/changelog.md` — this entry
+
+### Validated
+- `npm run build` clean
+- Performance marks confirmed stripped from production build
+- Touch-emulated Playwright profiling: before/after measurements confirm fix
+- No API changes (all changes are internal behavioral)

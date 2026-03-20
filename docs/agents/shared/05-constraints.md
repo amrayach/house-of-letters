@@ -69,6 +69,9 @@
 - Assuming `theme` changes affect audible behavior today
 - Breaking the non-glass active-state cue while changing letter materials or mesh naming
 - Forgetting that `animate()` should sway around stored base rotation/height instead of overwriting them absolutely
+- Removing the ground timeline `hasBeenRevealed` one-time latch or the `isHidden` per-frame visibility gate without understanding both are needed
+- Auto-playing theme before AudioContext is resumed from a user gesture (the landing CTA gesture unlocks audio for the session)
+- Moving `startDeferredLetterLoad()` back onto the synchronous click/lock handler path — it was deferred to `setTimeout(0)` because queuing 40 GLB fetches costs ~30ms
 
 ## Asset-heavy path handling
 
