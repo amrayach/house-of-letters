@@ -6,12 +6,12 @@ export const LANDING_CONTENT = Object.freeze({
     Object.freeze({
       id: 'project',
       kicker: 'The Project',
-      body: 'House of Dreams is an interactive archive born from 105 prison papers written by Palestinian political prisoner Ahed Al-Haj Hassan during his detention in Syrian prisons between 1988 and 1992. This digital space reconstructs the intimate world he built through words \u2014 a house of memory, resistance, and imagination.',
+      body: 'House of Dreams is an interactive archive born from 105 prison papers written by Palestinian political prisoner Ahed Sheikh Hassan during his detention in Syrian prisons between 1987 and 1994. This digital space reconstructs the intimate world he built through words \u2014 a house of memory, resistance, and imagination.',
     }),
     Object.freeze({
       id: 'ahed',
-      kicker: 'Ahed Al-Haj Hassan',
-      body: 'A Palestinian political prisoner held in Syrian detention facilities from 1988 to 1992, Ahed wrote extensively during his imprisonment. His papers \u2014 part diary, part letter, part testament \u2014 document daily survival, political reflection, and the construction of an inner life under confinement.',
+      kicker: 'Ahed Sheikh Hassan',
+      body: 'A Palestinian political prisoner held in Syrian detention facilities from 1987 to 1994, Ahed wrote extensively during his imprisonment. His papers \u2014 part diary, part letter, part testament \u2014 document daily survival, political reflection, and the construction of an inner life under confinement.',
     }),
     Object.freeze({
       id: 'party',
