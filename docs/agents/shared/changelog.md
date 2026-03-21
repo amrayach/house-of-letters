@@ -272,3 +272,204 @@ With `html5: true`, Howler streams audio — `onload` fires when enough is buffe
 - Performance marks confirmed stripped from production build
 - Touch-emulated Playwright profiling: before/after measurements confirm fix
 - No API changes (all changes are internal behavioral)
+
+## Session 7 — v3 meander layout for letter positions
+
+**Date:** 2026-03-20
+**Scope:** focused workstream — letter placement data and generator rewrite
+
+### Behavioral changes
+1. All 46 letter positions updated to follow a smooth meandering river path instead of random scatter.
+2. Zone 3 (letters 7–18) X values are mirrored with smoothstep blending at zone boundaries, creating an S-curve flow between zones 2→3→4.
+3. Zone z-ranges expanded: zone 2 now starts at -27, zone 3 at -4, zone 4 extends to 65.
+4. Ground timeline CatmullRom spline naturally follows the smoother positions — no changes needed to `groundTimeline.js`.
+
+### Generator rewrite
+- `scripts/generate-letter-positions.cjs` replaced random-scatter with deterministic meander algorithm.
+- Seeded PRNG (mulberry32, seed=42) for reproducibility.
+- Core algorithm: dual-frequency sine centerline with growing amplitude, zone 3 mirror, perpendicular jitter, spacing relaxation.
+- `MEANDER_CONFIG` object stores all generation parameters at file top.
+- `ZONES` array updated with expanded z-ranges matching new layout.
+
+### Files changed
+- `src/data/letters.json` — all 46 position.x and position.z values updated
+- `scripts/generate-letter-positions.cjs` — complete rewrite to meander generator
+- `docs/agents/shared/03-data-assets.md` — updated zone z-ranges in "Observed dataset shape"
+- `docs/agents/shared/changelog.md` — this entry
+
+### Files NOT changed
+- `src/renderer/groundTimeline.js` — CatmullRom adapts to new positions automatically
+- `src/data/provisionalChronology.js` — zone assignments unchanged
+- `src/config/constants.js` — timeline radii/styling unchanged
+- `src/main.js` — initialization flow unchanged
+
+### Validated
+- `npm run build` clean
+- `npm run validate:letters` pass
+- Zone counts preserved: 1 / 5 / 12 / 28
+
+## Session 7b — Letter Distribution Tool
+
+**Date:** 2026-03-20
+**Scope:** new standalone dev tool for visual letter placement
+
+### What
+Single self-contained HTML file (`dev/meander-tool.html`) that the artist/client opens directly in the browser (no server, no build step). Provides:
+- Top-down 2D canvas visualization of the XZ plane with zone bands, letter dots, connecting path, and meander centerline
+- Full parameter controls: zone Z ranges, path shape (frequency, amplitude, phase, mirror), spacing, seed
+- Real-time preview on every slider change
+- Stats bar: min pair spacing, violations, sharpest turn, path length
+- Export positions JSON, export full config, copy config to clipboard, reset to defaults
+- Ghost dots showing previous positions for comparison after regeneration
+- Pan/zoom on the canvas
+
+### Algorithm
+The tool contains its own JS implementation that exactly matches `scripts/generate-letter-positions.cjs`: same seeded PRNG (mulberry32), same meander centerline, same zone 3 mirror with smoothstep blending, same spacing relaxation. Default config initializes to the checked-in values (seed 42).
+
+### Files created
+- `dev/meander-tool.html` — standalone tool (zero external dependencies)
+
+### Files changed
+- `README.md` — added "Dev Tools" section
+- `docs/agents/shared/changelog.md` — this entry
+
+### Files NOT changed
+- `vite.config.js` — `dev/` is not part of the build
+- `src/data/letters.json` — tool exports JSON for manual application
+- `scripts/generate-letter-positions.cjs` — read for algorithm reference only
+
+### Validated
+- `npm run build` clean, `dist/` does not contain `dev/`
+- `npm run validate:letters` pass
+- Tool opens via `file://` in Chrome, all controls functional
+
+## Session 8 — Narration continuity through inspect mode
+
+**Date:** 2026-03-20
+**Scope:** tiny fix — single behavioral change in inspect entry
+
+### Behavioral change
+Entering inspect mode (E key / inspect button) no longer restarts the narration from the beginning. Narration continues from the current playhead at full volume throughout the inspect session. On exit, per-frame distance-based volume updates resume smoothly.
+
+### What was removed
+- `audioEngine.restartNarration(inspectState.letterId)` call in `enterInspectMode()` — this was the line that sought to the beginning
+
+### What was added
+- `audioEngine.activateNarration(inspectState.letterId)` after `clearRuntimeTargeting()` — resumes from the paused position (clearRuntimeTargeting pauses narration via deactivateNarration; activateNarration with the same letter ID hits the fast "resume" path)
+- Explicit `currentNarration.volume(AUDIO.NARRATION_VOLUME)` to set full volume on inspect entry, since per-frame distance-based updates are skipped during inspect
+
+### Unchanged paths
+- `exitInspectMode()` — no changes needed; when inspect exits, proximity re-acquires the letter and per-frame volume updates resume
+- `forceExitInspectMode()` — still works correctly; always paired with `clearRuntimeTargeting()` in pause/unlock handlers, which deactivates narration as expected
+- `audioEngine.js` — no changes; `restartNarration` still exists but is no longer called
+
+### Files changed
+- `src/main.js` — `enterInspectMode()` body (3 lines changed)
+- `docs/agents/shared/02-runtime-flow.md` — section 11 updated
+- `.claude/rules/audio.md` — updated inspect/narration rule
+- `docs/agents/shared/changelog.md` — this entry
+
+### Validated
+- `npm run build` clean
+- Zero `restartNarration` references in `src/main.js`
+
+## Session 8b — Remove wireframe edge outlines on active letters
+
+**Date:** 2026-03-20
+**Scope:** tiny fix — visual cleanup
+
+### What was removed
+The `EdgesGeometry` + `LineSegments` outline cue that appeared as yellow wireframe borders around the active letter's meshes when the player was nearby. These were `active-letter-cue` objects created by `ensureActiveCue()` in `proximityManager.js`, colored amber (`0xffd86b`) at 90% opacity with `depthTest: false`.
+
+### What remains as activation feedback
+The emissive tint (`emissive.setHex(0x333333)`) on non-glass meshes, which provides a subtle warm glow when a letter becomes the active target. This is more atmospheric than wireframe edges for the archival experience.
+
+### Source of the wireframe outlines
+Code-generated in `proximityManager.js`, not baked into GLB models. The `ensureActiveCue()` function lazily created `EdgesGeometry(mesh.geometry, 20)` wrapped in `LineSegments` with `LineBasicMaterial` for each non-glass mesh child when a letter was first activated. The cue was toggled visible/hidden in `activateLetter()`/`deactivateLetter()`.
+
+### Files changed
+- `src/interaction/proximityManager.js` — removed `ensureActiveCue()`, `ACTIVE_CUE_COLOR`, and all `activeCue` visibility toggling. Emissive tint activation/deactivation preserved. Scoring logic untouched.
+- `docs/agents/shared/changelog.md` — this entry
+
+### Validated
+- `npm run build` clean (JS bundle shrank ~500 bytes from tree-shaking)
+- `npm run validate:letters` pass
+- Zero `activeCue`, `ensureActiveCue`, `ACTIVE_CUE_COLOR`, or `active-letter-cue` references in src/
+
+## Session 9 — Arabic text mirroring audit
+
+**Date:** 2026-03-20
+**Scope:** investigative audit — read-only analysis + visual verification
+
+### Concern
+Visual comparison between 3D letter models and scan images raised a concern that Arabic text might be horizontally mirrored on some or all models, making right-to-left text appear left-to-right.
+
+### Investigation approach
+1. **Code analysis** — traced the full transform chain from GLB UV coordinates through node rotation quaternions through model rotation.y to world space viewer coordinates.
+2. **GLB binary inspection** — extracted UV corner mappings, node quaternions, and embedded textures from representative models (1, 2, 6, 10, 20, 30, 45).
+3. **Visual verification** — built `dev/mirror-check.html` comparison tool that renders each GLB's Front and Back meshes using the same material pipeline as `src/renderer/letters.js`, displayed side-by-side with scan images. Checked letters 1, 2, 10, 30, 45 across all four atmosphere zones.
+
+### Findings
+
+**No mirroring detected.** Arabic text displays correctly (right-to-left) on both sides of all tested models.
+
+**No front/back swap detected.** The `Front` GLB node matches the `frontImage` scan, and `Back` matches `backImage`, confirmed by distinctive features (fold line positions, text density patterns, stains).
+
+Key technical details:
+- Embedded GLB textures are **byte-identical** to scan JPGs in `public/assets/letters/`
+- UV mapping uses inverted U-axis (mesh −X → U=1, mesh +X → U=0) that compensates for the rotation chain
+- Front and Back nodes share identical UV coordinates but have different rotation quaternions that correctly orient them on opposite sides of the PlexiFrame
+- No runtime texture transforms (repeat, offset, flipY, rotation) are applied anywhere in code
+- No CSS transforms (scaleX, mirror) are applied to inspect mode scan images
+- All 47 models share the same GLB node structure and quaternion values (±float precision)
+
+### Files added
+- `dev/mirror-check.html` — standalone visual comparison tool for future texture orientation audits (served via Vite dev server, excluded from production build)
+
+### Validated
+- `npm run build` clean
+- Visual comparison confirmed for 5 representative letters across all zones
+
+## Session 10 — 3D orbit inspection sub-mode
+
+**Date:** 2026-03-21
+**Scope:** focused workstream across 5 sessions — new orbit viewer within inspect mode
+
+### Behavioral changes
+1. Users can now toggle between 2D scan view and 3D orbit view within inspect mode using the T key (desktop) or the 3D/Scan button (touch).
+2. In 3D orbit mode: left-drag to rotate the letter model, scroll to zoom (very close zoom supported for reading text), right-drag or arrow keys to pan across the letter when zoomed in, pinch-zoom and two-finger pan on touch.
+3. Front/Back side switching and scan zoom are disabled during orbit mode.
+4. All force-exit paths (pause, pointer-lock loss, page unload) cleanly hide the orbit viewer.
+5. The orbit viewer is lazy-initialized — no WebGL context created until first use.
+
+### State changes
+- `inspectState.subMode` added: `'scan'` (default) or `'orbit'` — parallel flag within `INSPECT_PHASE.ACTIVE`, not a new phase
+- `orbitInitialized` module-level flag in main.js — persists across inspect sessions
+- New DOM: `#inspect-orbit-viewport`, `#inspect-orbit-toggle-btn`
+
+### Design decisions
+- **MeshBasicMaterial for letter surfaces** (not MeshStandardMaterial): these are flat scanned documents where the texture IS the content. Lighting-responsive materials cause directional shading that makes text unreadable — one side washes out white, the other goes dark.
+- **Isolated viewport** (separate scene/camera/renderer): avoids touching main scene, post-processing, fog, or camera ownership.
+- **NoToneMapping** on orbit renderer: ACES tone mapping clips white paper textures to pure white.
+- **Viewport must be unhidden before init()**: the container needs non-zero dimensions for canvas sizing. Init order: set subMode → syncInspectUi (unhides viewport) → init → resize → showLetter.
+- **Max anisotropy + full device pixel ratio**: texture quality maximized for close-up reading.
+
+### Files created
+- `src/renderer/orbitInspect.js` — standalone orbit viewer module (~445 lines)
+
+### Files changed
+- `src/main.js` — import, subMode state, toggleInspectSubMode(), key/button handlers, render call, resize, cleanup
+- `src/config/constants.js` — INSPECT.ORBIT_FOV, ORBIT_MIN_DISTANCE, ORBIT_MAX_DISTANCE, ORBIT_DAMPING_FACTOR, ORBIT_AUTO_ROTATE_SPEED
+- `index.html` — orbit viewport container, toggle button, updated hint text, accessibility attributes
+- `src/styles/main.css` — orbit viewport styling, badge variant, responsive breakpoints
+- `PLANS.md` — workstream 2D entry
+- `docs/agents/shared/01-architecture.md` — subsystem map update
+- `docs/agents/shared/02-runtime-flow.md` — inspect orbit sub-mode documentation
+- `docs/agents/shared/05-constraints.md` — orbit viewer ownership constraint
+- `docs/agents/shared/99-repo-inventory.md` — file inventory update
+- `docs/agents/shared/changelog.md` — this entry
+
+### Validated
+- `npm run build` clean
+- Browser smoke: scan↔orbit toggle, close zoom, pan (arrow keys + right-drag), rotate, exit, force-exit on pause, resize, letter switching
+- Arrow key safety verified: OrbitControls gates onKeyDown on this.enabled, dispose() removes window listener

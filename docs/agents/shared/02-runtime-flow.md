@@ -172,9 +172,8 @@
   - inspect anchors consumed by the dedicated inspect-mode camera framing
 - Outside active runtime states, `main.js` calls `clearTargeting()` so highlight, narration, and active-letter UI do not leak behind loading, start, or pause shells.
 - Activation side effects:
-  - `audioEngine.playNarration(letterId)`
-  - a material-agnostic outline cue on non-glass letter meshes
-  - best-effort emissive tint on materials that support emissive
+  - `audioEngine.activateNarration(letterId)`
+  - emissive tint on non-glass letter meshes (`emissive.setHex(0x333333)`)
 - `main.js` uses the returned `targetState.activeId` to:
   - keep a shell-facing `displayedActiveLetterId`
   - update `themeMixer` when the active ID changes
@@ -210,6 +209,20 @@
 - `main.js` interpolates into and out of inspect, and restores the saved free-walk camera pose and FOV on exit.
 - Pause, pointer-lock unlock, and bird's-eye-invalid transitions force inspect to exit cleanly before the shell changes state.
 
+#### 10a. 3D orbit sub-mode
+
+- Within `INSPECT_PHASE.ACTIVE`, users can toggle between 2D scan view and 3D orbit view using T key (desktop) or the toggle button (touch).
+- `inspectState.subMode` tracks `'scan'` (default) or `'orbit'` — this is a parallel flag within ACTIVE, NOT a new inspect phase.
+- `src/renderer/orbitInspect.js` owns an isolated Three.js scene, camera, WebGLRenderer, and OrbitControls. It renders into a `<canvas>` inside `#inspect-orbit-viewport`, not into the main scene.
+- The orbit module is lazy-initialized: `orbitInspect.init(container)` is called only on the first toggle to orbit mode. The `#inspect-orbit-viewport` must be unhidden before `init()` because the container needs non-zero dimensions for canvas sizing.
+- Toggle flow (scan → orbit): set `subMode='orbit'` → `syncInspectUi()` (unhides orbit viewport) → lazy init if needed → `orbitInspect.resize()` → `orbitInspect.showLetter(letterObject)`.
+- Toggle flow (orbit → scan): `orbitInspect.hide()` → set `subMode='scan'` → `syncInspectUi()`.
+- During orbit mode: F/B side switching, zoom buttons, and scan-specific keys are disabled. OrbitControls handles rotate (left-drag), zoom (scroll), and pan (right-drag + arrow keys) on the orbit canvas.
+- Arrow key panning is gated by `controls.enabled` inside OrbitControls — keys are ignored when orbit is inactive. `controls.dispose()` removes the window keydown listener.
+- `orbitInspect.render()` is called in the `animate()` loop after `composer.render(delta)` — only when active.
+- Force-exit paths (`forceExitInspectMode`, `resetInspectState`) call `orbitInspect.hide()` before resetting state. `cleanupRuntime()` calls `orbitInspect.dispose()`.
+- Letter surfaces use MeshBasicMaterial (unlit) — scanned documents need the texture rendered faithfully from any angle, not shaded by directional lights.
+
 ### 11. Narration and theme behavior
 
 - Background theme:
@@ -225,9 +238,10 @@
   - narration volume scales with distance from the active letter per frame (`AUDIO.NARRATION_FADE_NEAR` to `AUDIO.NARRATION_FADE_FAR` with configurable exponent)
   - `activateNarration(letterId)` resumes from the paused position for the same letter, or pauses the old narration and starts fresh for a different letter
   - `deactivateNarration()` pauses (not stops) the narration, preserving the playhead position for later resume
-  - `restartNarration(letterId)` always seeks to the beginning and plays at full volume — used when entering inspect mode
+  - `restartNarration(letterId)` always seeks to the beginning and plays at full volume — available in audioEngine but not currently called by main.js
+  - inspect mode does not interrupt narration — on inspect entry, narration continues from the current playhead at full volume; on exit, per-frame distance-based volume updates resume smoothly
   - `setNarrationVolume(volume)` is called per-frame from `main.js` using `currentTargetState.activeId` and auto-pauses when volume reaches 0, auto-resumes when volume rises above 0
-  - per-frame volume updates are skipped during inspect mode (`inspectState.phase !== IDLE`) — `restartNarration` sets full volume directly
+  - per-frame volume updates are skipped during inspect mode (`inspectState.phase !== IDLE`) — inspect entry sets full volume explicitly via `currentNarration.volume(AUDIO.NARRATION_VOLUME)`
   - `isGloballyPaused` prevents per-frame volume updates from interfering with the global pause/visibility system
   - narration `onend` restores theme volume and clears current narration state
 - Theme mixing:
@@ -275,7 +289,7 @@
   - `main.js` may force bird's-eye exit when shell state changes make that mode invalid
 - Active-letter ownership: `src/interaction/proximityManager.js`
   - readable-side candidate/active scoring
-  - active highlight cue
+  - active emissive tint highlight
   - narration trigger/stop handoff into audio
 - Audio ownership: `src/audio/audioEngine.js`
   - Howler setup, background theme, narration caching/loading, ducking, pause/resume, and visibility listener backend
@@ -305,7 +319,7 @@
 | Theme auto-plays on buffer ready after landing CTA | AudioContext is resumed on landing CTA user gesture; `onload` callback plays if not globally paused; `playBackgroundTheme` on `startBtn` click is a no-op if already playing | desktop click path, mobile first tap, tab hide during buffering, resume after tab hide |
 | Deferred load is deferred to next macrotask | `startDeferredLetterLoad()` is wrapped in `setTimeout(0)` so the first active frame paints without the ~30ms cost of queuing 40 GLB fetches | deferred load still starts, late-letter integration still works, one-shot guard still prevents duplicates |
 | `themeMixer` vs `letter.theme` | metadata suggests per-letter themes, runtime does not implement them | do not assume JSON theme edits change audible behavior |
-| Highlight logic vs material replacement | the active-state cue now depends on lazily added outline geometry plus optional emissive tint | active-letter visual feedback after material or non-glass detection edits |
+| Highlight logic vs material replacement | the active-state cue uses emissive tint on non-glass meshes | active-letter visual feedback after material or non-glass detection edits |
 | Letter animation vs loader orientation | loader stores the base facing angle and height, and `animate()` sways around those stored values | letter facing/orientation after motion changes |
 | Desktop vs mobile pause/control branches | pointer-lock and touch controls use different activation paths, but the overlay shell is now the coordinating state machine | start, pointer-lock failure, pause, resume, and unlock behavior on both input modes |
 | Deferred load start timing | zones 3 and 4 now depend on the first successful active transition, not startup completion | desktop pointer-lock success, mobile start entry, and one-shot guarding against duplicate deferred loads |

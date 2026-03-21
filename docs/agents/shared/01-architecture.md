@@ -19,6 +19,7 @@
 | Controls + movement | `src/renderer/controls.js`, `src/interaction/touchControls.js` | pointer lock, touch UI, camera movement, bird's-eye mode, inspect suppression seam, key state | narration selection, preview UI, asset loading |
 | Letter loading + scene content | `src/renderer/letters.js`, `src/utils/loaders.js` | GLB fetch/retry, model transforms, material replacement, string geometry, interaction metadata/focus helpers, `userData` attachment | DOM preview/subtitles, audio playback decisions |
 | Ground chronology | `src/renderer/groundTimeline.js`, `src/data/provisionalChronology.js` | sequential floor spine through all letters in ID order, per-letter anchors, cached ground label textures, safe disable when chronology or loaded-letter coverage is incomplete | exact per-letter dates, DOM UI, movement math, target scoring |
+| Orbit inspection | `src/renderer/orbitInspect.js` | isolated orbit viewer: own scene, camera, WebGLRenderer, OrbitControls, studio lighting, model cloning, lazy init | main scene, main camera, post-processing, DOM overlays, movement/targeting |
 | Loading intro | `src/renderer/loadingScene.js` | Sednaya intro scene, postprocessing, separate renderer lifecycle, skip/completion callbacks | archive gameplay loop, letter data, pause/start UI |
 | Audio | `src/audio/audioEngine.js` | background theme playback, narration lazy loading, ducking, pause/resume, unload | active-letter detection, visual highlighting, theme choice policy |
 | Theme mixing | `src/audio/themeMixer.js` | only current active-letter/theme bookkeeping and logging | actual crossfade or soundtrack switching |
@@ -63,6 +64,8 @@ flowchart LR
 - `letters.js` may mutate loaded model materials and transforms, but it should not own screen overlays or audio policy.
 - `groundTimeline.js` owns the sequential spine meshes, anchor meshes, and label-plane textures once the scene is active.
 - `groundTimeline.js` should stay scene-native and should not absorb DOM, input, or targeting ownership.
+- `orbitInspect.js` owns an isolated WebGL context, scene, camera, and OrbitControls for the 3D orbit sub-mode within inspect. It must never share the main renderer or camera.
+- `orbitInspect.js` is lazy-initialized by `main.js` on first use and renders independently after `composer.render()`.
 
 ### Controls
 

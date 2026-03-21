@@ -26,6 +26,7 @@ Use this as the compact path map for agent work. One line per path, local-first.
 - `src/renderer/lighting.js`: sets global lighting balance for front/back readability
 - `src/renderer/controls.js`: desktop pointer-lock movement, bird's-eye mode, and inspect suppression seam
 - `src/renderer/letters.js`: GLB loading, retry logic, material handling, placement, string attachment, and readable-side interaction metadata
+- `src/renderer/orbitInspect.js`: isolated 3D orbit viewer for inspect mode — own scene, camera, renderer, OrbitControls, lazy-initialized
 - `src/renderer/loadingScene.js`: cinematic intro scene with postprocessing and Sednaya-related assets
 - `src/renderer/particles.js`: optional lightweight dust particle helper
 - `src/utils/loaders.js`: shared GLTF/texture/audio loader singletons and preload helper

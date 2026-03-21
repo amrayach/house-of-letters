@@ -76,6 +76,10 @@ Cloudflare Pages expects:
 
 Files under `public/` are served at the site root in dev and copied into `dist/` on build, so asset strings like `/assets/models/1.glb` must continue to match the `public/` tree.
 
+## Dev Tools
+
+- Letter Distribution Tool (`dev/meander-tool.html`) — open directly in browser to visually edit letter positions and export JSON.
+
 ## Current Known Gaps
 
 - `src/audio/themeMixer.js` is still placeholder-only, so per-letter `theme` metadata is informational rather than audible behavior

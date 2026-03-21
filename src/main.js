@@ -16,6 +16,7 @@ import { LANDING_CONTENT } from '@config/landingContent.js';
 import lettersData from '@data/letters.json';
 import { validatedProvisionalChronology } from '@data/provisionalChronology.js';
 import { diag } from '@utils/diagnostics.js';
+import * as orbitInspect from './renderer/orbitInspect.js';
 
 const LETTER_LOAD_STAGE = Object.freeze({
   CORE: 'core',
@@ -251,6 +252,8 @@ const inspectZoomOutBtn = document.getElementById('inspect-zoom-out-btn');
 const inspectZoomResetBtn = document.getElementById('inspect-zoom-reset-btn');
 const inspectZoomInBtn = document.getElementById('inspect-zoom-in-btn');
 const inspectExitBtn = document.getElementById('inspect-exit-btn');
+const inspectOrbitViewport = document.getElementById('inspect-orbit-viewport');
+const inspectOrbitToggleBtn = document.getElementById('inspect-orbit-toggle-btn');
 const letterDataById = new Map(lettersData.map((letter) => [letter.id, letter]));
 const subtitleElement = document.createElement('div');
 subtitleElement.className = 'subtitle';
@@ -267,6 +270,7 @@ const inspectState = {
   phase: INSPECT_PHASE.IDLE,
   letterId: null,
   side: 'front',
+  subMode: 'scan',
   zoom: INSPECT.DEFAULT_ZOOM,
   returnPose: null,
   restorePointerLockOnExit: false,
@@ -275,6 +279,7 @@ const inspectState = {
   transitionElapsed: 0,
   transitionDuration: INSPECT.TRANSITION_DURATION,
 };
+let orbitInitialized = false;
 const inspectScratchCamera = new THREE.PerspectiveCamera(INSPECT.FOV, camera.aspect, camera.near, camera.far);
 const inspectViewSize = new THREE.Vector2();
 const inspectCenterWorld = new THREE.Vector3();
@@ -367,6 +372,7 @@ function resetInspectState() {
   inspectState.phase = INSPECT_PHASE.IDLE;
   inspectState.letterId = null;
   inspectState.side = 'front';
+  inspectState.subMode = 'scan';
   inspectState.zoom = INSPECT.DEFAULT_ZOOM;
   inspectState.returnPose = null;
   inspectState.restorePointerLockOnExit = false;
@@ -374,6 +380,7 @@ function resetInspectState() {
   inspectState.transitionTo = null;
   inspectState.transitionElapsed = 0;
   inspectState.transitionDuration = INSPECT.TRANSITION_DURATION;
+  if (orbitInspect.isActive()) orbitInspect.hide();
 }
 
 function getLetterObjectById(letterId) {
@@ -769,9 +776,15 @@ function getInspectStatusText() {
     return 'Returning to the archive...';
   }
 
+  if (inspectState.subMode === 'orbit') {
+    return isTouchDevice
+      ? 'Drag to rotate, pinch to zoom. Tap Scan for flat view, Exit to return.'
+      : 'Drag to rotate, scroll to zoom. Press T for scan view, E to exit.';
+  }
+
   return isTouchDevice
     ? 'Swipe the scan, use the controls below, and tap Exit to return.'
-    : 'Pointer released for inspection. Scroll the scan, then press E or Back to return.';
+    : 'Pointer released for inspection. Scroll the scan, press T for 3D, E to exit.';
 }
 
 function getInspectViewportContentBox() {
@@ -856,7 +869,9 @@ function updateInspectContent() {
   }
 
   if (inspectSideBadge) {
-    inspectSideBadge.textContent = inspectState.side === 'back' ? 'Back' : 'Front';
+    inspectSideBadge.textContent = inspectState.subMode === 'orbit'
+      ? '3D'
+      : (inspectState.side === 'back' ? 'Back' : 'Front');
   }
 
   if (inspectStatus) {
@@ -871,13 +886,14 @@ function updateInspectContent() {
   }
 
   const canSwitchSides = inspectState.phase === INSPECT_PHASE.ACTIVE;
+  const inOrbit = inspectState.subMode === 'orbit';
 
   if (inspectFrontBtn) {
-    inspectFrontBtn.disabled = !canSwitchSides || inspectState.side === 'front';
+    inspectFrontBtn.disabled = !canSwitchSides || inOrbit || inspectState.side === 'front';
   }
 
   if (inspectBackBtn) {
-    inspectBackBtn.disabled = !canSwitchSides || inspectState.side === 'back';
+    inspectBackBtn.disabled = !canSwitchSides || inOrbit || inspectState.side === 'back';
   }
 
   if (inspectExitBtn) {
@@ -886,6 +902,10 @@ function updateInspectContent() {
 
   if (inspectHeaderExitBtn) {
     inspectHeaderExitBtn.disabled = inspectState.phase !== INSPECT_PHASE.ACTIVE;
+  }
+
+  if (inspectOrbitToggleBtn) {
+    inspectOrbitToggleBtn.disabled = inspectState.phase !== INSPECT_PHASE.ACTIVE;
   }
 
   updateInspectZoomUI();
@@ -1049,6 +1069,19 @@ function syncInspectUi() {
   setElementHidden(inspectPrompt, !hasCandidate || inspectState.phase !== INSPECT_PHASE.IDLE);
   setElementHidden(inspectTouchBtn, !isTouchDevice || !hasCandidate || inspectState.phase !== INSPECT_PHASE.IDLE);
   setElementHidden(inspectOverlay, !inspectVisible);
+
+  // Toggle scan / orbit viewport visibility
+  const showOrbit = inspectVisible && inspectState.phase === INSPECT_PHASE.ACTIVE && inspectState.subMode === 'orbit';
+  setElementHidden(inspectScanViewport, showOrbit);
+  setElementHidden(inspectOrbitViewport, !showOrbit);
+
+  if (inspectSideBadge) {
+    inspectSideBadge.classList.toggle('orbit-active', inspectState.subMode === 'orbit');
+  }
+
+  if (inspectOrbitToggleBtn) {
+    inspectOrbitToggleBtn.textContent = inspectState.subMode === 'orbit' ? 'Scan' : '3D';
+  }
 
   if (inspectVisible) {
     updateInspectContent();
@@ -1281,7 +1314,12 @@ function enterInspectMode() {
   startInspectTransition(target.pose, INSPECT_PHASE.ENTERING);
   setViewMode(VIEW_MODE.INSPECT);
   clearRuntimeTargeting();
-  audioEngine.restartNarration(inspectState.letterId);
+  // Resume narration at current playhead (clearRuntimeTargeting paused it via deactivateNarration)
+  audioEngine.activateNarration(inspectState.letterId);
+  // Set full volume — per-frame distance-based updates are skipped during inspect
+  if (audioEngine.currentNarration) {
+    audioEngine.currentNarration.volume(AUDIO.NARRATION_VOLUME);
+  }
   diag.log('inspect', `enter id=${inspectState.letterId} side=${inspectState.side}`);
   return true;
 }
@@ -1306,6 +1344,7 @@ function forceExitInspectMode({ restorePose = true } = {}) {
     applyCameraPose(inspectState.returnPose);
   }
 
+  if (orbitInspect.isActive()) orbitInspect.hide();
   setInspectSuppressed(false);
   resetInspectState();
   setViewMode(VIEW_MODE.IMMERSIVE);
@@ -1315,6 +1354,10 @@ function forceExitInspectMode({ restorePose = true } = {}) {
 
 function switchInspectSide(nextSide) {
   if (inspectState.phase !== INSPECT_PHASE.ACTIVE || !inspectState.letterId) {
+    return false;
+  }
+
+  if (inspectState.subMode === 'orbit') {
     return false;
   }
 
@@ -1362,6 +1405,47 @@ function resetInspectZoom() {
   return true;
 }
 
+function toggleInspectSubMode() {
+  if (inspectState.phase !== INSPECT_PHASE.ACTIVE) {
+    return false;
+  }
+
+  if (inspectState.subMode === 'scan') {
+    const letterObject = getLetterObjectById(inspectState.letterId);
+
+    if (!letterObject) {
+      return false;
+    }
+
+    // Set subMode and sync UI FIRST so the orbit viewport is unhidden
+    // before init() — the container needs non-zero dimensions for the
+    // renderer canvas to size correctly.
+    inspectState.subMode = 'orbit';
+    syncInspectUi();
+
+    if (!orbitInitialized) {
+      orbitInspect.init(inspectOrbitViewport);
+      orbitInitialized = true;
+    }
+
+    // Resize to match the now-visible container dimensions
+    orbitInspect.resize();
+    orbitInspect.showLetter(letterObject);
+  } else {
+    orbitInspect.hide();
+    inspectState.subMode = 'scan';
+    syncInspectUi();
+  }
+
+  updateInspectContent();
+  diag.log('inspect', `subMode → ${inspectState.subMode}`);
+  return true;
+}
+
+function handleTouchOrbitToggle() {
+  toggleInspectSubMode();
+}
+
 function handleInspectImageLoad() {
   updateInspectZoomUI();
 }
@@ -1370,6 +1454,7 @@ function handleInspectViewportResize() {
   if (inspectState.phase !== INSPECT_PHASE.IDLE) {
     updateInspectZoomUI();
   }
+  orbitInspect.resize();
 }
 
 function restoreDesktopPointerLockAfterInspect(shouldRestorePointerLock = inspectState.restorePointerLockOnExit) {
@@ -1578,7 +1663,18 @@ function handleInspectKeyDown(event) {
     return;
   }
 
+  if (event.code === 'KeyT' && inspectState.phase === INSPECT_PHASE.ACTIVE) {
+    event.preventDefault();
+    toggleInspectSubMode();
+    return;
+  }
+
   if (inspectState.phase !== INSPECT_PHASE.ACTIVE) {
+    return;
+  }
+
+  // F/B/zoom are scan-only — no-op in orbit mode
+  if (inspectState.subMode === 'orbit') {
     return;
   }
 
@@ -1724,6 +1820,10 @@ if (inspectZoomInBtn) {
 
 if (inspectExitBtn) {
   inspectExitBtn.addEventListener('click', handleTouchInspectExit);
+}
+
+if (inspectOrbitToggleBtn) {
+  inspectOrbitToggleBtn.addEventListener('click', handleTouchOrbitToggle);
 }
 
 // Landing screen event delegation
@@ -2042,6 +2142,11 @@ function animate() {
     // Render via post-processing composer
     composer.render(delta);
 
+    // Render orbit viewer if active (isolated canvas, no post-processing)
+    if (orbitInspect.isActive()) {
+      orbitInspect.render();
+    }
+
     if (import.meta.env.DEV && isFirstActiveFrame) {
       perfFirstActiveFrame = false;
       performance.mark('hol:first-active-frame-end');
@@ -2110,6 +2215,10 @@ function cleanupRuntime() {
     inspectExitBtn.removeEventListener('click', handleTouchInspectExit);
   }
 
+  if (inspectOrbitToggleBtn) {
+    inspectOrbitToggleBtn.removeEventListener('click', handleTouchOrbitToggle);
+  }
+
   if (inspectHeaderExitBtn) {
     inspectHeaderExitBtn.removeEventListener('click', handleInspectHeaderExit);
   }
@@ -2131,6 +2240,7 @@ function cleanupRuntime() {
   }
 
   forceExitInspectMode({ restorePose: false });
+  orbitInspect.dispose();
   disposeControls();
 
   clearRuntimeTargeting();

@@ -7,7 +7,7 @@
 | Theme switching | `src/audio/themeMixer.js` only logs/state-tracks active letter IDs | `letters.json.theme` looks meaningful but does not currently change playback |
 | Subtitle content | all `letters.json.text` fields are empty | preview UI always falls back to placeholder text |
 | Exact chronology | the ground chronology thread is now grouped-only via `src/data/provisionalChronology.js` | later exact per-letter dates should replace only the data seam, not force renderer ownership changes |
-| Active-state art direction | active letters now use an outline cue plus optional emissive tint | behavior is visible, but the final visual language may still need tuning |
+| Active-state art direction | active letters use an emissive tint (`0x333333`) on non-glass meshes | the outline cue was removed; emissive-only feedback may need further art-direction tuning |
 | Cleanup completeness | core control/audio listener cleanup is explicit now, but disposal still spans `main.js`, `sceneSetup.js`, and `loadingScene.js` | lifecycle responsibilities are improved, not fully unified |
 | Real-device degraded touch status | the minimal touch deferred-status pill is implemented, but physical iOS/Android degraded sessions are still manual-only evidence | safe-area overlap, browser chrome overlap, and pause/inspect hide-show need real-device confirmation |
 | Data-generation drift | `scripts/generate-letter-positions.cjs` still uses older zone bounds and `.wav` fallback defaults | rerunning it could produce output that disagrees with the current runtime data contract unless it is reviewed first |

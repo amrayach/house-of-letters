@@ -201,8 +201,12 @@
           </div>
         </div>
 
+        <div id="inspect-orbit-viewport" role="img" aria-label="3D letter model viewer" hidden>
+          <!-- Canvas inserted programmatically by orbitInspect.js init() -->
+        </div>
+
         <p class="inspect-controls inspect-controls-desktop">
-          E: Exit • F: Front • B: Back • +/-: Zoom • 0: Reset
+          E: Exit • T: 3D/Scan • F: Front • B: Back • +/-: Zoom • 0: Reset
         </p>
 
         <div class="inspect-controls inspect-controls-touch">
@@ -211,6 +215,7 @@
           <button id="inspect-zoom-out-btn" class="btn btn-inspect-secondary" type="button">-</button>
           <button id="inspect-zoom-reset-btn" class="btn btn-inspect-secondary" type="button">Reset</button>
           <button id="inspect-zoom-in-btn" class="btn btn-inspect-secondary" type="button">+</button>
+          <button id="inspect-orbit-toggle-btn" class="btn btn-inspect-secondary" type="button" aria-label="Toggle 3D orbit view">3D</button>
           <button id="inspect-exit-btn" class="btn btn-inspect" type="button">Exit</button>
         </div>
       </div>

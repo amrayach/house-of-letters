@@ -20,6 +20,10 @@
   - It may build grouped floor meshes and labels.
   - It should not own shell state, movement state, or targeting decisions.
   - It should consume frame state from `main.js` rather than reading controls or proximity internals directly.
+- Keep `src/renderer/orbitInspect.js` as the isolated orbit viewer owner.
+  - It must own its own WebGL context, scene, camera, and OrbitControls — never share the main renderer or camera.
+  - The orbit viewport container (`#inspect-orbit-viewport`) must be unhidden before `init()` is called — the container needs non-zero dimensions for canvas sizing.
+  - It should not absorb DOM visibility, shell state, or inspect phase management — those stay in `main.js`.
 - Keep `src/audio/audioEngine.js` as the only real audio backend.
   - It may react to visibility changes.
   - It should not decide on its own that paused or start-shell runtime states are allowed to resume.
@@ -67,7 +71,7 @@
 - Letting chronology rendering imply exact per-letter dates instead of grouped labels
 - Renaming asset paths without updating `letters.json` and intro paths
 - Assuming `theme` changes affect audible behavior today
-- Breaking the non-glass active-state cue while changing letter materials or mesh naming
+- Breaking the non-glass active-state emissive tint while changing letter materials or mesh naming
 - Forgetting that `animate()` should sway around stored base rotation/height instead of overwriting them absolutely
 - Removing the ground timeline `hasBeenRevealed` one-time latch or the `isHidden` per-frame visibility gate without understanding both are needed
 - Auto-playing theme before AudioContext is resumed from a user gesture (the landing CTA gesture unlocks audio for the session)

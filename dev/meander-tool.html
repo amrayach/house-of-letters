@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Letter Distribution Tool — House of Dreams</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+header {
+  background: #242424;
+  border-bottom: 1px solid #333;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #d6bc7f;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+header span.subtitle {
+  color: #888;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.main-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Sidebar ─────────────────────────────────── */
+.sidebar {
+  width: 300px;
+  min-width: 300px;
+  background: #242424;
+  border-right: 1px solid #333;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-track { background: #1a1a1a; }
+.sidebar::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+.section-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #d6bc7f;
+  padding: 10px 0 4px 0;
+  border-top: 1px solid #333;
+  margin-top: 4px;
+}
+
+.section-header:first-child { border-top: none; margin-top: 0; }
+
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 12px;
+}
+
+.ctrl-row label {
+  width: 90px;
+  flex-shrink: 0;
+  color: #aaa;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ctrl-row input[type="range"] {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #444;
+  border-radius: 2px;
+  outline: none;
+}
+
+.ctrl-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #d6bc7f;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.ctrl-row input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: #d6bc7f;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.ctrl-row .val {
+  width: 44px;
+  text-align: right;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  color: #d6bc7f;
+  flex-shrink: 0;
+}
+
+.ctrl-row input[type="number"] {
+  width: 70px;
+  background: #333;
+  border: 1px solid #555;
+  color: #e0e0e0;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  outline: none;
+}
+
+.ctrl-row input[type="number"]:focus {
+  border-color: #d6bc7f;
+}
+
+.ctrl-row input[type="checkbox"] {
+  accent-color: #d6bc7f;
+}
+
+.zone-label {
+  font-size: 10px;
+  color: #888;
+  padding: 4px 0 1px 0;
+  font-weight: 600;
+}
+
+/* Buttons */
+.btn-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
+button {
+  background: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  padding: 5px 10px;
+  font-size: 11px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button:hover { background: #444; border-color: #d6bc7f; }
+button:active { background: #555; }
+
+button.primary {
+  background: #3d351e;
+  border-color: #d6bc7f;
+  color: #d6bc7f;
+  font-weight: 600;
+}
+
+button.primary:hover { background: #4d4328; }
+
+button.small {
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
+/* ── Canvas area ─────────────────────────────── */
+.canvas-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+canvas {
+  flex: 1;
+  display: block;
+  cursor: crosshair;
+}
+
+/* ── Stats bar ───────────────────────────────── */
+.stats-bar {
+  background: #242424;
+  border-top: 1px solid #333;
+  padding: 6px 16px;
+  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  color: #aaa;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.stats-bar .stat-label { color: #888; }
+.stats-bar .stat-val { color: #d6bc7f; }
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.badge.ok { background: #1a3a1a; color: #5a5; border: 1px solid #3a5a3a; }
+.badge.warn { background: #3a2a1a; color: #d85a30; border: 1px solid #5a3a2a; }
+</style>
+</head>
+<body>
+
+<header>
+  Letter Distribution Tool
+  <span class="subtitle">House of Dreams — 46 letters, 4 zones</span>
+</header>
+
+<div class="main-layout">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+    <div class="stats-bar" id="statsBar"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// DEFAULTS — match scripts/generate-letter-positions.cjs exactly
+// ═══════════════════════════════════════════════════════════════════
+
+const DEFAULT_CONFIG = {
+  freq: 0.16,
+  freq2: 0.05,
+  mix2: 0.5,
+  phase: 2.45,
+  baseAmp: 1.5,
+  maxAmp: 9,
+  ampCurve: 0.8,
+  jitX: 0.2,
+  jitZ: 0,
+  zRand: 0.45,
+  minSp: 4,
+  seed: 42,
+  mirrorZ3: true,
+};
+
+const DEFAULT_ZONES = [
+  { id: 1, name: 'Introduction', letterCount: 1, zStart: -42, zEnd: -32 },
+  { id: 2, name: 'Building', letterCount: 5, zStart: -27, zEnd: -11 },
+  { id: 3, name: 'Intensifying', letterCount: 12, zStart: -4, zEnd: 20 },
+  { id: 4, name: 'Climax', letterCount: 28, zStart: 26, zEnd: 65 },
+];
+
+const ZONE_COLORS = [
+  { fill: '#FAEEDA', stroke: '#854F0B' },
+  { fill: '#E1F5EE', stroke: '#1D9E75' },
+  { fill: '#E6F1FB', stroke: '#378ADD' },
+  { fill: '#FAECE7', stroke: '#D85A30' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+
+let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+let zones = JSON.parse(JSON.stringify(DEFAULT_ZONES));
+let letters = [];
+let ghostLetters = null; // previous positions for comparison
+
+// ═══════════════════════════════════════════════════════════════════
+// ALGORITHM — exact port of scripts/generate-letter-positions.cjs
+// ═══════════════════════════════════════════════════════════════════
+
+function mulberry32(seed) {
+  let s = seed | 0;
+  return function() {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function distance2D(p1, p2) {
+  const dx = p1.x - p2.x;
+  const dz = p1.z - p2.z;
+  return Math.sqrt(dx * dx + dz * dz);
+}
+
+function meanderXRaw(z, amp, cfg) {
+  return amp * (Math.sin(cfg.freq * z + cfg.phase) + cfg.mix2 * Math.sin(cfg.freq2 * z + cfg.phase * 1.7 + 0.8));
+}
+
+function amplitudeAt(z, cfg, zn) {
+  const totalZRange = zn[zn.length - 1].zEnd - zn[0].zStart;
+  const t = Math.max(0, Math.min(1, (z - zn[0].zStart) / totalZRange));
+  return cfg.baseAmp + (cfg.maxAmp - cfg.baseAmp) * Math.pow(t, cfg.ampCurve);
+}
+
+function applyZone3Mirror(x, z, cfg, zn) {
+  if (!cfg.mirrorZ3) return x;
+  const z3 = zn.find(zo => zo.id === 3);
+  if (!z3) return x;
+
+  const blendWidth = 3;
+  const enterStart = z3.zStart - blendWidth;
+  const enterEnd = z3.zStart + blendWidth;
+  const exitStart = z3.zEnd - blendWidth;
+  const exitEnd = z3.zEnd + blendWidth;
+
+  if (z >= enterEnd && z <= exitStart) {
+    return -x;
+  } else if (z > enterStart && z < enterEnd) {
+    const t = (z - enterStart) / (enterEnd - enterStart);
+    const blend = t * t * (3 - 2 * t);
+    return x * (1 - 2 * blend);
+  } else if (z > exitStart && z < exitEnd) {
+    const t = (z - exitStart) / (exitEnd - exitStart);
+    const blend = t * t * (3 - 2 * t);
+    return x * (-1 + 2 * blend);
+  }
+  return x;
+}
+
+function meanderX(z, cfg, zn) {
+  const amp = amplitudeAt(z, cfg, zn);
+  let x = meanderXRaw(z, amp, cfg);
+  x = applyZone3Mirror(x, z, cfg, zn);
+  return x;
+}
+
+function generateLetterPositions(cfg, zn) {
+  const rand = mulberry32(cfg.seed);
+  const allPositions = [];
+  let letterId = 1;
+
+  for (const zone of zn) {
+    const count = zone.letterCount;
+    const zSpan = zone.zEnd - zone.zStart;
+
+    for (let i = 0; i < count; i++) {
+      const baseZ = zone.zStart + ((i + 0.5) / count) * zSpan;
+      const zOffset = (rand() - 0.5) * cfg.zRand * (zSpan / count);
+      const z = baseZ + zOffset;
+
+      const amp = amplitudeAt(z, cfg, zn);
+      let x = meanderXRaw(z, amp, cfg);
+      x = applyZone3Mirror(x, z, cfg, zn);
+      x += (rand() - 0.5) * 2 * cfg.jitX;
+
+      allPositions.push({
+        id: letterId,
+        zone: zone.id,
+        x: x,
+        z: z,
+      });
+      letterId++;
+    }
+  }
+
+  // Spacing enforcement relaxation
+  const minSp = cfg.minSp;
+  for (let pass = 0; pass < 20; pass++) {
+    let moved = false;
+    for (let i = 0; i < allPositions.length; i++) {
+      for (let j = i + 1; j < allPositions.length; j++) {
+        const pi = allPositions[i];
+        const pj = allPositions[j];
+        const dist = distance2D(pi, pj);
+        if (dist < minSp && dist > 0.001) {
+          const overlap = (minSp - dist) / 2;
+          const dx = (pj.x - pi.x) / dist;
+          const dz = (pj.z - pi.z) / dist;
+          pi.x -= dx * overlap;
+          pi.z -= dz * overlap;
+          pj.x += dx * overlap;
+          pj.z += dz * overlap;
+          moved = true;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+
+  // Round to 2 decimal places
+  for (const p of allPositions) {
+    p.x = parseFloat(p.x.toFixed(2));
+    p.z = parseFloat(p.z.toFixed(2));
+  }
+
+  return allPositions;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════════════════
+
+function computeStats(pts, cfg) {
+  let minDist = Infinity, minPair = [0, 0];
+  let violations = 0;
+
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const d = distance2D(pts[i], pts[j]);
+      if (d < minDist) { minDist = d; minPair = [pts[i].id, pts[j].id]; }
+      if (d < cfg.minSp) violations++;
+    }
+  }
+
+  // Path length and sharpest turn
+  let pathLen = 0;
+  let sharpestAngle = 0, sharpestId = 0;
+
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[i-1].x;
+    const dz = pts[i].z - pts[i-1].z;
+    pathLen += Math.sqrt(dx * dx + dz * dz);
+  }
+
+  for (let i = 1; i < pts.length - 1; i++) {
+    const ax = pts[i].x - pts[i-1].x;
+    const az = pts[i].z - pts[i-1].z;
+    const bx = pts[i+1].x - pts[i].x;
+    const bz = pts[i+1].z - pts[i].z;
+    const dot = ax * bx + az * bz;
+    const magA = Math.sqrt(ax * ax + az * az);
+    const magB = Math.sqrt(bx * bx + bz * bz);
+    if (magA > 0 && magB > 0) {
+      const cosAngle = Math.max(-1, Math.min(1, dot / (magA * magB)));
+      const angle = Math.acos(cosAngle) * 180 / Math.PI;
+      if (angle > sharpestAngle) { sharpestAngle = angle; sharpestId = pts[i].id; }
+    }
+  }
+
+  return {
+    minDist: minDist,
+    minPair: minPair,
+    violations: violations,
+    sharpestAngle: sharpestAngle,
+    sharpestId: sharpestId,
+    pathLength: pathLen,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CANVAS RENDERING
+// ═══════════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let canvasW = 0, canvasH = 0;
+let viewCenterX = 0, viewCenterZ = 15; // world coords of canvas center
+let viewScale = 6; // pixels per world unit
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvasW = rect.width;
+  canvasH = rect.height - document.getElementById('statsBar').getBoundingClientRect().height;
+  canvas.width = canvasW * dpr;
+  canvas.height = canvasH * dpr;
+  canvas.style.width = canvasW + 'px';
+  canvas.style.height = canvasH + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function worldToScreen(wx, wz) {
+  const sx = canvasW / 2 + (wx - viewCenterX) * viewScale;
+  const sy = canvasH / 2 - (wz - viewCenterZ) * viewScale;
+  return [sx, sy];
+}
+
+function screenToWorld(sx, sy) {
+  const wx = (sx - canvasW / 2) / viewScale + viewCenterX;
+  const wz = -((sy - canvasH / 2) / viewScale) + viewCenterZ;
+  return [wx, wz];
+}
+
+function autoFitView() {
+  if (letters.length === 0) return;
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const z of zones) {
+    if (z.zStart < minZ) minZ = z.zStart;
+    if (z.zEnd > maxZ) maxZ = z.zEnd;
+  }
+  for (const l of letters) {
+    if (l.x < minX) minX = l.x;
+    if (l.x > maxX) maxX = l.x;
+  }
+  minX -= 5; maxX += 5; minZ -= 5; maxZ += 5;
+  viewCenterX = (minX + maxX) / 2;
+  viewCenterZ = (minZ + maxZ) / 2;
+  const scaleX = canvasW / (maxX - minX);
+  const scaleZ = canvasH / (maxZ - minZ);
+  viewScale = Math.min(scaleX, scaleZ) * 0.92;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // Zone bands
+  for (let i = 0; i < zones.length; i++) {
+    const z = zones[i];
+    const [x1, y1] = worldToScreen(-200, z.zEnd);
+    const [x2, y2] = worldToScreen(200, z.zStart);
+    ctx.fillStyle = ZONE_COLORS[i].fill + '18';
+    ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+    ctx.strokeStyle = ZONE_COLORS[i].fill + '30';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, y1); ctx.lineTo(canvasW, y1);
+    ctx.moveTo(0, y2); ctx.lineTo(canvasW, y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Zone label
+    ctx.fillStyle = ZONE_COLORS[i].stroke + 'aa';
+    ctx.font = '10px -apple-system, sans-serif';
+    const labelY = (y1 + y2) / 2;
+    ctx.fillText(`Z${z.id} ${z.name} (${z.letterCount})`, 6, labelY + 3);
+  }
+
+  // Grid
+  drawGrid();
+
+  // Meander centerline (faint reference)
+  drawCenterline();
+
+  // Ghost letters (previous positions)
+  if (ghostLetters) {
+    for (const g of ghostLetters) {
+      const [sx, sy] = worldToScreen(g.x, g.z);
+      ctx.beginPath();
+      ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff15';
+      ctx.fill();
+    }
+  }
+
+  // Spacing exclusion circles
+  const halfSp = config.minSp / 2;
+  for (const l of letters) {
+    const [sx, sy] = worldToScreen(l.x, l.z);
+    const r = halfSp * viewScale;
+    ctx.beginPath();
+    ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ffffff0a';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+
+  // Connecting path
+  if (letters.length > 1) {
+    ctx.beginPath();
+    const [fx, fy] = worldToScreen(letters[0].x, letters[0].z);
+    ctx.moveTo(fx, fy);
+    for (let i = 1; i < letters.length; i++) {
+      const [sx, sy] = worldToScreen(letters[i].x, letters[i].z);
+      ctx.lineTo(sx, sy);
+    }
+    ctx.strokeStyle = '#d6bc7f55';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Letter dots
+  for (const l of letters) {
+    const [sx, sy] = worldToScreen(l.x, l.z);
+    const zoneIdx = l.zone - 1;
+    const col = ZONE_COLORS[zoneIdx];
+
+    // Dot
+    ctx.beginPath();
+    ctx.arc(sx, sy, 6, 0, Math.PI * 2);
+    ctx.fillStyle = col.stroke;
+    ctx.fill();
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Label
+    ctx.fillStyle = '#e0e0e0';
+    ctx.font = 'bold 8px "SF Mono", Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(l.id, sx, sy);
+  }
+
+  ctx.textAlign = 'start';
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawGrid() {
+  const [wl, wt] = screenToWorld(0, 0);
+  const [wr, wb] = screenToWorld(canvasW, canvasH);
+  const minWx = Math.min(wl, wr);
+  const maxWx = Math.max(wl, wr);
+  const minWz = Math.min(wt, wb);
+  const maxWz = Math.max(wt, wb);
+
+  // Determine grid spacing
+  let gridStep = 5;
+  if (viewScale < 3) gridStep = 20;
+  else if (viewScale < 6) gridStep = 10;
+
+  ctx.font = '9px "SF Mono", Consolas, monospace';
+
+  // Z lines (horizontal)
+  const zStart = Math.floor(minWz / gridStep) * gridStep;
+  for (let z = zStart; z <= maxWz; z += gridStep) {
+    const [, sy] = worldToScreen(0, z);
+    ctx.strokeStyle = z === 0 ? '#555' : '#2a2a2a';
+    ctx.lineWidth = z === 0 ? 1 : 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, sy);
+    ctx.lineTo(canvasW, sy);
+    ctx.stroke();
+    ctx.fillStyle = '#555';
+    ctx.fillText('z=' + z, 4, sy - 3);
+  }
+
+  // X lines (vertical)
+  const xStart = Math.floor(minWx / gridStep) * gridStep;
+  for (let x = xStart; x <= maxWx; x += gridStep) {
+    const [sx] = worldToScreen(x, 0);
+    ctx.strokeStyle = x === 0 ? '#555' : '#2a2a2a';
+    ctx.lineWidth = x === 0 ? 1 : 0.5;
+    ctx.beginPath();
+    ctx.moveTo(sx, 0);
+    ctx.lineTo(sx, canvasH);
+    ctx.stroke();
+    if (x !== 0) {
+      ctx.fillStyle = '#555';
+      ctx.fillText('x=' + x, sx + 3, canvasH - 4);
+    }
+  }
+}
+
+function drawCenterline() {
+  const [, topZ] = screenToWorld(0, 0);
+  const [, botZ] = screenToWorld(0, canvasH);
+  const zMin = Math.min(topZ, botZ);
+  const zMax = Math.max(topZ, botZ);
+
+  ctx.beginPath();
+  let first = true;
+  for (let z = zMin; z <= zMax; z += 0.5) {
+    const x = meanderX(z, config, zones);
+    const [sx, sy] = worldToScreen(x, z);
+    if (first) { ctx.moveTo(sx, sy); first = false; }
+    else ctx.lineTo(sx, sy);
+  }
+  ctx.strokeStyle = '#8a7b5e30';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PAN & ZOOM
+// ═══════════════════════════════════════════════════════════════════
+
+let isPanning = false, panStartX = 0, panStartY = 0;
+let panStartCX = 0, panStartCZ = 0;
+
+canvas.addEventListener('mousedown', (e) => {
+  isPanning = true;
+  panStartX = e.clientX;
+  panStartY = e.clientY;
+  panStartCX = viewCenterX;
+  panStartCZ = viewCenterZ;
+  canvas.style.cursor = 'grabbing';
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isPanning) return;
+  const dx = e.clientX - panStartX;
+  const dy = e.clientY - panStartY;
+  viewCenterX = panStartCX - dx / viewScale;
+  viewCenterZ = panStartCZ + dy / viewScale;
+  draw();
+});
+
+window.addEventListener('mouseup', () => {
+  isPanning = false;
+  canvas.style.cursor = 'crosshair';
+});
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const factor = e.deltaY > 0 ? 0.9 : 1.1;
+  // Zoom toward mouse position
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const [wx, wz] = screenToWorld(mx, my);
+
+  viewScale *= factor;
+  viewScale = Math.max(1, Math.min(40, viewScale));
+
+  // Adjust center so mouse world point stays at same screen position
+  viewCenterX = wx - (mx - canvasW / 2) / viewScale;
+  viewCenterZ = wz + (my - canvasH / 2) / viewScale;
+
+  draw();
+}, { passive: false });
+
+// ═══════════════════════════════════════════════════════════════════
+// UI CONTROLS
+// ═══════════════════════════════════════════════════════════════════
+
+const sidebar = document.getElementById('sidebar');
+const sliderRefs = {};
+
+function makeSlider(parent, key, label, min, max, step, getter, setter) {
+  const row = document.createElement('div');
+  row.className = 'ctrl-row';
+
+  const lbl = document.createElement('label');
+  lbl.textContent = label;
+  row.appendChild(lbl);
+
+  const inp = document.createElement('input');
+  inp.type = 'range';
+  inp.min = min;
+  inp.max = max;
+  inp.step = step;
+  inp.value = getter();
+  row.appendChild(inp);
+
+  const val = document.createElement('span');
+  val.className = 'val';
+  val.textContent = Number(getter()).toFixed(step.toString().includes('.') ? step.toString().split('.')[1].length : 0);
+  row.appendChild(val);
+
+  inp.addEventListener('input', () => {
+    const v = parseFloat(inp.value);
+    setter(v);
+    const decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
+    val.textContent = v.toFixed(decimals);
+    regenerate();
+  });
+
+  parent.appendChild(row);
+  sliderRefs[key] = { input: inp, valSpan: val, getter, setter, step };
+}
+
+function makeCheckbox(parent, label, getter, setter) {
+  const row = document.createElement('div');
+  row.className = 'ctrl-row';
+
+  const lbl = document.createElement('label');
+  lbl.textContent = label;
+  row.appendChild(lbl);
+
+  const inp = document.createElement('input');
+  inp.type = 'checkbox';
+  inp.checked = getter();
+  inp.addEventListener('change', () => {
+    setter(inp.checked);
+    regenerate();
+  });
+  row.appendChild(inp);
+
+  parent.appendChild(row);
+  return inp;
+}
+
+function buildControls() {
+  sidebar.innerHTML = '';
+
+  // ── Zone ranges ──
+  const zoneHeader = document.createElement('div');
+  zoneHeader.className = 'section-header';
+  zoneHeader.textContent = 'Zone Ranges';
+  sidebar.appendChild(zoneHeader);
+
+  for (let i = 0; i < zones.length; i++) {
+    const z = zones[i];
+    const zlbl = document.createElement('div');
+    zlbl.className = 'zone-label';
+    zlbl.style.color = ZONE_COLORS[i].stroke;
+    zlbl.textContent = `Zone ${z.id}: ${z.name} (${z.letterCount} letters)`;
+    sidebar.appendChild(zlbl);
+
+    makeSlider(sidebar, `z${z.id}Start`, 'Z start', -80, 80, 1,
+      () => z.zStart, (v) => { z.zStart = v; });
+    makeSlider(sidebar, `z${z.id}End`, 'Z end', -80, 80, 1,
+      () => z.zEnd, (v) => { z.zEnd = v; });
+  }
+
+  // ── Path shape ──
+  const pathHeader = document.createElement('div');
+  pathHeader.className = 'section-header';
+  pathHeader.textContent = 'Path Shape';
+  sidebar.appendChild(pathHeader);
+
+  makeSlider(sidebar, 'freq', 'Frequency', 0.02, 0.30, 0.01,
+    () => config.freq, (v) => { config.freq = v; });
+  makeSlider(sidebar, 'freq2', 'Freq 2', 0.00, 0.30, 0.01,
+    () => config.freq2, (v) => { config.freq2 = v; });
+  makeSlider(sidebar, 'mix2', 'Mix 2', 0, 1, 0.05,
+    () => config.mix2, (v) => { config.mix2 = v; });
+  makeSlider(sidebar, 'phase', 'Phase', 0, 6.28, 0.01,
+    () => config.phase, (v) => { config.phase = v; });
+  makeSlider(sidebar, 'baseAmp', 'Base amp', 0, 6, 0.1,
+    () => config.baseAmp, (v) => { config.baseAmp = v; });
+  makeSlider(sidebar, 'maxAmp', 'Max amp', 2, 24, 1,
+    () => config.maxAmp, (v) => { config.maxAmp = v; });
+  makeSlider(sidebar, 'ampCurve', 'Amp curve', 0.20, 2.50, 0.05,
+    () => config.ampCurve, (v) => { config.ampCurve = v; });
+  mirrorCheckbox = makeCheckbox(sidebar, 'Mirror zone 3',
+    () => config.mirrorZ3, (v) => { config.mirrorZ3 = v; });
+  makeSlider(sidebar, 'jitX', 'Jitter X', 0, 6, 0.1,
+    () => config.jitX, (v) => { config.jitX = v; });
+  makeSlider(sidebar, 'jitZ', 'Jitter Z', 0, 4, 0.1,
+    () => config.jitZ, (v) => { config.jitZ = v; });
+
+  // ── Spacing ──
+  const spHeader = document.createElement('div');
+  spHeader.className = 'section-header';
+  spHeader.textContent = 'Spacing';
+  sidebar.appendChild(spHeader);
+
+  makeSlider(sidebar, 'minSp', 'Min spacing', 2.0, 7.0, 0.1,
+    () => config.minSp, (v) => { config.minSp = v; });
+  makeSlider(sidebar, 'zRand', 'Z randomness', 0.00, 0.80, 0.05,
+    () => config.zRand, (v) => { config.zRand = v; });
+
+  // Seed row
+  const seedRow = document.createElement('div');
+  seedRow.className = 'ctrl-row';
+  const seedLbl = document.createElement('label');
+  seedLbl.textContent = 'Seed';
+  seedRow.appendChild(seedLbl);
+  const seedInp = document.createElement('input');
+  seedInp.type = 'number';
+  seedInp.value = config.seed;
+  seedInp.addEventListener('input', () => {
+    config.seed = parseInt(seedInp.value) || 0;
+    regenerate();
+  });
+  seedRow.appendChild(seedInp);
+  const rollBtn = document.createElement('button');
+  rollBtn.className = 'small';
+  rollBtn.textContent = 'Roll';
+  rollBtn.addEventListener('click', () => {
+    config.seed = Math.floor(Math.random() * 100000);
+    seedInp.value = config.seed;
+    regenerate();
+  });
+  seedRow.appendChild(rollBtn);
+  sidebar.appendChild(seedRow);
+  sliderRefs._seedInp = seedInp;
+
+  // ── Actions ──
+  const actHeader = document.createElement('div');
+  actHeader.className = 'section-header';
+  actHeader.textContent = 'Actions';
+  sidebar.appendChild(actHeader);
+
+  const btnRow1 = document.createElement('div');
+  btnRow1.className = 'btn-row';
+
+  const regenBtn = document.createElement('button');
+  regenBtn.className = 'primary';
+  regenBtn.textContent = 'Regenerate';
+  regenBtn.addEventListener('click', () => {
+    config.seed = Math.floor(Math.random() * 100000);
+    seedInp.value = config.seed;
+    regenerate();
+  });
+  btnRow1.appendChild(regenBtn);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.textContent = 'Reset defaults';
+  resetBtn.addEventListener('click', resetToDefaults);
+  btnRow1.appendChild(resetBtn);
+
+  sidebar.appendChild(btnRow1);
+
+  const btnRow2 = document.createElement('div');
+  btnRow2.className = 'btn-row';
+
+  const exportPosBtn = document.createElement('button');
+  exportPosBtn.className = 'primary';
+  exportPosBtn.textContent = 'Export positions JSON';
+  exportPosBtn.addEventListener('click', exportPositions);
+  btnRow2.appendChild(exportPosBtn);
+
+  const exportCfgBtn = document.createElement('button');
+  exportCfgBtn.textContent = 'Export full config';
+  exportCfgBtn.addEventListener('click', exportConfig);
+  btnRow2.appendChild(exportCfgBtn);
+
+  sidebar.appendChild(btnRow2);
+
+  const btnRow3 = document.createElement('div');
+  btnRow3.className = 'btn-row';
+
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = 'Copy config to clipboard';
+  copyBtn.addEventListener('click', copyConfig);
+  btnRow3.appendChild(copyBtn);
+
+  const fitBtn = document.createElement('button');
+  fitBtn.textContent = 'Fit view';
+  fitBtn.addEventListener('click', () => { autoFitView(); draw(); });
+  btnRow3.appendChild(fitBtn);
+
+  sidebar.appendChild(btnRow3);
+}
+
+let mirrorCheckbox = null;
+
+function refreshControlValues() {
+  for (const [key, ref] of Object.entries(sliderRefs)) {
+    if (key.startsWith('_')) continue;
+    if (!ref.input) continue;
+    ref.input.value = ref.getter();
+    const step = ref.step;
+    const decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
+    ref.valSpan.textContent = Number(ref.getter()).toFixed(decimals);
+  }
+  if (sliderRefs._seedInp) sliderRefs._seedInp.value = config.seed;
+  if (mirrorCheckbox) mirrorCheckbox.checked = config.mirrorZ3;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STATS BAR
+// ═══════════════════════════════════════════════════════════════════
+
+const statsBar = document.getElementById('statsBar');
+
+function updateStats() {
+  const stats = computeStats(letters, config);
+  const ok = stats.violations === 0;
+
+  statsBar.innerHTML =
+    `<span><span class="stat-label">Min spacing: </span><span class="stat-val">${stats.minDist.toFixed(2)}</span>` +
+    ` <span class="stat-label">between</span> <span class="stat-val">#${stats.minPair[0]}–#${stats.minPair[1]}</span></span>` +
+    `<span><span class="stat-label">Violations: </span><span class="stat-val">${stats.violations}</span></span>` +
+    `<span><span class="stat-label">Sharpest turn: </span><span class="stat-val">${stats.sharpestAngle.toFixed(1)}°</span>` +
+    ` <span class="stat-label">at</span> <span class="stat-val">#${stats.sharpestId}</span></span>` +
+    `<span><span class="stat-label">Path length: </span><span class="stat-val">${stats.pathLength.toFixed(1)}</span></span>` +
+    `<span class="badge ${ok ? 'ok' : 'warn'}">${ok ? 'Spacing OK' : stats.violations + ' violation' + (stats.violations !== 1 ? 's' : '')}</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════════════════════
+
+function regenerate() {
+  if (letters.length > 0 && !ghostLetters) {
+    ghostLetters = letters.map(l => ({ ...l }));
+  }
+  letters = generateLetterPositions(config, zones);
+  updateStats();
+  draw();
+}
+
+function resetToDefaults() {
+  config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  zones = JSON.parse(JSON.stringify(DEFAULT_ZONES));
+  ghostLetters = null;
+  buildControls();
+  regenerate();
+  autoFitView();
+  draw();
+}
+
+function downloadJSON(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportPositions() {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const data = letters.map(l => ({ id: l.id, x: l.x, z: l.z, zone: l.zone }));
+  downloadJSON(data, `letter-positions-${ts}.json`);
+}
+
+function exportConfig() {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const data = { config: { ...config }, zones: zones.map(z => ({ ...z })) };
+  downloadJSON(data, `meander-config-${ts}.json`);
+}
+
+function copyConfig() {
+  const data = { config: { ...config }, zones: zones.map(z => ({ ...z })) };
+  navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(() => {
+    // Brief flash on the button
+    const btn = document.querySelector('.btn-row button:last-child');
+  }).catch(() => {
+    // Fallback: select a temporary textarea
+    const ta = document.createElement('textarea');
+    ta.value = JSON.stringify(data, null, 2);
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+
+function init() {
+  resizeCanvas();
+  buildControls();
+  letters = generateLetterPositions(config, zones);
+  autoFitView();
+  updateStats();
+  draw();
+
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    draw();
+  });
+}
+
+init();
+</script>
+</body>
+</html>

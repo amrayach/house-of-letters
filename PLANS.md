@@ -625,6 +625,42 @@ Notes:
 - `src/renderer/groundTimeline.js` now owns the floor spine, per-letter anchors/connectors, and label planes.
 - timeline setup disables safely if chronology validation fails or not every covered letter model loads.
 
+### 2D. 3D orbit inspection sub-mode
+
+Status:
+- Implemented across Sessions 1–5
+
+Scope:
+- Sketchfab-style 3D orbit viewer within the inspect overlay, supplementing the existing 2D scan viewer
+- Isolated viewport: separate Three.js scene, camera, WebGLRenderer, and OrbitControls inside `#inspect-orbit-viewport`
+- User can toggle between scan and orbit with T key or button, zoom in very close to read text, pan with arrow keys or right-click drag, and rotate the letter model freely
+
+Key design decisions:
+- MeshBasicMaterial for letter surfaces (not MeshStandardMaterial) — scanned documents need unlit rendering; lighting-responsive materials cause one side to wash out and the other to go dark
+- NoToneMapping on orbit renderer — ACES tone mapping clips white paper textures
+- Isolated viewport (Option B from feasibility) — avoids touching main scene, post-processing, fog, or camera ownership
+- Parallel `inspectState.subMode` flag ('scan' | 'orbit') within existing ACTIVE phase — no new inspect phases
+- Lazy initialization — orbit WebGL context created only on first toggle, not at boot
+- Viewport must be unhidden before init() — container needs non-zero dimensions for canvas sizing
+
+Files created:
+- `src/renderer/orbitInspect.js` — standalone orbit viewer module
+
+Files modified:
+- `src/main.js` — subMode state, toggle function, key/button handlers, render call, cleanup
+- `src/config/constants.js` — INSPECT.ORBIT_* constants
+- `index.html` — orbit viewport container, toggle button, accessibility attributes
+- `src/styles/main.css` — orbit viewport CSS, badge variant, responsive breakpoints
+
+Intentionally not done:
+- No normal map recovery (letters.js discards them; moot since MeshBasicMaterial doesn't use them)
+- No post-processing on orbit renderer (studio lighting provides quality without GPU cost)
+- No auto-rotate (infrastructure ready via ORBIT_AUTO_ROTATE_SPEED constant but disabled)
+
+Validation:
+- `npm run build` clean
+- Browser smoke: scan↔orbit toggle, zoom, pan, rotate, exit, force-exit, resize, letter switching
+
 ## Recommended next task
 
 Manual ground chronology smoke pass.

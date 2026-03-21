@@ -3,7 +3,6 @@ import { audioEngine } from '../audio/audioEngine.js';
 import { INTERACTION } from '../config/constants.js';
 import { diag } from '../utils/diagnostics.js';
 
-const ACTIVE_CUE_COLOR = 0xffd86b;
 const VIEW_ALIGNMENT_MIN_DOT = 0.35;
 const FACING_ALIGNMENT_MIN_DOT = 0.15;
 const INSIDE_TRIGGER_BONUS = 0.35;
@@ -14,33 +13,6 @@ const FOCUSED_PROMPT_DISTANCE_FALLOFF = 2.75;
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, value));
-}
-
-function ensureActiveCue(mesh) {
-  if (mesh.userData.isGlass || mesh.userData.isFocusHelper || mesh.userData.activeCue || !mesh.geometry) {
-    return;
-  }
-
-  const outline = new THREE.LineSegments(
-    new THREE.EdgesGeometry(mesh.geometry, 20),
-    new THREE.LineBasicMaterial({
-      color: ACTIVE_CUE_COLOR,
-      transparent: true,
-      opacity: 0.9,
-      depthTest: false,
-      depthWrite: false,
-      toneMapped: false,
-    }),
-  );
-
-  outline.name = 'active-letter-cue';
-  outline.visible = false;
-  outline.renderOrder = 10;
-  outline.scale.setScalar(1.015);
-  outline.raycast = () => null;
-
-  mesh.add(outline);
-  mesh.userData.activeCue = outline;
 }
 
 export class ProximityManager {
@@ -428,12 +400,6 @@ export class ProximityManager {
         return;
       }
 
-      ensureActiveCue(child);
-
-      if (child.userData.activeCue) {
-        child.userData.activeCue.visible = true;
-      }
-
       if (!child.userData.originalEmissive) {
         child.userData.originalEmissive = child.material.emissive
           ? child.material.emissive.clone()
@@ -452,10 +418,6 @@ export class ProximityManager {
     letter.traverse((child) => {
       if (!child.isMesh || child.userData.isFocusHelper) {
         return;
-      }
-
-      if (child.userData.activeCue) {
-        child.userData.activeCue.visible = false;
       }
 
       if (child.material && child.userData.originalEmissive && child.material.emissive) {

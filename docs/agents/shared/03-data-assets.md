@@ -83,10 +83,10 @@ Observed runtime schema: 46 records, all with the same keys today.
 - Record count: 46
 - Zone counts: `1 / 5 / 12 / 28`
 - Zone z-ranges in current runtime file:
-  - zone 1: `-37.5`
-  - zone 2: `-21.5 .. -13.5`
-  - zone 3: `0.8 .. 16`
-  - zone 4: `29.3 .. 58.5`
+  - zone 1: `-37`
+  - zone 2: `-26.67 .. -11.52`
+  - zone 3: `-3.89 .. 19.77`
+  - zone 4: `26.57 .. 63.66`
 - All current asset references in `letters.json` resolve to existing files under `public/`.
 
 ## Provisional grouped chronology mapping
