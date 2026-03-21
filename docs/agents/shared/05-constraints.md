@@ -77,6 +77,20 @@
 - Auto-playing theme before AudioContext is resumed from a user gesture (the landing CTA gesture unlocks audio for the session)
 - Moving `startDeferredLetterLoad()` back onto the synchronous click/lock handler path — it was deferred to `setTimeout(0)` because queuing 40 GLB fetches costs ~30ms
 
+## Cloudflare Pages routing constraints
+
+- `_redirects` is processed top-to-bottom, first match wins. Rule ordering is deployment-critical.
+- The `/listen/*` rule must stay before the `/*` SPA catch-all, or exhibition listener routes will be swallowed by `index.html`.
+- Any new non-SPA route must be added above the `/*` catch-all, never below it.
+- `_headers` rules are additive (not first-match), so ordering within `_headers` is less critical than in `_redirects`.
+- CI enforces `_redirects` ordering automatically — see `.github/workflows/ci.yml`.
+
+## Domain and CI constraints
+
+- Production domain is `https://www.houseofdreams.space/` — verify after any domain-referencing edit.
+- CI must pass before merging to main. It runs `validate:letters --strict`, `build`, dist file verification, `_redirects` ordering check, and domain correctness check.
+- CI also verifies no occurrences of the wrong domain `houseofdreams.site` reach the build output.
+
 ## Asset-heavy path handling
 
 - Never mass-edit `dist/**`.

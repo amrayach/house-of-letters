@@ -1,15 +1,64 @@
+# ── Vite-hashed bundles (immutable — hash changes on content change) ──
+
+/assets/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+# ── 3D models ──
+
 /*.glb
   Content-Type: model/gltf-binary
   Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=604800, must-revalidate
 
 /assets/models/*.glb
   Content-Type: model/gltf-binary
   Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=604800, must-revalidate
+
+# ── Archive audio (narration + themes) ──
 
 /*.mp3
   Content-Type: audio/mpeg
   Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=604800, must-revalidate
 
 /assets/audio/*.mp3
   Content-Type: audio/mpeg
   Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=604800, must-revalidate
+
+# ── Exhibition listener audio ──
+
+/assets/listen/*.mp3
+  Content-Type: audio/mpeg
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=604800, must-revalidate
+
+# ── Letter scans ──
+
+/assets/letters/*.jpg
+  Cache-Control: public, max-age=604800, must-revalidate
+
+# ── Textures ──
+
+/assets/textures/*
+  Cache-Control: public, max-age=604800, must-revalidate
+
+# ── Loading scene (Sednaya building) ──
+
+/3d_sednaya/*
+  Cache-Control: public, max-age=604800, must-revalidate
+
+# ── HTML shells (short cache so deploys propagate fast) ──
+
+/
+  Cache-Control: public, max-age=60, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=60, must-revalidate
+
+/listen.html
+  Cache-Control: public, max-age=60, must-revalidate

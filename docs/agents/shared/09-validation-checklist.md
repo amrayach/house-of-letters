@@ -139,6 +139,36 @@ Use this narrower proof ladder for the current boot and deferred-loading runtime
    - desktop pointer-lock remains manual-first
    - physical iOS Safari and Android Chrome placement for the touch deferred-status pill remain manual-only until captured on real devices
 
+## CI automated gate
+
+`.github/workflows/ci.yml` runs on every push/PR to `main` and catches:
+- broken letter data or asset paths (`validate:letters --strict`)
+- compile errors and missing imports (`build`)
+- missing critical dist files (`index.html`, `listen.html`, `_headers`, `_redirects`)
+- wrong `_redirects` rule ordering (`/listen/*` must precede `/*`)
+- wrong domain (`houseofdreams.site`) in build output
+
+Manual checks after domain-referencing edits:
+- `grep -r "houseofdreams\.site" .` — must return zero results
+- verify `_headers` covers all 14 path patterns after any asset-type addition
+
+## Exhibition listener checks
+
+After `_redirects` changes:
+- verify `/listen/*` rule appears before the `/*` catch-all in both `public/_redirects` and `dist/_redirects`
+- confirm `dist/listen.html` exists after build
+- test that `/listen/1` resolves to the listener page and `/` still resolves to the SPA
+
+After `_headers` changes:
+- verify all cache-control rules are present in `dist/_headers`
+- confirm existing Content-Type and CORS rules for GLB/MP3 are preserved
+
+After listener page changes:
+- verify `public/listen.html` is under 20KB (`wc -c`)
+- confirm it has no imports from `src/`
+- test edge-case URLs: `/listen/abc`, `/listen/0`, `/listen/99` should show the error state
+- test language toggle switches `dir="rtl"` for Arabic
+
 ## When to use `playwright` plus `playwright-cli`
 
 Use the `playwright` skill plus `playwright-cli` when:

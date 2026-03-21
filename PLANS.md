@@ -661,6 +661,66 @@ Validation:
 - `npm run build` clean
 - Browser smoke: scan↔orbit toggle, zoom, pan, rotate, exit, force-exit, resize, letter switching
 
+### 6. Exhibition Audio Listener
+
+Status:
+- Infrastructure complete — routing, cache-control headers, listener page, and docs all landed
+- Pending: client MP3 files (20 tracks: 10 AR + 10 EN, naming `{id}_ar.mp3` / `{id}_en.mp3`)
+- QR codes: generated via `npm run generate:qr` → `generated/qr-codes/` (10 individual SVGs + print sheet)
+
+Scope:
+- Standalone lightweight HTML page at `/listen/:id` for physical exhibition QR codes
+- Visitors scan a QR code next to a diary paper and hear the narration on their phone
+- IDs 1 through 10, bilingual: Arabic (`{id}_ar.mp3`) and English (`{id}_en.mp3`)
+- Must not load Three.js, the 3D archive, or any `src/` modules
+- Page reads the ID from the URL path, presents a minimal mobile-friendly audio player
+- Audio files live under `public/assets/listen/`
+
+File ownership:
+- `public/listen.html` — standalone listener page (to be created)
+- `public/assets/listen/` — exhibition audio MP3s
+- `public/_redirects` — `/listen/*` route (landed)
+- `public/_headers` — CORS and cache rules for `/assets/listen/*.mp3` (landed)
+
+Does not touch:
+- `src/` (no runtime changes)
+- `index.html` (main SPA entry unchanged)
+- `src/data/letters.json` (archive data unchanged)
+- `vite.config.js` (build config unchanged)
+
+Dependencies:
+- Independent of all existing workstreams — touches only `public/` static files
+- No interaction with the 3D archive runtime, controls, audio engine, or proximity system
+- Audio MP3 files must be provided by the content team before the page is functional
+
+Validation:
+- `npm run build` — confirm `dist/listen.html`, `dist/_redirects`, and `dist/_headers` present
+- Local: `npm run preview` then navigate to `/listen/1` — confirm `listen.html` loads (not `index.html`)
+- Deployed: verify QR code URLs resolve to the listener page, not the 3D archive
+- Verify existing SPA routing (`/*` catch-all) still works for all non-listen routes
+
+Docs to update:
+- `docs/agents/shared/03-data-assets.md` (done — listen asset convention added)
+- `docs/agents/shared/04-build-deploy.md` (done — listen route and headers documented)
+
+### 7. Deployment Infrastructure Hardening
+
+Status:
+- Complete
+
+Scope:
+- Domain audit: fixed all `houseofdreams.site` → `houseofdreams.space` references
+- Exhaustive `_headers`: Cache-Control on all 14 path patterns covering every asset type
+- CI pipeline: `.github/workflows/ci.yml` runs content validation, build, dist verification, routing order check, and domain correctness check on push/PR to `main`
+
+Does not touch:
+- `src/` (no runtime changes)
+- `vite.config.js` (build config unchanged)
+- `letters.json` (archive data unchanged)
+
+Docs updated:
+- `00-project-overview.md`, `03-data-assets.md`, `04-build-deploy.md`, `05-constraints.md`, `09-validation-checklist.md`, `99-repo-inventory.md`
+
 ## Recommended next task
 
 Manual ground chronology smoke pass.

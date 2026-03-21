@@ -5,17 +5,21 @@
 - Project type: client-side interactive 3D archive/gallery
 - Runtime stack: `Vite + Three.js + Howler + postprocessing`
 - Deployment target: `Cloudflare Pages`
+- Production domain: `https://www.houseofdreams.space/`
 - Runtime identity mismatch: package and repo say `house-of-letters`; UI title says `House of Dreams`
 
 ## What this project is
 
 This app loads scanned letters as 3D GLB objects, places them in a navigable space, uses readable-side targeting to decide which letter is in focus, plays narration when the user approaches a readable letter face, and wraps the experience in a cinematic loading intro plus overlay UI.
 
+A companion standalone page at `/listen/:id` (`public/listen.html`) serves as an exhibition audio guide: visitors at the physical installation scan QR codes next to diary papers and hear Arabic or English narration on their phones. This page is fully self-contained — no Three.js, no Vite processing, no runtime dependencies on the 3D archive.
+
 ## Runtime entry points
 
 - `index.html`: declares the overlay DOM, loads `/src/styles/main.css`, and boots `/src/main.js`
 - `src/main.js`: orchestration entry point; initializes scene, loading flow, controls, audio, proximity, UI updates, and the animation loop
 - `src/styles/main.css`: styles the loading screen, start/pause screens, HUD, inspect UI, mobile controls, and preview UI
+- `public/listen.html`: standalone exhibition audio listener — self-contained HTML/CSS/JS, no Vite processing, served via `/listen/*` redirect
 
 ## Major subsystems
 
@@ -38,6 +42,7 @@ This app loads scanned letters as 3D GLB objects, places them in a navigable spa
 - Readable-side targeting plus full-size inspect overlay
 - Howler-based theme playback and narration lazy loading
 - Cloudflare Pages deployment files for SPA routing and asset headers
+- Exhibition audio listener page (`/listen/:id`) — routing, headers, and page complete; awaiting client MP3 files
 
 ## Appears incomplete
 

@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "validate:letters": "node scripts/validate-letters.js",
     "compress": "node scripts/compress-glb.js",
-    "clean": "rm -rf dist node_modules/.vite"
+    "clean": "rm -rf dist node_modules/.vite",
+    "generate:qr": "node scripts/generate-qr-codes.js"
   },
   "keywords": [
     "threejs",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@gltf-transform/cli": "^4.2.1",
     "@gltf-transform/extensions": "^4.2.1",
+    "qrcode": "^1.5.4",
     "vite": "^7.2.2"
   }
 }

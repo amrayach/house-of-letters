@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate letter content
+        run: npm run validate:letters -- --strict
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify critical dist files
+        run: |
+          test -f dist/index.html    || (echo "FAIL: missing dist/index.html" && exit 1)
+          test -f dist/listen.html   || (echo "FAIL: missing dist/listen.html" && exit 1)
+          test -f dist/_headers      || (echo "FAIL: missing dist/_headers" && exit 1)
+          test -f dist/_redirects    || (echo "FAIL: missing dist/_redirects" && exit 1)
+
+      - name: Verify _redirects rule ordering
+        run: |
+          LISTEN_LINE=$(grep -n '/listen/\*' dist/_redirects | head -1 | cut -d: -f1)
+          CATCHALL_LINE=$(grep -n '/\*' dist/_redirects | grep -v '/listen/' | head -1 | cut -d: -f1)
+          if [ "$LISTEN_LINE" -ge "$CATCHALL_LINE" ]; then
+            echo "FAIL: /listen/* rule must appear before /* catch-all in _redirects"
+            exit 1
+          fi
+
+      - name: Verify no wrong domain in build output
+        run: |
+          if grep -r "houseofdreams\.site" dist/; then
+            echo "FAIL: wrong domain found in build output"
+            exit 1
+          fi

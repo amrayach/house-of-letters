@@ -42,6 +42,7 @@
 ## Cloudflare Pages assumptions
 
 - Deployment target is a static Cloudflare Pages site.
+- Production domain: `https://www.houseofdreams.space/`
 - Expected build command: `npm run build`
 - Expected output directory: `dist`
 - `_headers` and `_redirects` are authored in `public/` so Vite copies them into `dist/`.
@@ -51,29 +52,56 @@
 Current file:
 
 ```text
+/listen/*  /listen.html  200
 /*  /index.html  200
 ```
 
 Implication:
 
-- SPA-style fallback routes resolve to `index.html`.
-- This works for the current static Pages shape.
+- `/listen/*` routes resolve to `listen.html`, the standalone exhibition audio listener page. This rule must stay before the SPA catch-all because Cloudflare Pages processes `_redirects` top-to-bottom, first match wins.
+- All other routes fall through to `index.html` for the main SPA.
 - If Pages Functions or another SSR/runtime layer is added later, `_redirects` stops being the full routing story.
 
 ## `_headers`
 
-Current rules set `Content-Type` and `Access-Control-Allow-Origin: *` for:
+Current rules cover 14 path patterns with `Content-Type`, `Access-Control-Allow-Origin`, and `Cache-Control` headers:
 
-- `/*.glb`
-- `/assets/models/*.glb`
-- `/*.mp3`
-- `/assets/audio/*.mp3`
+| Path pattern | Content-Type | CORS | Cache-Control |
+| --- | --- | --- | --- |
+| `/assets/*.js` | — | — | `public, max-age=31536000, immutable` |
+| `/assets/*.css` | — | — | `public, max-age=31536000, immutable` |
+| `/*.glb` | `model/gltf-binary` | `*` | `public, max-age=604800, must-revalidate` |
+| `/assets/models/*.glb` | `model/gltf-binary` | `*` | `public, max-age=604800, must-revalidate` |
+| `/*.mp3` | `audio/mpeg` | `*` | `public, max-age=604800, must-revalidate` |
+| `/assets/audio/*.mp3` | `audio/mpeg` | `*` | `public, max-age=604800, must-revalidate` |
+| `/assets/listen/*.mp3` | `audio/mpeg` | `*` | `public, max-age=604800, must-revalidate` |
+| `/assets/letters/*.jpg` | — | — | `public, max-age=604800, must-revalidate` |
+| `/assets/textures/*` | — | — | `public, max-age=604800, must-revalidate` |
+| `/3d_sednaya/*` | — | — | `public, max-age=604800, must-revalidate` |
+| `/` | — | — | `public, max-age=60, must-revalidate` |
+| `/index.html` | — | — | `public, max-age=60, must-revalidate` |
+| `/listen.html` | — | — | `public, max-age=60, must-revalidate` |
+
+Cache-Control strategy:
+
+- **Vite-hashed bundles** (JS/CSS): `immutable` with 1-year `max-age` — the content hash in the filename changes on every build, so browsers cache forever and never re-fetch stale versions.
+- **HTML shells** (`index.html`, `listen.html`): 60-second `max-age` — short cache so new deploys propagate quickly. HTML references the hashed bundle URLs, so a new deploy = new HTML = new bundles.
+- **Stable binary assets** (GLB, MP3, JPG, textures): 7-day `max-age` with `must-revalidate` — filenames are stable (not hashed), so browsers cache long but check for updates after expiry.
 
 Implications:
 
 - Rules are parsed by Pages; `_headers` itself is not served as a public file.
 - They apply to static asset responses.
 - If the project later adds Pages Functions, these rules will not cover Function-generated responses.
+
+## Exhibition listener page
+
+- `public/listen.html` is a standalone HTML file — not processed by Vite, not a module entry point.
+- It is copied as-is to `dist/listen.html` during build, like all `public/` files.
+- The `/listen/*` redirect in `_redirects` routes exhibition QR code URLs to this file.
+- The page reads the paper ID from `window.location.pathname` at runtime.
+- It has zero dependency on the 3D archive: no Three.js, no Howler, no imports from `src/`.
+- Audio files are expected at `/assets/listen/{id}_{lang}.mp3` (see `public/assets/listen/README.md`).
 
 ## Deployment-sensitive constraints
 
@@ -84,6 +112,18 @@ Implications:
 - Do not move `public/assets/**` unless `letters.json`, constants, and intro paths are updated together.
 - Do not assume the build system fingerprints or rewrites these public assets; Pages serves them as copied files.
 - If CORS/header policy changes, validate GLB and MP3 fetches in the deployed environment, not just locally.
+
+## CI pipeline
+
+`.github/workflows/ci.yml` runs on push and PR to `main`, alongside (not replacing) Cloudflare Pages auto-build.
+
+Steps:
+1. `npm ci`
+2. `npm run validate:letters -- --strict` — content validation, fails on warnings
+3. `npm run build` — production build, catches compile errors
+4. Verify critical `dist/` files exist: `index.html`, `listen.html`, `_headers`, `_redirects`
+5. Verify `_redirects` rule ordering: `/listen/*` must precede `/*` catch-all
+6. Verify no wrong domain (`houseofdreams.site`) leaked into build output
 
 For deploy-related skill routing, see `docs/agents/shared/13-skill-activation-matrix.md`. For browser validation after deploy-sensitive edits, use `docs/agents/shared/09-validation-checklist.md`.
 

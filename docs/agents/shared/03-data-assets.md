@@ -117,7 +117,8 @@ Observed runtime schema: 46 records, all with the same keys today.
 | Back image | `/assets/letters/{id}-{id}.jpg` | preview UI assumes this naming when fallbacking; `public/assets/letters/47-47.jpg` is currently unused |
 | Narration | `/assets/audio/narration_{n}.mp3` | only 15 narration files exist; records reuse them |
 | Theme | `/assets/audio/theme_1.mp3` or `/assets/audio/theme_2.mp3` | data exists, runtime switching does not |
-| Intro assets | `/3d_sednaya/*.js`, `/3d_sednaya/panchromatic.jpg` | used only by `LoadingScene` |
+| Intro assets | `/3d_sednaya/*.js`, `/3d_sednaya/panchromatic.jpg` | used only by `LoadingScene`; `_headers` adds 7-day cache |
+| Exhibition listen audio | `/assets/listen/{id}_ar.mp3`, `/assets/listen/{id}_en.mp3` | standalone listener page; IDs 1-10; not referenced by `letters.json` or the 3D archive runtime |
 
 ## Model/audio/image relationships
 
@@ -155,6 +156,7 @@ Observed runtime schema: 46 records, all with the same keys today.
 - `public/assets/models/*`
 - `public/assets/audio/*`
 - `public/assets/letters/*`
+- `public/assets/listen/*` (exhibition audio — standalone, not referenced by `letters.json`)
 - `public/3d_sednaya/*`
 
 ### Generated / do not edit directly

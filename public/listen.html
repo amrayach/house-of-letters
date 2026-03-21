@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<title>House of Dreams — Exhibition Audio</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;background:#000}
+body{
+  min-height:100%;
+  background:#000;
+  color:#fff;
+  font-family:'Courier New',Courier,monospace;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:0 24px;
+  padding-top:max(env(safe-area-inset-top,0px),24px);
+  padding-bottom:max(env(safe-area-inset-bottom,0px),24px);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* --- Fade-in animation --- */
+@keyframes fadeSlideIn{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.reveal{opacity:0;animation:fadeSlideIn .4s ease-out forwards}
+.reveal-d1{animation-delay:.15s}
+.reveal-d2{animation-delay:.35s}
+.reveal-d3{animation-delay:.55s}
+.reveal-d4{animation-delay:.75s}
+
+/* --- Header --- */
+.header{
+  text-align:center;
+  padding:clamp(32px,8vh,56px) 0 0;
+  width:100%;
+  max-width:380px;
+}
+.kicker{
+  font-size:.72rem;
+  letter-spacing:.42em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.62);
+  margin-bottom:12px;
+}
+.title{
+  font-size:clamp(1.6rem,4.5vw,2.2rem);
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+  line-height:1.2;
+}
+
+/* --- Paper ID --- */
+.paper-id{
+  text-align:center;
+  padding:clamp(24px,5vh,40px) 0 0;
+  width:100%;
+  max-width:380px;
+}
+.paper-number{
+  font-size:clamp(2.4rem,7vw,3.6rem);
+  letter-spacing:.08em;
+  font-weight:normal;
+  line-height:1.1;
+}
+.paper-label{
+  font-size:.76rem;
+  letter-spacing:.42em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.62);
+  margin-top:8px;
+}
+
+/* --- Language selector --- */
+.lang-selector{
+  display:flex;
+  gap:12px;
+  justify-content:center;
+  padding:clamp(28px,5vh,44px) 0 0;
+  width:100%;
+  max-width:380px;
+}
+.lang-btn{
+  flex:1;
+  max-width:160px;
+  min-height:52px;
+  padding:14px 12px;
+  background:transparent;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:14px;
+  font-family:inherit;
+  font-size:1rem;
+  letter-spacing:.06em;
+  cursor:pointer;
+  transition:all .3s ease;
+  position:relative;
+  overflow:hidden;
+}
+.lang-btn::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:radial-gradient(circle at top center,rgba(112,144,255,.08) 0%,transparent 60%);
+  opacity:0;
+  transition:opacity .3s ease;
+  pointer-events:none;
+}
+.lang-btn:hover::before,.lang-btn:focus-visible::before{opacity:1}
+.lang-btn:hover,.lang-btn:focus-visible{
+  border-color:rgba(255,255,255,.58);
+}
+.lang-btn:focus-visible{
+  outline:2px solid rgba(102,136,204,.7);
+  outline-offset:2px;
+}
+.lang-btn[aria-pressed="true"]{
+  border-color:rgba(102,136,204,.7);
+  background:linear-gradient(180deg,rgba(11,16,26,.78) 0%,rgba(5,6,10,.9) 100%);
+  box-shadow:0 0 24px rgba(102,136,204,.18);
+}
+.lang-btn[aria-pressed="true"]::before{opacity:1}
+
+/* --- Player --- */
+.player{
+  width:100%;
+  max-width:380px;
+  padding:clamp(28px,5vh,40px) 0 0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:24px;
+}
+.player[hidden]{display:none}
+
+.play-btn{
+  width:72px;
+  height:72px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,.38);
+  background:transparent;
+  color:#fff;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all .3s ease;
+  position:relative;
+  flex-shrink:0;
+}
+.play-btn::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:radial-gradient(circle at center,rgba(102,136,204,.1) 0%,transparent 70%);
+  pointer-events:none;
+}
+.play-btn:hover,.play-btn:focus-visible{
+  border-color:rgba(255,255,255,.7);
+  box-shadow:0 0 28px rgba(102,136,204,.22);
+}
+.play-btn:focus-visible{
+  outline:2px solid rgba(102,136,204,.7);
+  outline-offset:3px;
+}
+.play-btn:disabled{
+  opacity:.4;
+  cursor:default;
+}
+.play-btn svg{width:28px;height:28px;fill:currentColor}
+
+.progress-wrap{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.progress-track{
+  width:100%;
+  height:3px;
+  background:rgba(255,255,255,.12);
+  border-radius:2px;
+  overflow:hidden;
+  cursor:pointer;
+  position:relative;
+}
+.progress-fill{
+  height:100%;
+  background:rgba(102,136,204,.7);
+  border-radius:2px;
+  width:0%;
+  transition:width .15s linear;
+}
+.time-display{
+  display:flex;
+  justify-content:space-between;
+  font-size:.72rem;
+  letter-spacing:.1em;
+  color:rgba(255,255,255,.46);
+}
+
+/* --- Loading indicator --- */
+.loading-indicator{
+  font-size:.76rem;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.46);
+  text-align:center;
+}
+.loading-indicator[hidden]{display:none}
+@keyframes ellipsis{
+  0%{content:''}
+  25%{content:'.'}
+  50%{content:'..'}
+  75%{content:'...'}
+}
+.loading-indicator::after{
+  content:'';
+  animation:ellipsis 1.6s steps(1) infinite;
+}
+
+/* --- Error state --- */
+.error-state{
+  text-align:center;
+  padding:clamp(32px,8vh,56px) 0;
+  width:100%;
+  max-width:380px;
+}
+.error-state .paper-number{
+  color:rgba(255,255,255,.4);
+  margin-bottom:16px;
+}
+.error-msg{
+  font-size:.88rem;
+  line-height:1.6;
+  color:rgba(255,255,255,.58);
+}
+
+/* --- Footer --- */
+.footer{
+  margin-top:auto;
+  padding:clamp(32px,6vh,48px) 0 8px;
+  text-align:center;
+  width:100%;
+}
+.footer-text{
+  font-size:.68rem;
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.28);
+}
+
+/* --- noscript --- */
+.noscript-msg{
+  text-align:center;
+  padding:48px 24px;
+  color:rgba(255,255,255,.62);
+  font-size:.92rem;
+  line-height:1.7;
+}
+</style>
+</head>
+<body>
+
+<noscript>
+  <div class="noscript-msg">
+    <p>House of Dreams — Exhibition Audio Guide</p>
+    <p>This page requires JavaScript to play audio.</p>
+  </div>
+</noscript>
+
+<div id="app"></div>
+
+<footer class="footer reveal reveal-d4">
+  <p class="footer-text">houseofdreams.space</p>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  var MIN_ID = 1;
+  var MAX_ID = 10;
+  var LANG_AR = 'ar';
+  var LANG_EN = 'en';
+
+  var SVG_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  var SVG_PAUSE = '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+
+  // --- URL parsing ---
+  function parsePaperId() {
+    var parts = window.location.pathname.replace(/\/+$/, '').split('/');
+    // Expect /listen/{id}
+    var raw = parts[parts.length - 1];
+    var id = parseInt(raw, 10);
+    if (isNaN(id) || id < MIN_ID || id > MAX_ID || String(id) !== raw) {
+      return null;
+    }
+    return id;
+  }
+
+  function audioPath(id, lang) {
+    return '/assets/listen/' + id + '_' + lang + '.mp3';
+  }
+
+  function formatTime(sec) {
+    if (!sec || !isFinite(sec)) return '0:00';
+    var m = Math.floor(sec / 60);
+    var s = Math.floor(sec % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  // --- Render ---
+  var paperId = parsePaperId();
+  var app = document.getElementById('app');
+
+  if (!paperId) {
+    renderError();
+  } else {
+    renderPlayer(paperId);
+  }
+
+  function renderError() {
+    app.innerHTML =
+      '<div class="error-state reveal">' +
+        '<div class="paper-number">?</div>' +
+        '<p class="error-msg">Paper not found.<br>Please scan the QR code again.</p>' +
+      '</div>';
+  }
+
+  function renderPlayer(id) {
+    app.innerHTML =
+      '<header class="header reveal">' +
+        '<p class="kicker">Exhibition Audio Guide</p>' +
+        '<h1 class="title">House of Dreams</h1>' +
+      '</header>' +
+
+      '<section class="paper-id reveal reveal-d1">' +
+        '<div class="paper-number" id="paper-num">' + id + '</div>' +
+        '<p class="paper-label">Paper</p>' +
+      '</section>' +
+
+      '<nav class="lang-selector reveal reveal-d2" role="group" aria-label="Language selection">' +
+        '<button class="lang-btn" id="btn-ar" type="button" aria-pressed="false" aria-label="Arabic">\u0627\u0644\u0639\u0631\u0628\u064A\u0629</button>' +
+        '<button class="lang-btn" id="btn-en" type="button" aria-pressed="false" aria-label="English">English</button>' +
+      '</nav>' +
+
+      '<div class="player reveal reveal-d3" id="player" hidden>' +
+        '<p class="loading-indicator" id="loading-msg">Loading</p>' +
+        '<button class="play-btn" id="play-btn" type="button" disabled aria-label="Play">' + SVG_PLAY + '</button>' +
+        '<div class="progress-wrap">' +
+          '<div class="progress-track" id="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
+            '<div class="progress-fill" id="progress-fill"></div>' +
+          '</div>' +
+          '<div class="time-display">' +
+            '<span id="time-current">0:00</span>' +
+            '<span id="time-duration">0:00</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    initAudio(id);
+  }
+
+  function initAudio(id) {
+    var btnAr = document.getElementById('btn-ar');
+    var btnEn = document.getElementById('btn-en');
+    var player = document.getElementById('player');
+    var playBtn = document.getElementById('play-btn');
+    var progressTrack = document.getElementById('progress-track');
+    var progressFill = document.getElementById('progress-fill');
+    var timeCurrent = document.getElementById('time-current');
+    var timeDuration = document.getElementById('time-duration');
+    var loadingMsg = document.getElementById('loading-msg');
+
+    var audio = new Audio();
+    audio.preload = 'metadata';
+    var currentLang = null;
+    var isPlaying = false;
+    var hasError = false;
+    var raf = null;
+
+    function selectLang(lang) {
+      if (currentLang === lang) return;
+      currentLang = lang;
+
+      // Update button states
+      btnAr.setAttribute('aria-pressed', lang === LANG_AR ? 'true' : 'false');
+      btnEn.setAttribute('aria-pressed', lang === LANG_EN ? 'true' : 'false');
+
+      // Update document direction for Arabic
+      if (lang === LANG_AR) {
+        document.documentElement.lang = 'ar';
+        document.documentElement.dir = 'rtl';
+      } else {
+        document.documentElement.lang = 'en';
+        document.documentElement.dir = 'ltr';
+      }
+
+      // Reset player state
+      isPlaying = false;
+      hasError = false;
+      playBtn.innerHTML = SVG_PLAY;
+      playBtn.setAttribute('aria-label', 'Play');
+      playBtn.disabled = true;
+      progressFill.style.width = '0%';
+      timeCurrent.textContent = '0:00';
+      timeDuration.textContent = '0:00';
+      loadingMsg.hidden = false;
+      loadingMsg.textContent = 'Loading';
+      player.hidden = false;
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+
+      // Load new audio
+      audio.pause();
+      audio.src = audioPath(id, lang);
+      audio.load();
+    }
+
+    audio.addEventListener('loadedmetadata', function() {
+      timeDuration.textContent = formatTime(audio.duration);
+      loadingMsg.hidden = true;
+      playBtn.disabled = false;
+    });
+
+    audio.addEventListener('error', function() {
+      hasError = true;
+      loadingMsg.textContent = 'Audio not yet available';
+      loadingMsg.hidden = false;
+      // Remove the ellipsis animation on error
+      loadingMsg.style.setProperty('animation', 'none', '');
+      var afterStyle = document.createElement('style');
+      afterStyle.textContent = '#loading-msg::after{animation:none;content:""}';
+      document.head.appendChild(afterStyle);
+      playBtn.disabled = true;
+    });
+
+    audio.addEventListener('ended', function() {
+      isPlaying = false;
+      playBtn.innerHTML = SVG_PLAY;
+      playBtn.setAttribute('aria-label', 'Play');
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+    });
+
+    function updateProgress() {
+      if (!audio.duration) return;
+      var pct = (audio.currentTime / audio.duration) * 100;
+      progressFill.style.width = pct + '%';
+      timeCurrent.textContent = formatTime(audio.currentTime);
+      progressTrack.setAttribute('aria-valuenow', Math.round(pct));
+      if (isPlaying) {
+        raf = requestAnimationFrame(updateProgress);
+      }
+    }
+
+    playBtn.addEventListener('click', function() {
+      if (hasError || !currentLang) return;
+      if (isPlaying) {
+        audio.pause();
+        isPlaying = false;
+        playBtn.innerHTML = SVG_PLAY;
+        playBtn.setAttribute('aria-label', 'Play');
+        if (raf) { cancelAnimationFrame(raf); raf = null; }
+      } else {
+        audio.play().then(function() {
+          isPlaying = true;
+          playBtn.innerHTML = SVG_PAUSE;
+          playBtn.setAttribute('aria-label', 'Pause');
+          raf = requestAnimationFrame(updateProgress);
+        }).catch(function() {
+          // Autoplay blocked — user must tap again
+        });
+      }
+    });
+
+    progressTrack.addEventListener('click', function(e) {
+      if (!audio.duration) return;
+      var rect = progressTrack.getBoundingClientRect();
+      // Respect RTL: in RTL layout the bar is visually flipped
+      var ratio;
+      if (document.documentElement.dir === 'rtl') {
+        ratio = (rect.right - e.clientX) / rect.width;
+      } else {
+        ratio = (e.clientX - rect.left) / rect.width;
+      }
+      ratio = Math.max(0, Math.min(1, ratio));
+      audio.currentTime = ratio * audio.duration;
+      updateProgress();
+    });
+
+    btnAr.addEventListener('click', function() { selectLang(LANG_AR); });
+    btnEn.addEventListener('click', function() { selectLang(LANG_EN); });
+  }
+})();
+</script>
+</body>
+</html>

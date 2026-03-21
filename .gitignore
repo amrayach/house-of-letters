@@ -37,6 +37,9 @@ uiux-*.png
 uiux-*.txt
 output/playwright/
 
+# Generated output (QR codes, etc.)
+generated/
+
 # Tooling artifacts
 .playwright-cli/
 .playwright-mcp/
