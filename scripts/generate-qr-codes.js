@@ -18,7 +18,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const OUT_DIR = join(ROOT, 'generated', 'qr-codes');
-const BASE_URL = 'https://www.houseofdreams.space/listen';
+const BASE_URL = 'https://www.houseofdreams.space/listen/';
 const PAPER_COUNT = 10;
 
 // QR generation options — high error correction for print reliability
@@ -33,7 +33,7 @@ const QR_OPTS = {
 mkdirSync(OUT_DIR, { recursive: true });
 
 async function generateIndividualSvg(id) {
-  const url = `${BASE_URL}/${id}`;
+  const url = `${BASE_URL}?p=${id}`;
   const qrSvg = await QRCode.toString(url, QR_OPTS);
 
   // Extract the viewBox dimensions from the generated SVG

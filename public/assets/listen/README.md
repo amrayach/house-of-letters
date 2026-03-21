@@ -1,6 +1,6 @@
 # Exhibition Audio Tracks
 
-This directory holds audio tracks for the standalone exhibition listener page at `/listen/:id`.
+This directory holds audio tracks for the standalone exhibition listener page at `/listen/?p={id}`.
 
 ## Expected naming
 
@@ -17,8 +17,8 @@ Where `id` is 1 through 10.
 
 ## Usage
 
-These files are referenced by `/public/listen.html` and served via `/listen/:id` routes.
-QR codes at the physical exhibition link to `/listen/1` through `/listen/10`.
+These files are referenced by `public/listen/index.html` and served at `/listen/`.
+QR codes at the physical exhibition link to `/listen/?p=1` through `/listen/?p=10`.
 
 ## Headers
 

@@ -300,9 +300,9 @@ body{
 
   // --- URL parsing ---
   function parsePaperId() {
-    var parts = window.location.pathname.replace(/\/+$/, '').split('/');
-    // Expect /listen/{id}
-    var raw = parts[parts.length - 1];
+    var params = new URLSearchParams(window.location.search);
+    var raw = params.get('p');
+    if (!raw) return null;
     var id = parseInt(raw, 10);
     if (isNaN(id) || id < MIN_ID || id > MAX_ID || String(id) !== raw) {
       return null;
