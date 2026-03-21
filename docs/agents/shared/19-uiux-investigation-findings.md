@@ -79,10 +79,7 @@ All implementable in vanilla CSS without architectural changes:
 
 ### Critical (blocks exhibition readiness)
 
-1. **No OG tags, favicon, or social sharing metadata** — both `index.html` and `listen/index.html` lack `og:title`, `og:description`, `og:image`, `twitter:card`, `<link rel="icon">`, and `<meta name="description">`. When the exhibition URL is shared on WhatsApp, Telegram, or social media, there is no preview image, no description, and no icon. For an exhibition-bound project, this directly impacts promotion.
-   - Evidence: 1A code audit (confirmed missing), 1B Playwright snapshot (confirmed, favicon.ico returns 404)
-   - Location: `index.html` `<head>`, `listen/index.html` `<head>`
-   - Fix category: Add OG meta tags, generate favicon set, create OG preview image
+1. ~~**No OG tags, favicon, or social sharing metadata**~~ — **RESOLVED (Session 2).** Added `og:title`, `og:description`, `og:image`, `twitter:card`, `meta description`, favicon (SVG + ICO + apple-touch-icon + PNG icons), and placeholder OG image (1200×630) to both `index.html` and `listen/index.html`. Operator should replace `public/og-image.png` with a photographic image when available.
 
 ### High (meaningfully degrades experience)
 

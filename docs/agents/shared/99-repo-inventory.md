@@ -71,6 +71,15 @@ Use this as the compact path map for agent work. One line per path, local-first.
 - `scripts/generate-letter-positions.cjs`: regenerates 46 letter positions across 4 zones and writes `src/data/letters.json`; fallback defaults still use `.wav` names if metadata is missing
 - `scripts/generate-qr-codes.js`: generates exhibition QR codes for `/listen/1` through `/listen/10`; output to `generated/qr-codes/`
 
+## Favicon and social assets
+
+- `public/favicon.svg`: SVG favicon — white monospace "H" on black
+- `public/favicon.ico`: ICO fallback (32×32 + 16×16)
+- `public/apple-touch-icon.png`: Apple touch icon (180×180)
+- `public/icon-192.png`: PWA icon (192×192)
+- `public/icon-512.png`: PWA icon (512×512)
+- `public/og-image.png`: Open Graph / social sharing preview image (1200×630) — placeholder; replace with photographic image when available
+
 ## Assets/noisy paths
 
 - `public/assets/models/`: runtime GLB models; large and mostly data, read only when asset-level debugging matters
