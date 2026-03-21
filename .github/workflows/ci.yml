@@ -28,7 +28,7 @@ jobs:
       - name: Verify critical dist files
         run: |
           test -f dist/index.html    || (echo "FAIL: missing dist/index.html" && exit 1)
-          test -f dist/_listen.html   || (echo "FAIL: missing dist/_listen.html" && exit 1)
+          test -f dist/listen/index.html || (echo "FAIL: missing dist/listen/index.html" && exit 1)
           test -f dist/_headers      || (echo "FAIL: missing dist/_headers" && exit 1)
           test -f dist/_redirects    || (echo "FAIL: missing dist/_redirects" && exit 1)
 

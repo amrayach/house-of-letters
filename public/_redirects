@@ -1,2 +1,2 @@
-/listen/*  /_listen.html  200
+/listen/:id  /listen/index.html  200
 /*  /index.html  200
