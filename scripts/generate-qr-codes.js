@@ -46,7 +46,7 @@ async function generateIndividualSvg(id) {
   const scale = 400 / qrSize;
   const printW = 400;
   const printQrH = Math.round(qrSize * scale);
-  const labelHeight = 64;
+  const labelHeight = 130;
   const printH = printQrH + labelHeight;
   const innerSvg = qrSvg
     .replace(/<svg[^>]*>/, '')
@@ -56,12 +56,15 @@ async function generateIndividualSvg(id) {
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${printW} ${printH}" width="${printW}" height="${printH}">
   <rect width="${printW}" height="${printH}" fill="#ffffff"/>
   <g transform="scale(${scale.toFixed(4)})">${innerSvg}</g>
-  <text x="${printW / 2}" y="${printQrH + 24}" text-anchor="middle"
-        font-family="'Courier New', Courier, monospace" font-size="18" font-weight="bold"
+  <text x="${printW / 2}" y="${printQrH + 30}" text-anchor="middle"
+        font-family="'Courier New', Courier, monospace" font-size="26" font-weight="bold"
         fill="#000000">Paper ${paper.archiveNum}</text>
-  <text x="${printW / 2}" y="${printQrH + 52}" text-anchor="middle"
-        font-family="'Noto Naskh Arabic', 'Geeza Pro', 'Traditional Arabic', serif" font-size="18"
-        fill="#333333" direction="rtl" unicode-bidi="bidi-override">${paper.ar}</text>
+  <text x="${printW / 2}" y="${printQrH + 72}" text-anchor="middle"
+        font-family="'Noto Naskh Arabic', 'Geeza Pro', 'Traditional Arabic', serif" font-size="26" font-weight="bold"
+        fill="#000000" direction="rtl" unicode-bidi="bidi-override">${paper.ar}</text>
+  <text x="${printW / 2}" y="${printQrH + 116}" text-anchor="middle"
+        font-family="'Courier New', Courier, monospace" font-size="22" font-weight="bold"
+        fill="#333333">${paper.dates}</text>
 </svg>`;
 
   const filename = `qr-paper-${id}.svg`;
