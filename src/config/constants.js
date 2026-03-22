@@ -53,7 +53,7 @@ export const CAMERA = {
   FOV: 75,
   NEAR: 0.1,
   FAR: 1000,
-  INITIAL_POSITION: { x: 0, y: 1.6, z: -50 } // Near paper 1 (z=-42), facing into the archive
+  INITIAL_POSITION: { x: 9, y: 1.6, z: -186 } // At ground timeline spine head (paper 1 world z=-168, +18 head padding)
 };
 
 // Models

@@ -159,6 +159,7 @@ const {
 const speedSlider = document.getElementById('speed-slider');
 const speedValueDisplay = document.getElementById('speed-value');
 const currentSpeedDisplay = document.getElementById('current-speed');
+const debugVelocityBoost = document.getElementById('debug-velocity-boost');
 const debugPositionDisplay = document.getElementById('debug-position');
 
 let manualSpeedOverride = false;
@@ -1007,16 +1008,22 @@ function handleEnterFromLanding() {
   // Reveal loading screen behind landing (needs dimensions for LoadingScene renderer)
   if (loadingScreen) loadingScreen.hidden = false;
 
-  // Start loading behind the landing page (both execute while landing fades)
-  beginLoadingSequence();
-
-  // Fade out landing screen
+  // Fade out landing screen first — let the CSS transition start on the GPU compositor
+  // before blocking the main thread with LoadingScene construction
   if (landingScreen) {
     landingScreen.style.opacity = '0';
+    // Defer heavy work by 2 frames so the browser paints the fade-out first
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        beginLoadingSequence();
+      });
+    });
     setTimeout(() => {
       landingScreen.hidden = true;
       setUiState(UI_STATE.LOADING);
     }, 600);
+  } else {
+    beginLoadingSequence();
   }
 }
 
@@ -2121,6 +2128,10 @@ function animate() {
       if (speedSlider) {
         speedSlider.value = Math.round(dynamicSpeed);
         if (speedValueDisplay) speedValueDisplay.textContent = Math.round(dynamicSpeed);
+      }
+      if (debugVelocityBoost) {
+        const multiplier = dynamicSpeed / VELOCITY.BASE_SPEED;
+        debugVelocityBoost.textContent = multiplier.toFixed(1) + '×';
       }
     }
 

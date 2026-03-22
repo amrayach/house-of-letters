@@ -51,6 +51,7 @@
 
 - Breaking the `assetsLoaded && loadingSceneComplete` gate and trapping the user on loading/start screens
 - Starting the LoadingScene or asset loading before the landing CTA is clicked — the landing page must be instant with no GPU-heavy work
+- Running `beginLoadingSequence()` synchronously in the same frame as the landing fade-out — the `new LoadingScene()` constructor blocks the main thread for 100-300ms, freezing the CSS fade animation. It must be deferred by 2 `requestAnimationFrame` calls after setting `landingScreen.style.opacity = '0'`. This is a recurring regression.
 - Creating the LoadingScene while `#loading-screen` is still hidden — the container needs non-zero dimensions for the renderer
 - Starting audio before a user gesture and losing playback on mobile/Chrome/Safari
 - Regressing pointer-lock pause/resume while fixing mobile controls, or vice versa
