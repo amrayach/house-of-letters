@@ -249,7 +249,7 @@ export class LoadingScene {
     this.cameraTransition = {
       active: false,
       progress: 0,
-      duration: 22000, // Extended for more dramatic drone-style flight
+      duration: 12000, // Cinematic descent
       startTime: 0,
       lookAtTarget: new THREE.Vector3(0, 0, 0),
       currentLookAt: new THREE.Vector3(0, 0, 0),
@@ -292,7 +292,7 @@ export class LoadingScene {
       0.1, 
       1000
     );
-    this.camera.position.set(-100.93, 200.32, 66.46);
+    this.camera.position.set(-95.00, 240.00, 40.00);
     
     // Create fade overlay for transition to archive scene
     this.createFadeOverlay();
@@ -738,103 +738,64 @@ export class LoadingScene {
   }
 
   startCameraTransition() {
-    // Google Earth / Drone-style camera path waypoints
-    // Designed for smooth aerial descent with cinematic sweeps
+    // Smooth descending arc — no direction reversals, no dense clusters
+    // 14 waypoints, min spacing 4.1 units, max XZ direction change ~10°
     const cameraWaypoints = [
-      // Phase 1: High altitude establishing shot - slow orbit
-      new THREE.Vector3(-100.93, 220.00, 80.00),
-      new THREE.Vector3(-95.00, 210.00, 90.00),
-      new THREE.Vector3(-85.00, 195.00, 100.00),
-      new THREE.Vector3(-70.00, 180.00, 95.00),
-      
-      // Phase 2: Dramatic descending spiral around building
-      new THREE.Vector3(-55.00, 160.00, 80.00),
-      new THREE.Vector3(-40.00, 140.00, 60.00),
-      new THREE.Vector3(-30.00, 120.00, 40.00),
-      new THREE.Vector3(-25.00, 100.00, 25.00),
-      
-      // Phase 3: Low sweep past building exterior
-      new THREE.Vector3(-35.00, 80.00, 15.00),
-      new THREE.Vector3(-55.00, 65.00, 20.00),
-      new THREE.Vector3(-80.00, 55.00, 35.00),
-      new THREE.Vector3(-100.00, 50.00, 55.00),
-      
-      // Phase 4: Pull back and align with entrance
-      new THREE.Vector3(-110.00, 45.00, 70.00),
-      new THREE.Vector3(-105.00, 38.00, 65.00),
-      new THREE.Vector3(-95.00, 30.00, 55.00),
-      new THREE.Vector3(-85.00, 22.00, 48.00),
-      
-      // Phase 5: Final approach - low and dramatic
-      new THREE.Vector3(-78.00, 15.00, 45.00),
-      new THREE.Vector3(-72.00, 11.00, 42.00),
-      new THREE.Vector3(-66.00, 8.00, 38.00),
-      new THREE.Vector3(-60.00, 6.00, 34.00),
-      
-      // Phase 6: Entering the main entrance
-      new THREE.Vector3(-54.00, 4.50, 30.00),
-      new THREE.Vector3(-50.00, 3.50, 26.00),
-      new THREE.Vector3(-46.00, 2.50, 22.00),
-      new THREE.Vector3(-43.00, 1.50, 19.00),
-      
-      // Phase 7: Into the darkness - fade begins
-      new THREE.Vector3(-41.00, 0.80, 17.00),
-      new THREE.Vector3(-40.00, 0.40, 16.00),
+      // Phase 1: High altitude establishing
+      new THREE.Vector3(-95.00, 240.00, 40.00),
+      new THREE.Vector3(-91.46, 237.78, 41.11),
+      new THREE.Vector3(-87.18, 228.75, 42.26),
+      new THREE.Vector3(-81.48, 215.13, 43.40),
+
+      // Phase 2: Main descent — building resolves from fog
+      new THREE.Vector3(-75.39, 181.97, 44.06),
+      new THREE.Vector3(-68.39, 116.51, 43.90),
+      new THREE.Vector3(-61.49, 47.42, 42.46),
+      new THREE.Vector3(-55.42, 19.93, 39.71),
+
+      // Phase 3: Transition to low approach
+      new THREE.Vector3(-50.63, 13.84, 36.06),
+      new THREE.Vector3(-46.91, 6.56, 31.84),
+      new THREE.Vector3(-44.07, 4.70, 27.35),
+
+      // Phase 4: Low approach and entrance
+      new THREE.Vector3(-41.94, 2.55, 22.86),
+      new THREE.Vector3(-40.64, 0.87, 19.31),
       new THREE.Vector3(-39.50, 0.10, 15.50)
     ];
-    
-    // Separate look-at target waypoints for cinematic camera movement
+
+    // Look-at targets: gaze leads travel, shifted right toward entrance
+    // x converges monotonically from -80.75 → -42.00
     const lookAtWaypoints = [
-      // Looking at building from afar
-      new THREE.Vector3(0, 50, 0),
-      new THREE.Vector3(0, 40, 0),
-      new THREE.Vector3(-10, 30, 5),
-      new THREE.Vector3(-20, 20, 10),
-      
-      // Tracking building during spiral
-      new THREE.Vector3(-30, 15, 15),
-      new THREE.Vector3(-35, 10, 18),
-      new THREE.Vector3(-38, 8, 20),
-      new THREE.Vector3(-40, 5, 22),
-      
-      // Focus shifts to entrance
-      new THREE.Vector3(-42, 3, 20),
-      new THREE.Vector3(-42, 2, 19),
-      new THREE.Vector3(-42, 1, 18),
-      new THREE.Vector3(-42, 0, 17),
-      
-      // Locked on entrance
-      new THREE.Vector3(-42, 0, 16),
-      new THREE.Vector3(-41, 0, 15),
-      new THREE.Vector3(-40, 0, 15),
-      new THREE.Vector3(-40, 0, 15),
-      
-      // Final approach targets
-      new THREE.Vector3(-39, 0, 14),
-      new THREE.Vector3(-38, 0, 13),
-      new THREE.Vector3(-37, 0, 12),
-      new THREE.Vector3(-36, 0, 11),
-      
-      // Into the void
-      new THREE.Vector3(-35, 0, 10),
-      new THREE.Vector3(-34, 0, 9),
-      new THREE.Vector3(-33, 0, 8),
-      new THREE.Vector3(-32, 0, 7),
-      
-      // Final darkness
-      new THREE.Vector3(-30, 0, 5),
-      new THREE.Vector3(-28, 0, 3),
-      new THREE.Vector3(-25, 0, 0)
+      // Phases 1–2: Look ahead and down
+      new THREE.Vector3(-80.75, 60.00, 28.00),
+      new THREE.Vector3(-76.97, 58.11, 28.47),
+      new THREE.Vector3(-71.35, 52.06, 28.30),
+      new THREE.Vector3(-64.09, 42.96, 27.32),
+      new THREE.Vector3(-56.86, 29.40, 25.22),
+      new THREE.Vector3(-50.36, 13.67, 22.01),
+      new THREE.Vector3(-46.07, 4.31, 18.03),
+      new THREE.Vector3(-44.95, 2.95, 15.90),
+
+      // Phase 3: Locking on entrance — yawed right (+x direction)
+      new THREE.Vector3(-36.00, 2.59, 15.19),
+      new THREE.Vector3(-35.00, 2.01, 14.02),
+      new THREE.Vector3(-34.00, 1.33, 12.65),
+
+      // Phase 4: Into the darkness
+      new THREE.Vector3(-33.00, 0.68, 11.35),
+      new THREE.Vector3(-32.50, 0.19, 10.38),
+      new THREE.Vector3(-32.00, 0.00, 10.00)
     ];
 
     // Create smooth splines with centripetal parameterization for even speed
     this.cameraSpline = new THREE.CatmullRomCurve3(cameraWaypoints);
     this.cameraSpline.curveType = 'centripetal';
-    this.cameraSpline.tension = 0.3; // Slightly tighter curves
-    
+    this.cameraSpline.tension = 0.35;
+
     this.lookAtSpline = new THREE.CatmullRomCurve3(lookAtWaypoints);
     this.lookAtSpline.curveType = 'centripetal';
-    this.lookAtSpline.tension = 0.2;
+    this.lookAtSpline.tension = 0.25;
     
     // Initialize transition state
     this.cameraTransition.active = true;

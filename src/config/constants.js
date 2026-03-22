@@ -53,7 +53,7 @@ export const CAMERA = {
   FOV: 75,
   NEAR: 0.1,
   FAR: 1000,
-  INITIAL_POSITION: { x: 0, y: 1.6, z: -170 } // Start 20 units behind letter 1 — room to absorb the atmosphere before the first voice
+  INITIAL_POSITION: { x: 11.6, y: 1.6, z: -165.7 } // Aligned with ground timeline start near letter 1
 };
 
 // Models

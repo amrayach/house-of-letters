@@ -80,10 +80,9 @@
 ## Cloudflare Pages routing constraints
 
 - `_redirects` is processed top-to-bottom, first match wins. Rule ordering is deployment-critical.
-- The `/listen/*` rule must stay before the `/*` SPA catch-all, or exhibition listener routes will be swallowed by `index.html`.
+- The listener page uses directory-based routing (`public/listen/index.html`) — no `_redirects` rule needed for it. Cloudflare Pages serves directory `index.html` files natively before falling through to `_redirects`.
 - Any new non-SPA route must be added above the `/*` catch-all, never below it.
 - `_headers` rules are additive (not first-match), so ordering within `_headers` is less critical than in `_redirects`.
-- CI enforces `_redirects` ordering automatically — see `.github/workflows/ci.yml`.
 
 ## Domain and CI constraints
 

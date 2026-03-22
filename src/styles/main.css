@@ -113,7 +113,8 @@ body {
   z-index: 3000;
   background: var(--bg-color);
   transition: opacity 0.6s ease;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .landing-grid {
@@ -121,7 +122,7 @@ body {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr auto 1fr;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   padding: clamp(28px, 4vw, 56px);
   box-sizing: border-box;
   gap: 0;
@@ -1262,6 +1263,8 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
   .landing-panel {
     max-width: 32rem;
     width: 100%;
+    align-self: center;
+    justify-self: auto;
   }
 
   .landing-center {
@@ -1306,7 +1309,7 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
   }
   
   #loading-overlay {
-    padding: var(--space-5);
+    padding: var(--space-4);
     justify-content: flex-end;
     align-items: stretch;
   }
@@ -1314,6 +1317,15 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
   #loading-content {
     width: min(100%, 26rem);
     margin-left: 0;
+  }
+
+  .shell-panel-loading {
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .loading-lede {
+    display: none;
   }
 
   .shell-panel {

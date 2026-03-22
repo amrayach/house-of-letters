@@ -473,3 +473,74 @@ Key technical details:
 - `npm run build` clean
 - Browser smoke: scan↔orbit toggle, close zoom, pan (arrow keys + right-drag), rotate, exit, force-exit on pause, resize, letter switching
 - Arrow key safety verified: OrbitControls gates onKeyDown on this.enabled, dispose() removes window listener
+
+## Pre-launch fixes — Spawn alignment + mobile loading overlay
+
+**Date:** 2026-03-22
+**Scope:** two independent tiny fixes
+
+### Changes
+1. **Spawn position aligned with ground timeline**: moved `CAMERA.INITIAL_POSITION` from `(0, 1.6, -170)` to `(11.6, 1.6, -165.7)`. The new X aligns with the timeline spine path and the new Z sits at the timeline head (letter 1 world z ≈ -148, spine head padding = 18 units).
+2. **Mobile loading overlay compacted**: on ≤768px, the `.loading-lede` paragraph is hidden and `.shell-panel-loading` vertical padding is reduced from ~28-42px to 18px. This shrinks the glass card to ~35-40% of viewport height, leaving the cinematic intro visible above and around it.
+
+### Files changed
+- `src/config/constants.js` — `CAMERA.INITIAL_POSITION` coordinates
+- `src/styles/main.css` — mobile loading panel compactness at 768px breakpoint
+- `docs/agents/shared/changelog.md` — this entry
+
+### Validated
+- `npm run build` clean
+- Zero hits for old spawn coordinates `(0, 1.6, -170)` in source
+
+## Session 2b — Cinematic camera path redesign
+
+**Date:** 2026-03-22
+**Scope:** focused workstream — camera path data replacement in loading scene
+
+### Root cause of jerkiness
+The original 27-waypoint camera path had two 180° direction reversals (phases 3 and 4) where the camera swept west then reversed east. CatmullRomCurve3 cannot smooth direction reversals — they create cusp-like kinks regardless of parameterization. Secondary causes: uneven waypoint density (30 units/pt sparse → 6 units/pt dense), look-at velocity jumps, damping overshoot at inflection points, and banking amplification at turn rate spikes.
+
+### Solution
+Replaced the multi-reversal path with a smooth descending arc computed from a quadratic Bézier in XZ (NW→entrance). Iterated 3 times based on browser feedback.
+
+### Final state after 3 iterations
+- 14 camera waypoints (was 27), max XZ direction change ~10° per segment
+- 14 look-at waypoints (was 27), x converges monotonically (no reversals)
+- Strictly monotonically decreasing altitude: 240 → 0.1
+- Min waypoint spacing: 4.1 units (prevents CatmullRom oscillation from dense clusters)
+- Duration: 12 seconds (was 22)
+- Spline tension: camera 0.35, look-at 0.25
+
+### Iteration history
+1. **v1 (20 pts, 22s)**: Too many end-points caused jitter. Building only visible from top. Entrance alignment off-center.
+2. **v2 (16 pts, 16s)**: Start moved further back. Look-at shifted right. Still slow, still some jitter, entrance still left of center.
+3. **v3 (14 pts, 12s)**: Start Z moved from 80→40 for better building view. Reduced to 14 points. Duration 12s. Look-at shifted to less-negative-X for right yaw.
+4. **v3 yaw fix**: Final look-at waypoints shifted from x≈-44/-42 to x≈-36/-32 to yaw right toward entrance. **Still needs browser verification** — may need further tuning.
+
+### Key spatial coordinates
+- Camera start: (-95, 240, 40) — high NW of building
+- Camera end: (-39.5, 0.1, 15.5) — old entrance coordinates (proven correct)
+- Look-at end: (-32, 0, 10) — inside entrance, yawed right
+- Bézier XZ params: P0=(-95,40), P1=(-50,55), P2=(-39.5,15.5)
+
+### Critical coupling insight
+All dependent systems use `rawProgress` (elapsed/duration), NOT the spline parameter. Changing waypoints or duration requires ZERO changes to FOV, fog, fade, banking, bloom, vignette, effects, or lighting functions. This was verified and exploited across all 3 iterations.
+
+### Yaw direction finding
+In this scene's coordinate system, "yaw right" = **less negative X** (toward 0) on look-at targets, NOT more negative. First attempt went wrong direction.
+
+### What did NOT change
+`droneSpeedEase`, `getAdaptiveSmoothing`, `updateDynamicFOV`, `updateDynamicFog`, `updateFadeTransition`, `updateCameraRoll`, `updateVisualEffects`, `updateCameraTransition`, `loadAssets`, `setupPostProcessing`, `setupLighting`, `createParticles`, `skipTransition`, `dispose`.
+
+### Files changed
+- `src/renderer/loadingScene.js` — waypoint arrays, initial camera position, duration, spline tension
+- `docs/agents/shared/changelog.md` — this entry
+
+### Validated
+- `npm run build` clean on all iterations
+- Y monotonically decreasing: verified
+- Entrance yaw: **WIP — last shift toward less-negative-X needs browser confirmation**
+
+### Open for next session
+- Verify entrance yaw alignment — if still off, tune the last 6 look-at x values (currently -36 to -32). More positive = more right, more negative = more left.
+- If the 12s duration feels right after yaw fix, this workstream is complete.
