@@ -127,9 +127,12 @@
   - after `assetsLoaded = true` for the core startup subset
 - It only proceeds when both flags are true.
 - When it proceeds:
-  - the loading screen fades out
-  - `loadingScene.dispose()` tears down the intro renderer/composer
-  - `uiState` moves to `start`, which reveals only the start shell
+  - the start screen is unhidden early (positioned behind loading screen via z-index stacking: loading 2000, start 1000)
+  - the loading screen fades out via CSS opacity transition (0.8s), crossfading from the cinematic's black fade to the start screen's dark gradient
+  - `isTransitioningOutOfLoading` prevents `syncUiChrome()` from re-hiding the start screen during the crossfade
+  - after the crossfade: loading screen is hidden, `uiState` moves to `start`, staggered shell-revealed animation triggers
+  - `groundTimeline.preWarm()` makes the timeline root group visible for one render frame while the start screen covers the view — the next `animate()` render uploads ~48K triangles of timeline geometry to GPU memory; on the following frame `update()` hides the group again (uiState is 'start'), but GPU buffers persist; when ACTIVE begins, the first visible frame draws from warm buffers with no upload stall
+  - `loadingScene.dispose()` is deferred to `requestIdleCallback` (or `setTimeout` fallback) after the start screen is fully visible — the user never sees the cost of synchronous GPU cleanup
 
 ### 7. Control activation
 
@@ -137,7 +140,9 @@
   - `bootstrapExperience()` initializes audio once, starts the background theme, and registers narrations
   - on touch devices:
     - `activateControls()`
-    - `uiState` moves to `active`
+    - `fadeOutStartScreen()` starts a CSS opacity transition (0.5s) on the start screen; `isTransitioningOutOfStart` prevents `syncUiChrome` from instant-hiding it
+    - `uiState` moves to `active`; HUD elements appear through the fading start screen
+    - after 0.5s: start screen is hidden, flag cleared, `.shell-revealed` removed
     - deferred zone 3/4 loading starts immediately after that successful active transition
     - mobile pause/touch HUD become visible through `syncUiChrome()`
   - on desktop:
@@ -145,7 +150,7 @@
     - the start shell stays visible while pointer lock is requested
     - `pointerlockerror` or timeout keeps the user in a recoverable shell
 - Desktop:
-  - `controls.lock` moves the shell to `active`, resumes audio, and triggers deferred loading once
+  - `controls.lock` fades out the start screen (`fadeOutStartScreen()`), moves the shell to `active`, resumes audio, and triggers deferred loading once
   - `controls.unlock` forces bird's-eye off, moves the shell to `paused`, and pauses audio
 - Mobile:
   - touch controls are enabled/disabled directly
@@ -305,7 +310,7 @@
   - disposes letter geometries/materials/maps
   - disposes the loading scene if it is still alive
   - `renderer.dispose()`
-- `LoadingScene.dispose()` removes its own renderer/composer and scene resources when the intro ends.
+- `LoadingScene.dispose()` removes its own renderer/composer and scene resources. It is deferred to `requestIdleCallback` (or `setTimeout` fallback) after the start screen is fully visible, so the user never sees the synchronous GPU cleanup cost. After deferred dispose, `loadingScene` is set to `null`.
 - Remaining partial cleanup:
   - scene-level resize cleanup still lives outside `main.js`
   - intro texture disposal is not explicit
@@ -330,3 +335,6 @@
 | Provisional chronology vs partial model loading | grouped chronology is validated against `letters.json`, but the scene-native thread now depends on every covered model loading successfully across both startup and deferred stages | partial asset-failure path, safe disable behavior, and no broken half-network on the floor |
 | Deferred degraded status surfaces | desktop and touch now expose the same degraded state through different minimal surfaces, both gated from `main.js` | controls-hint text on desktop, touch pill visibility, and no leakage into pause/start/inspect |
 | Cleanup coverage | unload paths are still split across `main.js` and `loadingScene.js`, even though control/audio listener cleanup is now explicit | memory leaks, duplicate listeners, repeated start/pause handling |
+| Deferred `loadingScene.dispose()` | dispose is deferred to `requestIdleCallback` after start screen is visible; `loadingScene` is set to null after deferred dispose; `cleanupRuntime` guards with `loadingScene && !loadingScene.isDisposed` | loading scene memory leak if requestIdleCallback never fires (fallback setTimeout exists), double-dispose if cleanupRuntime races with deferred dispose |
+| Transition guard flags | `isTransitioningOutOfLoading` and `isTransitioningOutOfStart` prevent `syncUiChrome` from instant-hiding the start screen during CSS crossfade transitions | flags must be cleared even on error paths; stale flag blocks start-screen visibility indefinitely |
+| Ground timeline GPU pre-warm | `preWarm()` sets `hasBeenRevealed = true` and `rootGroup.visible = true` during START state so the next render uploads geometry to GPU; the following frame's `update()` hides the group again | preWarm must only be called while an overlay covers the view; calling it during ACTIVE is a no-op (already revealed); the `hasBeenRevealed` latch is triggered early but the behavioral effect is identical — timeline shows on first ACTIVE frame |

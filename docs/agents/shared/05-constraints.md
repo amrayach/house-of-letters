@@ -30,6 +30,7 @@
 - Treat `src/audio/themeMixer.js` as placeholder until it actually controls playback.
 - Treat `src/data/letters.json` as declarative content, not a runtime state cache.
 - Do not back-fill speculative chronology fields into `src/data/letters.json` while exact per-letter dates are still unavailable.
+- Letter z-positions are temporally meaningful: each paper's z reflects its anchor date relative to paper 1. Do not add z-jitter, randomize z-positions, or redistribute z evenly within zones — this would destroy the temporal signal. X-positions (meander) are not temporally meaningful and can be jittered or redesigned independently.
 
 ## Performance-sensitive areas
 
@@ -76,6 +77,10 @@
 - Removing the ground timeline `hasBeenRevealed` one-time latch or the `isHidden` per-frame visibility gate without understanding both are needed
 - Auto-playing theme before AudioContext is resumed from a user gesture (the landing CTA gesture unlocks audio for the session)
 - Moving `startDeferredLetterLoad()` back onto the synchronous click/lock handler path — it was deferred to `setTimeout(0)` because queuing 40 GLB fetches costs ~30ms
+- Moving `loadingScene.dispose()` back onto the visual-critical transition path — it was deferred to `requestIdleCallback` because synchronous disposal of ~50 GPU resources causes a visible freeze during the Loading → Start crossfade
+- Removing the `isTransitioningOutOfLoading` or `isTransitioningOutOfStart` guards from `syncUiChrome` — these prevent the state machine from instant-hiding the start screen during CSS opacity transitions
+- Showing the start screen AFTER hiding the loading screen instead of before — the crossfade relies on z-index stacking (loading 2000 on top of start 1000) so start must be unhidden first
+- Removing `groundTimeline.preWarm()` from `transitionToGame()` — the pre-warm uploads ~48K triangles of timeline geometry to GPU during the start screen phase; without it, the first ACTIVE frame pays the upload cost as a visible hitch
 
 ## Cloudflare Pages routing constraints
 

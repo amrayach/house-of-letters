@@ -61,7 +61,7 @@
 
 - `themeMixer.js` is still placeholder-only.
 - `letters.json.text` remains empty for all 46 letters.
-- `scripts/generate-letter-positions.cjs` still carries older zone-range assumptions and `.wav` fallback defaults.
+- `scripts/generate-letter-positions.cjs` now uses temporal z-distribution from `src/data/diary_index_001_048.csv`. The companion dev tool (`dev/meander-tool.html`) is out of sync and needs updating.
 - The GLB compression script still assumes an empty `public/assets/textures/` source path.
 - Scene resize cleanup still lives in `sceneSetup.js` rather than the main runtime cleanup path.
 

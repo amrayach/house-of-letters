@@ -64,18 +64,14 @@ export function initScene() {
   composer.addPass(new EffectPass(camera, bloomEffect, vignetteEffect));
 
   // Ground (large enough to cover play area)
-  const groundGeometry = new THREE.PlaneGeometry(1000, 1000); // Increased from 200 to prevent black screen
+  const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
   const groundMaterial = new THREE.MeshBasicMaterial({
-    color: 0x404040
+    color: 0x080810
   });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2;
-  ground.receiveShadow = false; // Disabled for performance
+  ground.receiveShadow = false;
   scene.add(ground);
-
-  // Grid for visual reference
-  const gridHelper = new THREE.GridHelper(500, 200, 0x222222, 0x111111); // Increased to cover larger area
-  scene.add(gridHelper);
 
   // Handle resize
   window.addEventListener('resize', () => {

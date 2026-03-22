@@ -82,11 +82,12 @@ Observed runtime schema: 46 records, all with the same keys today.
 
 - Record count: 46
 - Zone counts: `1 / 5 / 12 / 28`
-- Zone z-ranges in current runtime file:
-  - zone 1: `-37`
-  - zone 2: `-26.67 .. -11.52`
-  - zone 3: `-3.89 .. 19.77`
-  - zone 4: `26.57 .. 63.66`
+- Zone z-ranges in current runtime file (temporal distribution, ~162 units total):
+  - zone 1: `-42.00`
+  - zone 2: `-31.44 .. -7.97`
+  - zone 3: `-2.84 .. 39.13`
+  - zone 4: `40.19 .. 120.06`
+- Z-positions are temporally distributed: physical distance reflects time between diary entries. Source data: `src/data/diary_index_001_048.csv`.
 - All current asset references in `letters.json` resolve to existing files under `public/`.
 
 ## Provisional grouped chronology mapping
@@ -169,10 +170,14 @@ Observed runtime schema: 46 records, all with the same keys today.
 ### Script-owned or semi-generated
 
 - `scripts/generate-letter-positions.cjs`
-  - regenerates positions and zones
-  - preserves existing metadata when present
-  - fallback defaults still use `.wav` filenames if metadata is missing
-  - zone `z` bounds in the script no longer match the full checked-in runtime spread, so validate any regenerated output before merging it
+  - **Temporal Layout v4**: z-positions are derived from diary entry dates in `src/data/diary_index_001_048.csv`
+  - uses power-law gap transform: `zGap = MIN_Z_GAP + SCALE × dayGap^POWER` (defaults: 2.0, 0.4, 0.5)
+  - x-positions use the meander algorithm (S-curve river shape with zone 3 mirror)
+  - zone z-boundaries are derived from paper positions, not prescribed
+  - preserves existing metadata when present (narration, theme, images, model paths, text)
+  - papers 47-48 in CSV are skipped (not in the 46-letter archive)
+  - year typos outside 1988-1992 are auto-corrected and logged
+  - `dev/meander-tool.html` is currently out of sync — it still uses even z-distribution
 - `scripts/validate-letters.js`
   - validates `src/data/letters.json` plus referenced `public/assets/**` files
   - exits non-zero only on hard failures by default

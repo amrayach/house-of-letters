@@ -266,6 +266,7 @@ let hasBootstrappedExperience = false;
 let pendingDesktopState = UI_STATE.START;
 let pointerLockFallbackTimer = null;
 let isTransitioningOutOfLoading = false;
+let isTransitioningOutOfStart = false;
 const inspectState = {
   phase: INSPECT_PHASE.IDLE,
   letterId: null,
@@ -1102,7 +1103,10 @@ function syncUiChrome() {
   document.body.dataset.uiState = uiState;
   document.body.dataset.viewMode = viewMode;
 
-  setElementHidden(startScreen, uiState !== UI_STATE.START);
+  // Don't instant-toggle start screen during animated crossfade transitions
+  if (!isTransitioningOutOfLoading && !isTransitioningOutOfStart) {
+    setElementHidden(startScreen, uiState !== UI_STATE.START);
+  }
   setElementHidden(pauseScreen, uiState !== UI_STATE.PAUSED);
   setElementHidden(reticle, !desktopImmersive);
   setElementHidden(controlsHint, !desktopImmersive);
@@ -1474,29 +1478,93 @@ function restoreDesktopPointerLockAfterInspect(shouldRestorePointerLock = inspec
   }, POINTER_LOCK_FALLBACK_MS);
 }
 
-// Function to transition from loading to game
+// Smooth fade-out for start screen during Start → Active transition.
+// Uses transitionend so the cleanup adapts to any CSS duration, including the
+// near-zero 0.01s from prefers-reduced-motion. Safety fallback prevents a
+// stale guard flag if transitionend never fires.
+function fadeOutStartScreen() {
+  if (startScreen.hidden) return; // already hidden, nothing to fade
+  isTransitioningOutOfStart = true;
+  startScreen.style.opacity = '0';
+
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    startScreen.removeEventListener('transitionend', onEnd);
+    startScreen.hidden = true;
+    startScreen.style.opacity = '';
+    startScreen.classList.remove('shell-revealed');
+    isTransitioningOutOfStart = false;
+  };
+  const onEnd = (e) => { if (e.propertyName === 'opacity') settle(); };
+  startScreen.addEventListener('transitionend', onEnd);
+  setTimeout(settle, 600); // safety fallback
+}
+
+// Function to transition from loading to game.
+// Uses transitionend so cleanup adapts to any CSS duration (including reduced-motion).
 function transitionToGame() {
   if (!assetsLoaded || !loadingSceneComplete || isTransitioningOutOfLoading) return;
 
   isTransitioningOutOfLoading = true;
 
-  // Fade out loading scene
+  // Position start screen behind loading screen for crossfade.
+  // Loading screen (z-index 2000) is on top; start screen (z-index 1000) is beneath.
+  // The cinematic is already at full black — fading loading-screen opacity reveals
+  // the start screen's dark gradient background underneath: black → dark glass.
+  startScreen.hidden = false;
+  startScreen.style.opacity = '1';
+
+  // Fade out loading screen — CSS transition 0.8s ease reveals start screen beneath
   loadingScreen.style.opacity = '0';
 
-  setTimeout(() => {
-    loadingScreen.hidden = true;
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    loadingScreen.removeEventListener('transitionend', onEnd);
 
-    // Clean up loading scene
-    loadingScene.dispose();
+    loadingScreen.hidden = true;
+    loadingScreen.style.opacity = '';
+    isTransitioningOutOfLoading = false;
 
     setStartPendingState(false);
     setUiState(UI_STATE.START);
+
+    // Pre-warm ground timeline GPU buffers while the start screen covers the view.
+    // The next animate() render uploads ~48K triangles of timeline geometry to the
+    // GPU. On the following frame, update() hides the group (uiState is 'start'),
+    // but GPU buffers persist. The first ACTIVE frame draws from warm buffers.
+    if (groundTimeline) {
+      groundTimeline.preWarm();
+    }
 
     // Trigger staggered reveal on next frame (after browser processes hidden removal)
     requestAnimationFrame(() => {
       startScreen.classList.add('shell-revealed');
     });
-  }, 800);
+
+    // Defer expensive GPU cleanup off the visual-critical path.
+    // loadingScene.dispose() traverses the entire intro scene graph and synchronously
+    // deletes ~50 GPU resources — textures, geometries, materials, the renderer, and
+    // the postprocessing composer. requestIdleCallback schedules this during idle time
+    // so the user never sees the cost.
+    const disposeLoading = () => {
+      if (loadingScene && !loadingScene.isDisposed) {
+        loadingScene.dispose();
+        loadingScene = null;
+      }
+    };
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(disposeLoading, { timeout: 2000 });
+    } else {
+      setTimeout(disposeLoading, 200);
+    }
+  };
+  const onEnd = (e) => { if (e.propertyName === 'opacity') settle(); };
+  loadingScreen.addEventListener('transitionend', onEnd);
+  setTimeout(settle, 900); // safety fallback (slightly longer than 0.8s CSS transition)
 }
 
 function handleSkipIntro() {
@@ -1513,6 +1581,7 @@ function handleDesktopLock() {
   setPausePendingState(false);
   if (import.meta.env.DEV) performance.mark('hol:lock-before-ui');
   perfFirstActiveFrame = true;
+  fadeOutStartScreen();
   setUiState(UI_STATE.ACTIVE);
   if (import.meta.env.DEV) performance.mark('hol:lock-after-ui');
   audioEngine.resume();
@@ -1590,6 +1659,7 @@ function handleStartExperience() {
     activateControls();
     setStartPendingState(false);
     perfFirstActiveFrame = true;
+    fadeOutStartScreen();
     setUiState(UI_STATE.ACTIVE);
     audioEngine.resume();
     // Defer deferred load to next macrotask so the first active frame paints without
@@ -2052,6 +2122,8 @@ function animate() {
       currentSpeedDisplay.textContent = getVelocity().toFixed(2);
     }
 
+    if (import.meta.env.DEV && isFirstActiveFrame) performance.mark('hol:faf-after-controls');
+
     updateInspectTransition(delta);
 
     // Update debug position display
@@ -2071,6 +2143,8 @@ function animate() {
     } else {
       currentTargetState = EMPTY_TARGET_STATE;
     }
+
+    if (import.meta.env.DEV && isFirstActiveFrame) performance.mark('hol:faf-after-proximity');
 
     updateActiveLetterUI(currentTargetState?.activeId ?? null);
 
@@ -2096,6 +2170,8 @@ function animate() {
         cameraPosition: camera.position,
       });
     }
+
+    if (import.meta.env.DEV && isFirstActiveFrame) performance.mark('hol:faf-after-timeline');
 
     // Animate Letters (Slight airflow)
     const time = elapsedTime;
@@ -2152,6 +2228,10 @@ function animate() {
       perfFirstActiveFrame = false;
       performance.mark('hol:first-active-frame-end');
       performance.measure('hol:first-active-frame', 'hol:first-active-frame-begin', 'hol:first-active-frame-end');
+      performance.measure('hol:faf-controls', 'hol:first-active-frame-begin', 'hol:faf-after-controls');
+      performance.measure('hol:faf-proximity', 'hol:faf-after-controls', 'hol:faf-after-proximity');
+      performance.measure('hol:faf-timeline', 'hol:faf-after-proximity', 'hol:faf-after-timeline');
+      performance.measure('hol:faf-render', 'hol:faf-after-timeline', 'hol:first-active-frame-end');
     }
   } catch (error) {
     console.error('[animate] Frame error:', error);

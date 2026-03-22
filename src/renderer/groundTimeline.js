@@ -58,6 +58,7 @@ function createNoopTimeline() {
   return {
     update() {},
     dispose() {},
+    preWarm() {},
   };
 }
 
@@ -662,8 +663,21 @@ export function createGroundTimeline({ scene, letters, chronology, constants } =
     textureCache.clear();
   }
 
+  // Pre-warm GPU vertex buffers by making the root group visible for one render
+  // frame while an overlay (e.g. start screen) covers the view. The next
+  // animate() render uploads all timeline geometry to GPU memory. On the
+  // following frame, update() hides the group again (uiState is still 'start'),
+  // but the GPU buffers persist. When ACTIVE state begins, the first visible
+  // frame draws from warm buffers — no upload stall.
+  function preWarm() {
+    if (hasBeenRevealed) return; // already warm or revealed
+    hasBeenRevealed = true;
+    rootGroup.visible = true;
+  }
+
   return {
     update,
     dispose,
+    preWarm,
   };
 }
