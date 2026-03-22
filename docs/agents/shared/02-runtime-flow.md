@@ -257,6 +257,7 @@
 ### 12. Archive render loop
 
 - `animate()` does all per-frame runtime work:
+  - dynamic velocity adjustment via `computeWalkingSpeed(cameraZ, baseSpeed)` from `src/config/zoneVelocity.js` — boosts walking speed in inter-zone gaps proportional to gap size, with sinusoidal ramp; skipped when the debug speed slider has been manually adjusted
   - state-aware `updateControls(delta)` while `uiState === active`
   - bird's-eye view-mode sync from `controls.js` into shell-facing `viewMode`
   - inspect transition updates, inspect UI sync, and inspect-specific letter-freeze behavior while inspect is active

@@ -40,6 +40,8 @@
   - both shells use the same panel language and spacing rhythm
   - loading now anchors status/progress inside a deliberate content block instead of loose bottom text
   - start now reads as a single focal entry card without changing the underlying state model
+- Dynamic velocity zones now boost walking speed in inter-zone gaps proportional to gap size (`src/config/zoneVelocity.js`). The zone 1→2 silence corridor peaks at 3× base speed. Gap 2→3 and 3→4 are below the minimum boost threshold and use base speed.
+- The ground floor plane now covers the full temporal archive extent (world z ≈ -168 to +643).
 - The runtime still has deferred work in theme switching, subtitle content, and asset-pipeline clarity.
 
 ## What appears already working

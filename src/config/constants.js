@@ -106,6 +106,14 @@ export const INSPECT = {
   ORBIT_AUTO_ROTATE_SPEED: 0.5,
 };
 
+// Dynamic velocity (zone-adaptive walking speed)
+export const VELOCITY = {
+  BASE_SPEED: 40,
+  MAX_BOOST_FACTOR: 2.0,      // maximum additional multiplier (3× total at peak)
+  ZONE_MARGIN: 12.0,           // world-space buffer around zone boundaries (letters.json z × GRID_SCALE)
+  MIN_GAP_FOR_BOOST: 20.0,     // world-space gaps smaller than this get no boost
+};
+
 // Animation
 export const ANIMATION = {
   LETTER_ANIMATION_RADIUS: 15.0, // Only animate letters within this distance

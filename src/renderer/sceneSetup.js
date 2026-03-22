@@ -63,13 +63,14 @@ export function initScene() {
 
   composer.addPass(new EffectPass(camera, bloomEffect, vignetteEffect));
 
-  // Ground (large enough to cover play area)
-  const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
+  // Ground (covers full temporally-distributed archive: world z ≈ -168 to +643)
+  const groundGeometry = new THREE.PlaneGeometry(1000, 2000);
   const groundMaterial = new THREE.MeshBasicMaterial({
     color: 0x080810
   });
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2;
+  ground.position.z = 240; // Center on archive midpoint (world z ≈ -168 to +643)
   ground.receiveShadow = false;
   scene.add(ground);
 

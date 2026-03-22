@@ -37,7 +37,7 @@ Existing tokens (`--shell-panel-bg`, `--shell-panel-border`, `--shell-panel-shad
 | Audio | `src/audio/audioEngine.js` | background theme playback, narration lazy loading, ducking, pause/resume, unload | active-letter detection, visual highlighting, theme choice policy |
 | Theme mixing | `src/audio/themeMixer.js` | only current active-letter/theme bookkeeping and logging | actual crossfade or soundtrack switching |
 | Proximity | `src/interaction/proximityManager.js` | readable-side candidate/active scoring, narration trigger, highlight/unhighlight hooks, minimal targeting snapshot | DOM preview/subtitles, theme selection, movement, inspect UI |
-| Data + config | `src/data/letters.json`, `src/config/constants.js`, `src/config/landingContent.js`, `src/config/startShellContent.js` | metadata schema, asset paths, positions/zones, tuning constants, landing/start screen text content | renderer or audio lifecycle logic |
+| Data + config | `src/data/letters.json`, `src/config/constants.js`, `src/config/landingContent.js`, `src/config/startShellContent.js`, `src/config/zoneVelocity.js` | metadata schema, asset paths, positions/zones, tuning constants, landing/start screen text content, zone-adaptive walking speed | renderer or audio lifecycle logic |
 | Build + deploy | `package.json`, `vite.config.js`, `public/_headers`, `public/_redirects` | local scripts, aliases, static asset copying, Pages routing/headers | runtime sequencing decisions |
 
 ## Dependency flow from `src/main.js`

@@ -10,7 +10,8 @@ import { createDust, updateDust } from '@renderer/particles.js';
 import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
 import { ProximityManager } from '@interaction/proximityManager.js';
-import { AUDIO, ANIMATION, INSPECT, LOADING_TIMEOUT_MS, TIMELINE } from '@config/constants.js';
+import { AUDIO, ANIMATION, INSPECT, LOADING_TIMEOUT_MS, TIMELINE, VELOCITY } from '@config/constants.js';
+import { computeWalkingSpeed } from '@config/zoneVelocity.js';
 import { START_SHELL_CONTENT } from '@config/startShellContent.js';
 import { LANDING_CONTENT } from '@config/landingContent.js';
 import lettersData from '@data/letters.json';
@@ -160,10 +161,13 @@ const speedValueDisplay = document.getElementById('speed-value');
 const currentSpeedDisplay = document.getElementById('current-speed');
 const debugPositionDisplay = document.getElementById('debug-position');
 
+let manualSpeedOverride = false;
+
 function handleSpeedSliderInput(e) {
   const speed = parseInt(e.target.value, 10);
   setWalkingSpeed(speed);
   speedValueDisplay.textContent = speed;
+  manualSpeedOverride = true;
 }
 
 speedSlider.addEventListener('input', handleSpeedSliderInput);
@@ -2108,6 +2112,16 @@ function animate() {
 
     if (viewMode !== nextViewMode) {
       setViewMode(nextViewMode);
+    }
+
+    // Dynamic velocity: adjust walking speed based on camera z-position
+    if (uiState === UI_STATE.ACTIVE && !manualSpeedOverride && viewMode === VIEW_MODE.IMMERSIVE) {
+      const dynamicSpeed = computeWalkingSpeed(camera.position.z, VELOCITY.BASE_SPEED);
+      setWalkingSpeed(dynamicSpeed);
+      if (speedSlider) {
+        speedSlider.value = Math.round(dynamicSpeed);
+        if (speedValueDisplay) speedValueDisplay.textContent = Math.round(dynamicSpeed);
+      }
     }
 
     // Update Controls
