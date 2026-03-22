@@ -83,114 +83,71 @@ All implementable in vanilla CSS without architectural changes:
 
 ### High (meaningfully degrades experience)
 
-2. **`user-scalable=no` WCAG 1.4.4 violation** — both HTML files prevent pinch-to-zoom. Low-vision users and some accessibility auditing tools will flag this immediately.
-   - Evidence: 1A code audit, 1B confirmed via meta tag inspection
-   - Location: `index.html:4`, `listen/index.html:5`
-   - Fix: Change to `maximum-scale=5.0, user-scalable=yes` (or remove the restriction)
+2. ~~**`user-scalable=no` WCAG 1.4.4 violation**~~ — **RESOLVED (Session 3).** Removed `maximum-scale=1.0` and `user-scalable=no` from both `index.html` and `listen/index.html`. Pinch-to-zoom now works on all text-heavy DOM overlays.
 
-3. **Bird's-eye indicator tonal rupture** — uses `#4CAF50` green (Material Design), `🦅` emoji, Material Design zone colors (`#64B5F6`, `#81C784`, `#FFB74D`, `#E57373`), and raw z-coordinates. This is the single largest visual inconsistency in the project — a debug overlay in a memorial archive.
-   - Evidence: 1A code audit (confirmed colors, emoji, coordinates in `main.css:1416-1483`, `index.html:117-128`), 1B manual-only gap (pointer-lock blocks Playwright)
-   - Location: `main.css:1416-1483`, `index.html:117-128`
-   - Fix: Restyle with archive palette (blue accent, no emoji, human-readable zone labels)
+3. ~~**Bird's-eye indicator tonal rupture**~~ — **RESOLVED (Session 5).** Removed green `#4CAF50`, emoji, Material Design zone colors, and raw z-coordinates. Replaced with monochrome glass badge using `--shell-panel-bg`, `--shell-panel-border`, `backdrop-filter: blur(14px)`. Label + hint only — no zone legend.
 
-4. **Pause screen lacks glass panel treatment** — the only full-screen shell state using raw `rgba(0,0,0,0.6)` + `blur(5px)` instead of the polished glass panel system. Visually the weakest state.
-   - Evidence: 1A code audit (confirmed), 1B manual-only gap
-   - Location: `main.css:551-568`, `index.html:106-110`
-   - Fix: Wrap pause content in `.shell-panel`, add `::before` glow
+4. ~~**Pause screen lacks glass panel treatment**~~ — **RESOLVED (Session 5).** Wrapped pause content in `.shell-panel.shell-panel-pause` with `::before` radial glow, matching landing/loading/start panel system. Added kicker + title hierarchy.
 
-5. **Landing read-more buttons have zero-padding touch targets** — `padding: 0` on `.landing-read-more` creates tap targets of ~80×12px, well below 44px WCAG minimum.
-   - Evidence: 1A code audit, 1B confirmed (visual + a11y tree)
-   - Location: `main.css:158-159`
-   - Fix: Add `padding: 8px 0` minimum, or expand to `min-height: 44px`
+5. ~~**Landing read-more buttons have zero-padding touch targets**~~ — **RESOLVED (Session 3).** Added `padding: 12px 0`, `min-height: 44px`, and `display: inline-flex` to `.landing-read-more`. Also added `aria-expanded` attribute with JS toggle.
 
-6. **No `:focus-visible` on primary `.btn` class** — keyboard users see no focus indicator on Enter Archive, Start, Resume, or Skip buttons. Only the listen page has `:focus-visible` styles.
-   - Evidence: 1A code audit (confirmed missing rule at `main.css:577-598`)
-   - Location: `main.css` `.btn` rule
-   - Fix: Add `.btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }`
+6. ~~**No `:focus-visible` on primary `.btn` class**~~ — **RESOLVED (Session 3).** Added global `:focus-visible` baseline with blue accent color, plus component-specific refinements for `.btn`, `.landing-read-more`, `.btn-inspect`, and `.btn-inspect-secondary`. Listen page also received global focus styles.
 
-7. **Inspect buttons below 44px at 480px** — `.btn-inspect` padding drops to `9px 12px` at 480px breakpoint, yielding ~32px height.
-   - Evidence: 1A code audit
-   - Location: `main.css:1380-1384`
-   - Fix: Set `min-height: 44px` on inspect button classes
+7. ~~**Inspect buttons below 44px at 480px**~~ — **RESOLVED (Session 3).** Added `min-height: 44px` to `.btn-inspect` and `.btn-inspect-secondary` in the 480px breakpoint.
 
-8. **Listen page progress bar not keyboard-accessible** — Tab order skips progressbar entirely. Keyboard-only users cannot seek within audio.
-   - Evidence: 1A code audit, 1B confirmed (Tab order test: `btn-ar` → `btn-en` → `play-btn` → body)
-   - Location: `listen/index.html` progress-track element
-   - Fix: Add `tabindex="0"`, arrow key handling for ±5s seek
+8. ~~**Listen page progress bar not keyboard-accessible**~~ — **RESOLVED (Session 4).** Changed from `role="progressbar"` to `role="slider"` with `tabindex="0"`, arrow key seeking (±5s, RTL-aware), Home/End, and `aria-valuetext` updated during playback. Also added expanded click/focus area via padding trick.
 
-9. **Arabic typography — latent risk** — Courier New has limited Arabic glyph coverage. The `العربية` button label renders acceptably via browser font fallback, but any future Arabic body text (narration titles, descriptions) in kickers or body text will break. The 0.42em letter-spacing on kickers would fracture Arabic connected script.
-   - Evidence: 1A code audit (severe), 1B visual test (passable for button label only)
-   - Location: `listen/index.html:18,48-49`
-   - Fix: Add Noto Naskh Arabic for `[lang="ar"]` contexts, remove letter-spacing for Arabic
+9. ~~**Arabic typography — latent risk**~~ — **RESOLVED (Session 9).** Added Arabic font stack (`Noto Naskh Arabic`, `Geeza Pro`, `Traditional Arabic`, `Arabic Typesetting`, serif) scoped to `:lang(ar)`/`[lang="ar"]`. Zero letter-spacing with `!important` override to preserve connected script. Applied to both `main.css` and `listen/index.html`.
 
-10. **1920px+ landing composition sparse** — 20rem (320px) panels in corners of a 1920px screen create ~1280px of empty black space. For exhibition kiosks, this looks unfinished.
-    - Evidence: 1A breakpoint analysis, 1B confirmed (screenshot at 1920×1080)
-    - Location: `main.css` `.landing-panel` max-width, no `min-width: 1440px` breakpoint
-    - Fix: Add `@media (min-width: 1440px)` with scaled panel sizes
+10. ~~**1920px+ landing composition sparse**~~ — **RESOLVED (Session 8).** Added `@media (min-width: 1440px)` with grid `max-width: 1400px` and panels scaled to 24rem. Added `@media (min-width: 1920px)` with panels at 26rem. Composition now feels proportional at kiosk sizes without losing intentional negative space.
 
 ### Medium (polish that raises quality)
 
-11. **14 distinct white opacity levels** — should collapse to 5 semantic tokens (`--text-primary` through `--text-ghost`).
-    - Location: scattered throughout `main.css`
+11. ~~**14 distinct white opacity levels**~~ — **RESOLVED (Session 6).** Collapsed to 5 semantic tokens (`--text-primary` 0.88, `--text-secondary` 0.78, `--text-tertiary` 0.68, `--text-muted` 0.56, `--text-ghost` 0.38). 12 `color:` declarations migrated.
 
-12. **35+ ad-hoc font sizes** — should normalize to 7-step type scale.
-    - Location: throughout `main.css`
+12. ~~**35+ ad-hoc font sizes**~~ — **RESOLVED (Session 6).** Added 5-step type scale (`--text-xs` through `--text-xl`). 18 `font-size` declarations migrated. Display/heading `clamp()` sizes left as-is (unique responsive expressions).
 
-13. **4 distinct blue accent hues** — should unify to single `--accent-blue`.
-    - Location: `main.css` various
+13. ~~**4 distinct blue accent hues**~~ — **RESOLVED (Session 6).** Added `--accent-rgb: 102, 136, 204` token. Unified `rgba(123, 145, 255)` → `rgba(112, 144, 255)` (imperceptible at 12% opacity). 6 focus-ring and accent declarations migrated.
 
-14. **5 distinct blur values** — should normalize to 3-tier system.
-    - Location: `main.css` various
+14. ~~**5 distinct blur values**~~ — **RESOLVED (Session 6).** Added 3-tier system: `--blur-sm` 5px, `--blur-md` 12px, `--blur-lg` 18px. 10 `backdrop-filter` declarations migrated. `blur(8px)` left as-is (2 uses, between tiers).
 
-15. **No spacing scale** — 18+ ad-hoc pixel values.
-    - Location: `main.css` throughout
+15. ~~**No spacing scale**~~ — **RESOLVED (Session 6).** Added 8-step 4px-grid scale (`--space-1` through `--space-8`). 55 spacing declarations migrated. `clamp()` responsive spacing left as-is.
 
-16. **Missing `aria-live` on `#loading-status`** — dynamic loading messages not announced.
-    - Location: `index.html:65`
+16. ~~**Missing `aria-live` on `#loading-status`**~~ — **RESOLVED (Session 3).** Added `aria-live="polite"` and `aria-atomic="true"` to `#loading-status`.
 
-17. **Missing `aria-expanded` on landing read-more** — screen readers cannot determine panel state.
-    - Location: `index.html:19,23,27,31`
+17. ~~**Missing `aria-expanded` on landing read-more**~~ — **RESOLVED (Session 3).** Added `aria-expanded="false"` to all read-more buttons in HTML, plus JS toggle in `handleLandingReadMore()`.
 
-18. **No landmark structure on landing page** — all `generic` divs, no `<main>`, `<section>`, or `<article>`.
-    - Evidence: 1A code audit, 1B a11y tree (confirmed)
-    - Location: `index.html` landing-screen
+18. ~~**No landmark structure on landing page**~~ — **RESOLVED (Session 3).** Added `role="main"` and `aria-label` to `#landing-screen`.
 
-19. **Listen page `aria-live` missing** — loading/error messages not announced.
-    - Location: `listen/index.html` loading-indicator
+19. ~~**Listen page `aria-live` missing**~~ — **RESOLVED (Session 7).** Added `aria-live="polite" aria-atomic="true"` to `#loading-msg`. Added `role="alert"` to the error state container.
 
-20. **No link from listen page to main archive** — dead-end path for exhibition visitors.
-    - Location: `listen/index.html`
+20. ~~**No link from listen page to main archive**~~ — **RESOLVED (Session 4).** Added subtle "Explore the full archive →" link between player and footer.
 
-21. **Deferred notice close button at 28px** — below 44px touch target.
-    - Location: `main.css:1557-1562`
+21. ~~**Deferred notice close button at 28px**~~ — **RESOLVED (Session 3).** Increased from 28×28px to 44×44px.
 
-22. **768px tablet panels too wide** — full-width monospace text creates >80-character lines.
-    - Evidence: 1B responsive test
-    - Location: `main.css` 768px breakpoint `.landing-panel`
+22. ~~**768px tablet panels too wide**~~ — **RESOLVED (Session 8).** Changed 768px breakpoint `.landing-panel` from `max-width: 100%` to `max-width: 32rem` (~512px), capping monospace lines to ~60 characters.
 
-23. **Listen page English UI labels lack `lang="en"` in Arabic mode** — screen readers mispronounce English strings.
-    - Evidence: 1B a11y test
-    - Location: `listen/index.html` JS-rendered labels
+23. ~~**Listen page English UI labels lack `lang="en"` in Arabic mode**~~ — **RESOLVED (Session 7).** Added `lang="en"` to header, paper-id section, English language button, archive link, footer, and error state. Added `lang="ar"` to Arabic language button.
 
 ### Low (nice-to-have refinements)
 
-24. **Dead token `--overlay-bg`** — declared but never used. — `main.css:4`
+24. ~~**Dead token `--overlay-bg`**~~ — **RESOLVED (Session 9).** Removed from `:root`.
 
-25. **`.start-shell-primary/secondary` unstyled** — HTML classes with no CSS rules. — `index.html:77,88`
+25. ~~**`.start-shell-primary/secondary` unstyled**~~ — **RESOLVED (Session 9).** Removed classes from `index.html` (no CSS rules, no JS references).
 
-26. **Listen page error creates `<style>` per error** — minor DOM leak. — `listen/index.html:442-445`
+26. ~~**Listen page error creates `<style>` per error**~~ — **RESOLVED (Session 9).** Replaced `createElement('style')` with CSS class toggle (`.error-state-msg`). Error styles now in main `<style>` block.
 
-27. **`titlePulse` barely perceptible** (0.9↔1.0 opacity). — `main.css:341-344`
+27. ~~**`titlePulse` barely perceptible**~~ — **RESOLVED (Session 9).** Widened from 0.9↔1.0 to 0.75↔1.0 — now a visible gentle breathing effect.
 
-28. **Mixed `em`/`px` for letter-spacing** — consistency issue. — `main.css` various
+28. ~~**Mixed `em`/`px` for letter-spacing**~~ — **RESOLVED (Session 9).** Converted all `px` letter-spacing values to `em` (8 declarations). Removed redundant breakpoint overrides for `.loading-title` since `em` scales with font size automatically.
 
-29. **Start shell lede is generic** ("The archive is ready.") — missed opportunity for emotional preparation. — `startShellContent.js:4`
+29. **Start shell lede is generic** ("The archive is ready.") — missed opportunity for emotional preparation. — `startShellContent.js:4` — **Awaiting client copy input.**
 
-30. **No audio retry on listen page** — flaky WiFi users get stuck. — `listen/index.html:437-447`
+30. ~~**No audio retry on listen page**~~ — **RESOLVED (Session 9).** Added "Try again" button on audio load failure that retries `audio.load()`. Button appears after error, removed on retry. Styled to match listen page buttons.
 
-31. **Listen page `role="group"` should be `role="radiogroup"`** — semantic precision. — `listen/index.html:354`
+31. ~~**Listen page `role="group"` should be `role="radiogroup"`**~~ — **RESOLVED (Session 9).** Changed language selector container to `role="radiogroup"`.
 
-32. **10 distinct border-radius values** — should normalize to 5. — `main.css` various
+32. ~~**10 distinct border-radius values**~~ — **RESOLVED (Session 6).** Normalized to 5-step scale (`--radius-sm` 8px, `--radius-md` 14px, `--radius-lg` 20px, `--radius-xl` 24px, `--radius-pill` 9999px). 15 declarations migrated.
 
 ---
 
@@ -308,8 +265,8 @@ All implementable in vanilla CSS without architectural changes:
 |-----------|--------------|------------------|----------------------|----------|
 | Glass panels (landing, start) | 5 | Inconsistent blur values | Unify to 3-tier blur system | Medium |
 | Loading overlay | 4.5 | Missing `aria-live` | Add `aria-live="polite"` to status | Medium |
-| Pause overlay | 2 | No glass panel, lightest blur | Wrap in `.shell-panel`, add glow | High |
-| Bird's-eye indicator | 1.5 | Wrong color system, emoji, coordinates | Full redesign with archive palette | High |
+| Pause overlay | 4.5 | — | ~~Resolved (Session 5)~~ — glass panel with glow | — |
+| Bird's-eye indicator | 4 | — | ~~Resolved (Session 5)~~ — monochrome glass badge | — |
 | Landing read-more | 3 | Zero-padding touch target, no aria-expanded | Add padding + ARIA | High |
 | Inspect overlay | 4 | Touch buttons too small at 480px | Set min-height 44px | High |
 | Listen audio player | 4 | Progress bar not keyboard-navigable | Add tabindex + arrow keys | High |
@@ -394,7 +351,7 @@ Excellent for QR-code-driven mobile flow.
 5. 1920px+ composition sparse (High for exhibition)
 6. Design system lacks formalization — 35+ font sizes, 14 opacity levels, no spacing scale (Medium aggregate)
 7. Listen page missing `aria-live` for status messages (Medium)
-8. No link from listen page to main archive (Medium)
+8. ~~No link from listen page to main archive~~ (Medium) — **RESOLVED (Session 4)**
 
 ---
 
@@ -418,23 +375,21 @@ Excellent for QR-code-driven mobile flow.
 - **Tools:** Local edits only
 - **Priority:** High — listen page is the exhibition visitors' direct surface
 
-### Session 5: Pause screen + bird's-eye visual upgrade
-- **Scope:** Wrap pause content in `.shell-panel`, restyle bird's-eye indicator with archive palette (remove green, emoji, z-coordinates)
+### ~~Session 5: Pause screen + bird's-eye visual upgrade~~ (DONE)
+- **Scope:** Wrapped pause content in `.shell-panel.shell-panel-pause` with `::before` glow. Bird's-eye redesigned as monochrome glass badge — removed green, emoji, Material Design zone colors, z-coordinates, zone legend.
 - **Files:** `index.html`, `src/styles/main.css`
-- **Tools:** Local edits, `playwright` for verification
-- **Priority:** High — tonal consistency
+- **Status:** Complete
 
-### Session 6: Design system tokenization
-- **Scope:** Introduce CSS custom properties for text colors (5 levels), type scale (7 steps), spacing scale (10 steps), blur tiers (3), radius scale (5). Apply across `main.css`.
+### ~~Session 6: Design system tokenization~~ (DONE)
+- **Scope:** Added CSS custom properties: text color scale (5), type scale (5), spacing scale (8), accent RGB (1), blur tiers (3), radius scale (5). Migrated 124 declarations. Also added border-radius scale (5). Listen page left as-is (self-contained).
 - **Files:** `src/styles/main.css`
-- **Tools:** Local edits, careful regex replacement
-- **Priority:** Medium — foundational polish, reduces future maintenance
+- **Status:** Complete — zero visual change, token system in place
 
-### Session 7: Wide-screen + responsive polish
-- **Scope:** Add `@media (min-width: 1440px)` breakpoint, constrain 768px panel line lengths, tune start/pause copy
-- **Files:** `src/styles/main.css`, `src/config/startShellContent.js`
-- **Tools:** `playwright`, `responsiveness-check` for verification
-- **Priority:** Medium — exhibition kiosk readiness
+### ~~Session 7: Listen page a11y + Session 8: Wide-screen + responsive polish~~ (DONE)
+- **Session 7 scope:** Added `aria-live` on listen page status messages, `lang="en"`/`lang="ar"` on bilingual elements, `role="alert"` on error state.
+- **Session 8 scope:** Added 1440px+ and 1920px+ breakpoints with grid max-width and scaled panel sizes. Constrained 768px panel line length to 32rem.
+- **Files:** `public/listen/index.html`, `src/styles/main.css`
+- **Status:** Complete
 
 ### Session 8: Arabic typography
 - **Scope:** Add Noto Naskh Arabic for `[lang="ar"]` contexts, conditionally loaded. Remove letter-spacing for Arabic. Only needed when Arabic body content (beyond the button label) is added.

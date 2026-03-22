@@ -10,6 +10,19 @@
 - Content source of truth: `src/data/letters.json` plus static assets under `public/assets/`.
 - Deploy shell: `vite.config.js`, `public/_headers`, and `public/_redirects`.
 
+## Design token system
+
+`src/styles/main.css` `:root` defines CSS custom properties for consistent styling:
+
+- **Text color**: `--text-primary` through `--text-ghost` (5 semantic opacity levels)
+- **Type scale**: `--text-xs` through `--text-xl` (5 steps; display sizes use one-off `clamp()` expressions)
+- **Spacing**: `--space-1` through `--space-8` (4px grid; responsive `clamp()` spacing stays inline)
+- **Accent**: `--accent-rgb` (raw `102, 136, 204` for `rgba()` usage; same value as `--zone1-glow`)
+- **Blur**: `--blur-sm` / `--blur-md` / `--blur-lg` (3 tiers: 5px / 12px / 18px)
+- **Radius**: `--radius-sm` through `--radius-pill` (5 steps)
+
+Existing tokens (`--shell-panel-bg`, `--shell-panel-border`, `--shell-panel-shadow`, `--shell-glow`, `--shell-kicker-color`, `--zone1-glow`) remain canonical for the glass panel system.
+
 ## Subsystem map
 
 | Layer | Owner files | Owns | Does not own |

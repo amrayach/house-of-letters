@@ -981,6 +981,7 @@ function handleLandingReadMore(e) {
   if (!panel) return;
   const expanded = panel.classList.toggle('expanded');
   e.target.textContent = expanded ? 'Read less' : 'Read more';
+  e.target.setAttribute('aria-expanded', expanded ? 'true' : 'false');
 }
 
 let hasLeftLanding = false;

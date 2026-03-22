@@ -64,10 +64,10 @@ Baseline for this document:
 
 ## Top 6 UI/UX issues
 
-1. Bird's-eye mode still feels like a tool overlay rather than a first-class archive view.
+1. ~~Bird's-eye mode still feels like a tool overlay rather than a first-class archive view.~~ Resolved — now uses monochrome glass badge matching the archive palette.
 2. Subtitle fallback copy remains generic when letter text is missing.
 3. Preview and subtitle layout are improved but still scene-obstructive on smaller phones, especially in degraded sessions that also show the touch status pill.
-4. Pause messaging is clearer, but shell copy overall still under-orients first-time users.
+4. ~~Pause messaging is clearer, but shell copy overall still under-orients first-time users.~~ Pause now uses glass panel with kicker/title hierarchy matching other shells. Broader copy orientation remains a separate concern.
 5. Debug UI policy is now enforced in shell states, but it still depends on a runtime flag rather than a stricter environment boundary.
 6. Overlay behavior is now explicit, but regression risk remains high because the runtime still combines DOM shell logic with an always-running render loop.
 
@@ -75,12 +75,13 @@ Baseline for this document:
 
 ### High
 
-- Bird's-eye presentation is visually detached from the rest of the archive shell.
+- ~~Bird's-eye presentation is visually detached from the rest of the archive shell.~~ Resolved — redesigned as monochrome glass badge with archive palette.
 - Mobile overlay density is still tight in active-letter moments on small screens, especially when the degraded touch-status pill is present.
 - Placeholder subtitle fallback weakens narrative credibility.
 
 ### Medium
 
+- ~~Pause screen lacked glass panel treatment.~~ Resolved — now uses `.shell-panel` with `::before` glow, matching landing/loading/start.
 - Start and pause copy still explain controls more than atmosphere or intent.
 - Letter preview cards remain visually heavier than the subtitle layer they support.
 - Overlay logic is correct now, but fragile because it spans HTML, CSS, `src/main.js`, and control-layer events.
@@ -141,24 +142,16 @@ Validation:
 Figma:
 - not required for incremental follow-through
 
-### P2. Unify bird's-eye and active-letter visual language
+### ~~P2. Unify bird's-eye and active-letter visual language~~ (Resolved)
 
-- Bring bird's-eye panel styling closer to the archive shell.
-- Reduce the feeling of switching into a debug-like mode.
-- Align accent use, panel density, and information hierarchy.
-
-Validation:
-- Desktop toggle checks plus overlap review with the active-letter layer.
-
-Figma:
-- preferred
+Bird's-eye indicator now uses the same glass panel tokens (`--shell-panel-bg`, `--shell-panel-border`) and monochrome palette as the rest of the archive. Green accent, emoji, Material Design zone colors, and raw coordinates removed.
 
 ## Recommended order of implementation
 
 1. Keep the current shell-state matrix stable and extend from it instead of bypassing it.
 2. Improve copy and fallback text.
 3. Continue mobile active-letter layout tuning.
-4. Rework bird's-eye into the same visual system as the rest of the archive.
+4. ~~Rework bird's-eye into the same visual system as the rest of the archive.~~ Done.
 
 ## First-pass acceptance criteria
 
@@ -215,5 +208,5 @@ The first UX pass is complete only if:
 
 ## Top 2 medium-risk visual improvements
 
-1. Unify bird's-eye and active-letter panels into a more coherent overlay language.
+1. ~~Unify bird's-eye and active-letter panels into a more coherent overlay language.~~ Done.
 2. Refine first-time orientation copy/layout without changing the DOM architecture.
