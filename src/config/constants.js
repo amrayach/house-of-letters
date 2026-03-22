@@ -12,10 +12,10 @@ export const SCENE = {
 
 // Zone-adaptive atmosphere colors (blue → green → amber → red across the archive Z axis)
 export const ATMOSPHERE_ZONES = [
-  { id: 1, zMin: -Infinity, zMax: -30, ambientColor: 0x1a1a2e, directionalColor: 0x6688cc, fogColor: 0x0a0a18 },
-  { id: 2, zMin: -30,       zMax: -5,  ambientColor: 0x1a2218, directionalColor: 0x7ba67a, fogColor: 0x0a100a },
-  { id: 3, zMin: -5,        zMax: 25,  ambientColor: 0x221a10, directionalColor: 0xcc9944, fogColor: 0x18100a },
-  { id: 4, zMin: 25,        zMax: Infinity, ambientColor: 0x221414, directionalColor: 0xcc6644, fogColor: 0x180a0a },
+  { id: 1, zMin: -Infinity, zMax: -15, ambientColor: 0x1a1a2e, directionalColor: 0x6688cc, fogColor: 0x0a0a18 },
+  { id: 2, zMin: -15,       zMax: 38,  ambientColor: 0x1a2218, directionalColor: 0x7ba67a, fogColor: 0x0a100a },
+  { id: 3, zMin: 38,        zMax: 90,  ambientColor: 0x221a10, directionalColor: 0xcc9944, fogColor: 0x18100a },
+  { id: 4, zMin: 90,        zMax: Infinity, ambientColor: 0x221414, directionalColor: 0xcc6644, fogColor: 0x180a0a },
 ];
 
 // Post-processing tuning (bloom + vignette only — stays within 60fps budget)
@@ -53,7 +53,7 @@ export const CAMERA = {
   FOV: 75,
   NEAR: 0.1,
   FAR: 1000,
-  INITIAL_POSITION: { x: 11.6, y: 1.6, z: -165.7 } // Aligned with ground timeline start near letter 1
+  INITIAL_POSITION: { x: 0, y: 1.6, z: -50 } // Near paper 1 (z=-42), facing into the archive
 };
 
 // Models

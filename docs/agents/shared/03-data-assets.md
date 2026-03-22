@@ -82,12 +82,12 @@ Observed runtime schema: 46 records, all with the same keys today.
 
 - Record count: 46
 - Zone counts: `1 / 5 / 12 / 28`
-- Zone z-ranges in current runtime file (temporal distribution, ~162 units total):
+- Zone z-ranges in current runtime file (temporal distribution, ~203 units total):
   - zone 1: `-42.00`
-  - zone 2: `-31.44 .. -7.97`
-  - zone 3: `-2.84 .. 39.13`
-  - zone 4: `40.19 .. 120.06`
-- Z-positions are temporally distributed: physical distance reflects time between diary entries. Source data: `src/data/diary_index_001_048.csv`.
+  - zone 2: `-13.85 .. 31.05`
+  - zone 3: `39.80 .. 89.66`
+  - zone 4: `91.68 .. 160.74`
+- Z-positions are temporally distributed: physical distance reflects time between diary entries. Source data: `src/data/diary_index_001_048.csv`. Parameters: scale=0.7, power=0.6, minZGap=0.5.
 - All current asset references in `letters.json` resolve to existing files under `public/`.
 
 ## Provisional grouped chronology mapping

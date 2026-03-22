@@ -15,9 +15,9 @@ const path = require('path');
 const TEMPORAL_CONFIG = {
   csvPath: path.join(__dirname, '../src/data/diary_index_001_048.csv'),
   zStart: -42,          // z-position of paper 1 (preserves current)
-  minZGap: 2.0,         // base z-gap between consecutive papers (units)
-  scale: 0.4,           // temporal gap scaling multiplier
-  power: 0.5,           // gap compression exponent (√ = square root)
+  minZGap: 0.5,         // base z-gap between consecutive papers (units)
+  scale: 0.7,           // temporal gap scaling multiplier
+  power: 0.6,           // gap compression exponent (>0.5 widens dynamic range)
   zPadding: 3.0,        // padding around derived zone boundaries
   maxPaperId: 46,       // skip CSV papers beyond this
   validYearRange: [1988, 1992], // auto-correct year typos outside this range
@@ -33,7 +33,7 @@ const MEANDER_CONFIG = {
   maxAmp: 9,
   ampCurve: 0.8,
   jitX: 0.2,
-  minSp: 4,
+  minSp: 2.5,
   seed: 42,
   mirrorZ3: true,
 };

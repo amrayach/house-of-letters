@@ -3,7 +3,7 @@
     "id": 1,
     "text": "",
     "position": {
-      "x": 1.91,
+      "x": 1.86,
       "y": 1.6,
       "z": -42
     },
@@ -18,9 +18,9 @@
     "id": 2,
     "text": "",
     "position": {
-      "x": -1.66,
+      "x": -0.71,
       "y": 1.6,
-      "z": -31.44
+      "z": -13.85
     },
     "zone": 2,
     "narration": "/assets/audio/narration_2.mp3",
@@ -33,9 +33,9 @@
     "id": 3,
     "text": "",
     "position": {
-      "x": -3.59,
+      "x": -0.73,
       "y": 1.6,
-      "z": -23.96
+      "z": 2.85
     },
     "zone": 2,
     "narration": "/assets/audio/narration_3.mp3",
@@ -48,9 +48,9 @@
     "id": 4,
     "text": "",
     "position": {
-      "x": -2.77,
+      "x": -5.3,
       "y": 1.6,
-      "z": -18.54
+      "z": 12.53
     },
     "zone": 2,
     "narration": "/assets/audio/narration_4.mp3",
@@ -63,9 +63,9 @@
     "id": 5,
     "text": "",
     "position": {
-      "x": -0.55,
+      "x": -1.9,
       "y": 1.6,
-      "z": -13.14
+      "z": 22.14
     },
     "zone": 2,
     "narration": "/assets/audio/narration_5.mp3",
@@ -78,9 +78,9 @@
     "id": 6,
     "text": "",
     "position": {
-      "x": 1.43,
+      "x": 4.96,
       "y": 1.6,
-      "z": -7.97
+      "z": 31.05
     },
     "zone": 2,
     "narration": "/assets/audio/narration_6.mp3",
@@ -93,9 +93,9 @@
     "id": 7,
     "text": "",
     "position": {
-      "x": -1.74,
+      "x": -4.63,
       "y": 1.6,
-      "z": -2.84
+      "z": 39.8
     },
     "zone": 3,
     "narration": "/assets/audio/narration_7.mp3",
@@ -108,9 +108,9 @@
     "id": 8,
     "text": "",
     "position": {
-      "x": 0.24,
+      "x": 0.06,
       "y": 1.6,
-      "z": 1.56
+      "z": 46.31
     },
     "zone": 3,
     "narration": "/assets/audio/narration_8.mp3",
@@ -123,9 +123,9 @@
     "id": 9,
     "text": "",
     "position": {
-      "x": 3.63,
+      "x": 2.79,
       "y": 1.6,
-      "z": 6.71
+      "z": 55.14
     },
     "zone": 3,
     "narration": "/assets/audio/narration_9.mp3",
@@ -138,9 +138,9 @@
     "id": 10,
     "text": "",
     "position": {
-      "x": 5.52,
+      "x": -0.31,
       "y": 1.6,
-      "z": 10.66
+      "z": 60.35
     },
     "zone": 3,
     "narration": "/assets/audio/narration_10.mp3",
@@ -153,9 +153,9 @@
     "id": 11,
     "text": "",
     "position": {
-      "x": 5.77,
+      "x": -7.67,
       "y": 1.6,
-      "z": 15.81
+      "z": 69.18
     },
     "zone": 3,
     "narration": "/assets/audio/narration_11.mp3",
@@ -168,9 +168,9 @@
     "id": 12,
     "text": "",
     "position": {
-      "x": 3.82,
+      "x": -7.06,
       "y": 1.6,
-      "z": 20.17
+      "z": 76.64
     },
     "zone": 3,
     "narration": "/assets/audio/narration_12.mp3",
@@ -183,9 +183,9 @@
     "id": 13,
     "text": "",
     "position": {
-      "x": 1.21,
+      "x": -5.03,
       "y": 1.6,
-      "z": 23.2
+      "z": 79.19
     },
     "zone": 3,
     "narration": "/assets/audio/narration_13.mp3",
@@ -198,9 +198,9 @@
     "id": 14,
     "text": "",
     "position": {
-      "x": -1.65,
+      "x": -1.4,
       "y": 1.6,
-      "z": 25.99
+      "z": 82.61
     },
     "zone": 3,
     "narration": "/assets/audio/narration_14.mp3",
@@ -213,9 +213,9 @@
     "id": 15,
     "text": "",
     "position": {
-      "x": -4.67,
+      "x": 0.5,
       "y": 1.6,
-      "z": 28.61
+      "z": 84.23
     },
     "zone": 3,
     "narration": "/assets/audio/narration_15.mp3",
@@ -228,9 +228,9 @@
     "id": 16,
     "text": "",
     "position": {
-      "x": -7.18,
+      "x": 2.72,
       "y": 1.6,
-      "z": 31.72
+      "z": 86.04
     },
     "zone": 3,
     "narration": "/assets/audio/narration_1.mp3",
@@ -243,9 +243,9 @@
     "id": 17,
     "text": "",
     "position": {
-      "x": -7.7,
+      "x": 4.57,
       "y": 1.6,
-      "z": 35.69
+      "z": 87.73
     },
     "zone": 3,
     "narration": "/assets/audio/narration_2.mp3",
@@ -258,9 +258,9 @@
     "id": 18,
     "text": "",
     "position": {
-      "x": -5.65,
+      "x": 6.15,
       "y": 1.6,
-      "z": 39.13
+      "z": 89.66
     },
     "zone": 3,
     "narration": "/assets/audio/narration_3.mp3",
@@ -273,9 +273,9 @@
     "id": 19,
     "text": "",
     "position": {
-      "x": -0.54,
+      "x": 2.56,
       "y": 1.6,
-      "z": 40.19
+      "z": 91.68
     },
     "zone": 4,
     "narration": "/assets/audio/narration_4.mp3",
@@ -288,9 +288,9 @@
     "id": 20,
     "text": "",
     "position": {
-      "x": 3.37,
+      "x": 0.18,
       "y": 1.6,
-      "z": 41.37
+      "z": 92.44
     },
     "zone": 4,
     "narration": "/assets/audio/narration_5.mp3",
@@ -303,9 +303,9 @@
     "id": 21,
     "text": "",
     "position": {
-      "x": 1.82,
+      "x": -6.18,
       "y": 1.6,
-      "z": 45.06
+      "z": 94.39
     },
     "zone": 4,
     "narration": "/assets/audio/narration_6.mp3",
@@ -318,9 +318,9 @@
     "id": 22,
     "text": "",
     "position": {
-      "x": -1.76,
+      "x": -7.11,
       "y": 1.6,
-      "z": 46.85
+      "z": 96.71
     },
     "zone": 4,
     "narration": "/assets/audio/narration_7.mp3",
@@ -333,9 +333,9 @@
     "id": 23,
     "text": "",
     "position": {
-      "x": -2.71,
+      "x": -5.57,
       "y": 1.6,
-      "z": 50.73
+      "z": 98.68
     },
     "zone": 4,
     "narration": "/assets/audio/narration_8.mp3",
@@ -348,9 +348,9 @@
     "id": 24,
     "text": "",
     "position": {
-      "x": -5.65,
+      "x": -4.2,
       "y": 1.6,
-      "z": 53.47
+      "z": 100.77
     },
     "zone": 4,
     "narration": "/assets/audio/narration_9.mp3",
@@ -363,9 +363,9 @@
     "id": 25,
     "text": "",
     "position": {
-      "x": -2.53,
+      "x": -1.6,
       "y": 1.6,
-      "z": 55.97
+      "z": 103.2
     },
     "zone": 4,
     "narration": "/assets/audio/narration_10.mp3",
@@ -378,9 +378,9 @@
     "id": 26,
     "text": "",
     "position": {
-      "x": -1.67,
+      "x": 0.11,
       "y": 1.6,
-      "z": 59.87
+      "z": 105.03
     },
     "zone": 4,
     "narration": "/assets/audio/narration_11.mp3",
@@ -393,9 +393,9 @@
     "id": 27,
     "text": "",
     "position": {
-      "x": 1.83,
+      "x": 1.8,
       "y": 1.6,
-      "z": 61.78
+      "z": 106.87
     },
     "zone": 4,
     "narration": "/assets/audio/narration_12.mp3",
@@ -408,9 +408,9 @@
     "id": 28,
     "text": "",
     "position": {
-      "x": 4.88,
+      "x": 3.5,
       "y": 1.6,
-      "z": 64.35
+      "z": 109.13
     },
     "zone": 4,
     "narration": "/assets/audio/narration_13.mp3",
@@ -423,9 +423,9 @@
     "id": 29,
     "text": "",
     "position": {
-      "x": 7.67,
+      "x": 4.09,
       "y": 1.6,
-      "z": 67.22
+      "z": 111.56
     },
     "zone": 4,
     "narration": "/assets/audio/narration_14.mp3",
@@ -438,9 +438,9 @@
     "id": 30,
     "text": "",
     "position": {
-      "x": 10.16,
+      "x": 2.88,
       "y": 1.6,
-      "z": 70.34
+      "z": 115.31
     },
     "zone": 4,
     "narration": "/assets/audio/narration_15.mp3",
@@ -453,9 +453,9 @@
     "id": 31,
     "text": "",
     "position": {
-      "x": 10.95,
+      "x": 1.02,
       "y": 1.6,
-      "z": 74.26
+      "z": 117.7
     },
     "zone": 4,
     "narration": "/assets/audio/narration_1.mp3",
@@ -468,9 +468,9 @@
     "id": 32,
     "text": "",
     "position": {
-      "x": 8.74,
+      "x": -0.58,
       "y": 1.6,
-      "z": 77.59
+      "z": 119.62
     },
     "zone": 4,
     "narration": "/assets/audio/narration_2.mp3",
@@ -483,9 +483,9 @@
     "id": 33,
     "text": "",
     "position": {
-      "x": 5.25,
+      "x": -2.62,
       "y": 1.6,
-      "z": 79.55
+      "z": 121.11
     },
     "zone": 4,
     "narration": "/assets/audio/narration_3.mp3",
@@ -498,9 +498,9 @@
     "id": 34,
     "text": "",
     "position": {
-      "x": 2.27,
+      "x": -4.78,
       "y": 1.6,
-      "z": 82.21
+      "z": 122.96
     },
     "zone": 4,
     "narration": "/assets/audio/narration_4.mp3",
@@ -513,9 +513,9 @@
     "id": 35,
     "text": "",
     "position": {
-      "x": -1.1,
+      "x": -7.19,
       "y": 1.6,
-      "z": 84.46
+      "z": 124.82
     },
     "zone": 4,
     "narration": "/assets/audio/narration_5.mp3",
@@ -528,9 +528,9 @@
     "id": 36,
     "text": "",
     "position": {
-      "x": -4.73,
+      "x": -10.22,
       "y": 1.6,
-      "z": 87.35
+      "z": 128.1
     },
     "zone": 4,
     "narration": "/assets/audio/narration_6.mp3",
@@ -543,9 +543,9 @@
     "id": 37,
     "text": "",
     "position": {
-      "x": -7.77,
+      "x": -11.56,
       "y": 1.6,
-      "z": 89.95
+      "z": 130.22
     },
     "zone": 4,
     "narration": "/assets/audio/narration_7.mp3",
@@ -558,9 +558,9 @@
     "id": 38,
     "text": "",
     "position": {
-      "x": -10.18,
+      "x": -12.07,
       "y": 1.6,
-      "z": 93.15
+      "z": 132.67
     },
     "zone": 4,
     "narration": "/assets/audio/narration_8.mp3",
@@ -573,9 +573,9 @@
     "id": 39,
     "text": "",
     "position": {
-      "x": -8.19,
+      "x": -10.43,
       "y": 1.6,
-      "z": 96.62
+      "z": 134.57
     },
     "zone": 4,
     "narration": "/assets/audio/narration_9.mp3",
@@ -588,9 +588,9 @@
     "id": 40,
     "text": "",
     "position": {
-      "x": -5.64,
+      "x": -8.81,
       "y": 1.6,
-      "z": 99.71
+      "z": 136.66
     },
     "zone": 4,
     "narration": "/assets/audio/narration_10.mp3",
@@ -603,9 +603,9 @@
     "id": 41,
     "text": "",
     "position": {
-      "x": -2.24,
+      "x": -2.18,
       "y": 1.6,
-      "z": 102.85
+      "z": 141.75
     },
     "zone": 4,
     "narration": "/assets/audio/narration_11.mp3",
@@ -618,9 +618,9 @@
     "id": 42,
     "text": "",
     "position": {
-      "x": 1.04,
+      "x": 1.15,
       "y": 1.6,
-      "z": 105.65
+      "z": 143.86
     },
     "zone": 4,
     "narration": "/assets/audio/narration_12.mp3",
@@ -633,9 +633,9 @@
     "id": 43,
     "text": "",
     "position": {
-      "x": 3.63,
+      "x": 5.98,
       "y": 1.6,
-      "z": 108.73
+      "z": 147.77
     },
     "zone": 4,
     "narration": "/assets/audio/narration_13.mp3",
@@ -648,9 +648,9 @@
     "id": 44,
     "text": "",
     "position": {
-      "x": 4.78,
+      "x": 8.17,
       "y": 1.6,
-      "z": 112.56
+      "z": 150.7
     },
     "zone": 4,
     "narration": "/assets/audio/narration_14.mp3",
@@ -663,9 +663,9 @@
     "id": 45,
     "text": "",
     "position": {
-      "x": 3.03,
+      "x": 8.06,
       "y": 1.6,
-      "z": 116.16
+      "z": 155.3
     },
     "zone": 4,
     "narration": "/assets/audio/narration_15.mp3",
@@ -678,9 +678,9 @@
     "id": 46,
     "text": "",
     "position": {
-      "x": -1.41,
+      "x": 2.96,
       "y": 1.6,
-      "z": 120.06
+      "z": 160.74
     },
     "zone": 4,
     "narration": "/assets/audio/narration_1.mp3",
