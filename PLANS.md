@@ -665,19 +665,20 @@ Validation:
 
 Status:
 - Infrastructure complete — routing, cache-control headers, listener page, and docs all landed
-- Pending: client MP3 files (20 tracks: 10 AR + 10 EN, naming `{id}_ar.mp3` / `{id}_en.mp3`)
-- QR codes: generated via `npm run generate:qr` → `generated/qr-codes/` (10 individual SVGs + print sheet)
+- Arabic paper names and date spans added — 11 papers with archive number mapping, bilingual QR labels
+- Pending: client MP3 files for papers 4–11 (16 tracks: 8 AR + 8 EN); papers 1–3 already have audio
+- QR codes: generated via `npm run generate:qr` → `generated/qr-codes/` (11 individual SVGs + print sheet)
 
 Scope:
 - Standalone lightweight HTML page at `/listen/:id` for physical exhibition QR codes
 - Visitors scan a QR code next to a diary paper and hear the narration on their phone
-- IDs 1 through 10, bilingual: Arabic (`{id}_ar.mp3`) and English (`{id}_en.mp3`)
+- IDs 1 through 11, bilingual: Arabic (`{id}_ar.mp3`) and English (`{id}_en.mp3`)
 - Must not load Three.js, the 3D archive, or any `src/` modules
 - Page reads the ID from the URL path, presents a minimal mobile-friendly audio player
 - Audio files live under `public/assets/listen/`
 
 File ownership:
-- `public/listen.html` — standalone listener page (to be created)
+- `public/listen/index.html` — standalone listener page (directory-based routing)
 - `public/assets/listen/` — exhibition audio MP3s
 - `public/_redirects` — `/listen/*` route (landed)
 - `public/_headers` — CORS and cache rules for `/assets/listen/*.mp3` (landed)
@@ -694,8 +695,8 @@ Dependencies:
 - Audio MP3 files must be provided by the content team before the page is functional
 
 Validation:
-- `npm run build` — confirm `dist/listen.html`, `dist/_redirects`, and `dist/_headers` present
-- Local: `npm run preview` then navigate to `/listen/1` — confirm `listen.html` loads (not `index.html`)
+- `npm run build` — confirm `dist/listen/index.html`, `dist/_redirects`, and `dist/_headers` present
+- Local: `npm run preview` then navigate to `/listen/?p=1` — confirm listener page loads (not `index.html`)
 - Deployed: verify QR code URLs resolve to the listener page, not the 3D archive
 - Verify existing SPA routing (`/*` catch-all) still works for all non-listen routes
 

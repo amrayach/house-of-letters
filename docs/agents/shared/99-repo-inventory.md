@@ -19,7 +19,7 @@ Use this as the compact path map for agent work. One line per path, local-first.
 - `index.html`: DOM shell for loading, start, pause, HUD, subtitles, preview, inspect UI, and module boot
 - `src/main.js`: runtime orchestrator and animation loop entry point
 - `src/styles/main.css`: overlay, HUD, inspect, and mobile-control styling loaded directly by `index.html`
-- `public/listen.html`: standalone exhibition audio listener — self-contained HTML/CSS/JS for `/listen/:id` routes
+- `public/listen/index.html`: standalone exhibition audio listener — self-contained HTML/CSS/JS for `/listen/?p={id}` routes, 11 papers with Arabic names and date spans
 
 ## Rendering
 
@@ -54,7 +54,7 @@ Use this as the compact path map for agent work. One line per path, local-first.
 - `package.json`: dependency list and `dev/build/preview/compress/clean` scripts
 - `vite.config.js`: Vite plugin setup, aliases, build output, and GLB asset inclusion
 - `public/_headers`: Cloudflare Pages headers for content types, CORS, and cache-control across all asset types
-- `public/_redirects`: Cloudflare Pages routing — `/listen/*` to `listen.html`, then `/*` SPA fallback to `index.html`
+- `public/_redirects`: Cloudflare Pages routing — `/*` SPA fallback to `index.html` (listener page uses directory-based routing via `public/listen/index.html`)
 - `README.md`: quick-start, runtime controls, and deployment overview
 - `docs/0-index.md`: generated doc index; useful for browsing only after local code reads
 - `docs/1-overview.md`: generated high-level summary; secondary to source files
@@ -69,7 +69,8 @@ Use this as the compact path map for agent work. One line per path, local-first.
 
 - `scripts/compress-glb.js`: GLB optimization script; verify path assumptions before use because it reads `public/assets/textures/*.glb`
 - `scripts/generate-letter-positions.cjs`: regenerates 46 letter positions across 4 zones and writes `src/data/letters.json`; fallback defaults still use `.wav` names if metadata is missing
-- `scripts/generate-qr-codes.js`: generates exhibition QR codes for `/listen/1` through `/listen/10`; output to `generated/qr-codes/`
+- `scripts/exhibition-papers.js`: canonical exhibition paper metadata (11 papers: listener ID → archive number, Arabic name, date span); synced inline in `listen/index.html`
+- `scripts/generate-qr-codes.js`: generates exhibition QR codes for `/listen/?p=1` through `/listen/?p=11` with bilingual labels; output to `generated/qr-codes/`
 
 ## Favicon and social assets
 
@@ -85,7 +86,7 @@ Use this as the compact path map for agent work. One line per path, local-first.
 - `public/assets/models/`: runtime GLB models; large and mostly data, read only when asset-level debugging matters
 - `public/assets/audio/`: runtime MP3 narration/theme assets; read for counts and naming, not primary code understanding
 - `public/assets/letters/`: front/back JPG scans; large content set, not primary code understanding
-- `public/assets/listen/`: exhibition audio MP3s for `/listen/:id`; IDs 1-10, bilingual (`{id}_ar.mp3`, `{id}_en.mp3`); not referenced by `letters.json`
+- `public/assets/listen/`: exhibition audio MP3s for `/listen/?p={id}`; IDs 1-11, bilingual (`{id}_ar.mp3`, `{id}_en.mp3`); not referenced by `letters.json`
 - `public/assets/textures/`: currently empty but referenced by the GLB compression script, so treat as workflow ambiguity
 - `public/3d_sednaya/`: bulky loading-scene source assets/reference files; de-prioritize unless editing the cinematic intro
 - `dist/`: generated build output; never start here for understanding current source

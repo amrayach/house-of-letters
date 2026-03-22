@@ -52,14 +52,13 @@
 Current file:
 
 ```text
-/listen/*  /listen.html  200
 /*  /index.html  200
 ```
 
 Implication:
 
-- `/listen/*` routes resolve to `listen.html`, the standalone exhibition audio listener page. This rule must stay before the SPA catch-all because Cloudflare Pages processes `_redirects` top-to-bottom, first match wins.
-- All other routes fall through to `index.html` for the main SPA.
+- The listener page uses directory-based routing: `public/listen/index.html` is served natively by Cloudflare Pages for `/listen/` requests. No `_redirects` rule is needed for it.
+- All non-file routes fall through to `index.html` for the main SPA.
 - If Pages Functions or another SSR/runtime layer is added later, `_redirects` stops being the full routing story.
 
 ## `_headers`
@@ -80,12 +79,12 @@ Current rules cover 14 path patterns with `Content-Type`, `Access-Control-Allow-
 | `/3d_sednaya/*` | — | — | `public, max-age=604800, must-revalidate` |
 | `/` | — | — | `public, max-age=60, must-revalidate` |
 | `/index.html` | — | — | `public, max-age=60, must-revalidate` |
-| `/listen.html` | — | — | `public, max-age=60, must-revalidate` |
+| `/listen/index.html` | — | — | `public, max-age=60, must-revalidate` |
 
 Cache-Control strategy:
 
 - **Vite-hashed bundles** (JS/CSS): `immutable` with 1-year `max-age` — the content hash in the filename changes on every build, so browsers cache forever and never re-fetch stale versions.
-- **HTML shells** (`index.html`, `listen.html`): 60-second `max-age` — short cache so new deploys propagate quickly. HTML references the hashed bundle URLs, so a new deploy = new HTML = new bundles.
+- **HTML shells** (`index.html`, `listen/index.html`): 60-second `max-age` — short cache so new deploys propagate quickly. HTML references the hashed bundle URLs, so a new deploy = new HTML = new bundles.
 - **Stable binary assets** (GLB, MP3, JPG, textures): 7-day `max-age` with `must-revalidate` — filenames are stable (not hashed), so browsers cache long but check for updates after expiry.
 
 Implications:
@@ -96,10 +95,11 @@ Implications:
 
 ## Exhibition listener page
 
-- `public/listen.html` is a standalone HTML file — not processed by Vite, not a module entry point.
-- It is copied as-is to `dist/listen.html` during build, like all `public/` files.
-- The `/listen/*` redirect in `_redirects` routes exhibition QR code URLs to this file.
-- The page reads the paper ID from `window.location.pathname` at runtime.
+- `public/listen/index.html` is a standalone HTML file — not processed by Vite, not a module entry point.
+- It is copied as-is to `dist/listen/index.html` during build, like all `public/` files.
+- Cloudflare Pages serves it natively for `/listen/` requests via directory-based routing (no `_redirects` rule needed).
+- The page reads the paper ID from `?p=N` query parameter at runtime. IDs 1–11.
+- Each listener ID maps to an archive paper number and Arabic archival name via `scripts/exhibition-papers.js` (synced inline copy in the page).
 - It has zero dependency on the 3D archive: no Three.js, no Howler, no imports from `src/`.
 - Audio files are expected at `/assets/listen/{id}_{lang}.mp3` (see `public/assets/listen/README.md`).
 
@@ -121,7 +121,7 @@ Steps:
 1. `npm ci`
 2. `npm run validate:letters -- --strict` — content validation, fails on warnings
 3. `npm run build` — production build, catches compile errors
-4. Verify critical `dist/` files exist: `index.html`, `listen.html`, `_headers`, `_redirects`
+4. Verify critical `dist/` files exist: `index.html`, `listen/index.html`, `_headers`, `_redirects`
 5. Verify `_redirects` rule ordering: `/listen/*` must precede `/*` catch-all
 6. Verify no wrong domain (`houseofdreams.site`) leaked into build output
 

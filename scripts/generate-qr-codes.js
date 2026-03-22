@@ -1,9 +1,9 @@
 /**
- * Generate exhibition QR codes for /listen/1 through /listen/10.
+ * Generate exhibition QR codes for /listen/?p=1 through /listen/?p=11.
  *
  * Output:
- *   generated/qr-codes/qr-paper-{1..10}.svg  — individual SVGs with paper number label
- *   generated/qr-codes/exhibition-qr-codes.svg — single print sheet, 2×5 grid
+ *   generated/qr-codes/qr-paper-{1..11}.svg  — individual SVGs with bilingual labels
+ *   generated/qr-codes/exhibition-qr-codes.svg — single print sheet, 2×6 grid
  *
  * Usage:
  *   npm run generate:qr
@@ -14,12 +14,12 @@ import QRCode from 'qrcode';
 import { mkdirSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { EXHIBITION_PAPERS, EXHIBITION_PAPER_COUNT } from './exhibition-papers.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const OUT_DIR = join(ROOT, 'generated', 'qr-codes');
 const BASE_URL = 'https://www.houseofdreams.space/listen/';
-const PAPER_COUNT = 10;
 
 // QR generation options — high error correction for print reliability
 const QR_OPTS = {
@@ -33,6 +33,7 @@ const QR_OPTS = {
 mkdirSync(OUT_DIR, { recursive: true });
 
 async function generateIndividualSvg(id) {
+  const paper = EXHIBITION_PAPERS[id];
   const url = `${BASE_URL}?p=${id}`;
   const qrSvg = await QRCode.toString(url, QR_OPTS);
 
@@ -40,12 +41,12 @@ async function generateIndividualSvg(id) {
   const viewBoxMatch = qrSvg.match(/viewBox="0 0 (\d+) (\d+)"/);
   const qrSize = viewBoxMatch ? parseInt(viewBoxMatch[1], 10) : 400;
 
-  // Build a wrapper SVG with the paper number label below
+  // Build a wrapper SVG with bilingual labels below
   // Use print-friendly dimensions: scale up to 400px wide for clean rendering
   const scale = 400 / qrSize;
   const printW = 400;
   const printQrH = Math.round(qrSize * scale);
-  const labelHeight = 40;
+  const labelHeight = 64;
   const printH = printQrH + labelHeight;
   const innerSvg = qrSvg
     .replace(/<svg[^>]*>/, '')
@@ -55,20 +56,23 @@ async function generateIndividualSvg(id) {
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${printW} ${printH}" width="${printW}" height="${printH}">
   <rect width="${printW}" height="${printH}" fill="#ffffff"/>
   <g transform="scale(${scale.toFixed(4)})">${innerSvg}</g>
-  <text x="${printW / 2}" y="${printQrH + 30}" text-anchor="middle"
-        font-family="'Courier New', Courier, monospace" font-size="22" font-weight="bold"
-        fill="#000000">Paper ${id}</text>
+  <text x="${printW / 2}" y="${printQrH + 24}" text-anchor="middle"
+        font-family="'Courier New', Courier, monospace" font-size="18" font-weight="bold"
+        fill="#000000">Paper ${paper.archiveNum}</text>
+  <text x="${printW / 2}" y="${printQrH + 52}" text-anchor="middle"
+        font-family="'Noto Naskh Arabic', 'Geeza Pro', 'Traditional Arabic', serif" font-size="18"
+        fill="#333333" direction="rtl" unicode-bidi="bidi-override">${paper.ar}</text>
 </svg>`;
 
   const filename = `qr-paper-${id}.svg`;
   writeFileSync(join(OUT_DIR, filename), svg);
-  console.log(`  ${filename}  →  ${url}`);
+  console.log(`  ${filename}  →  ${url}  (Paper ${paper.archiveNum} / ${paper.ar})`);
   return { id, svg, printW, printH };
 }
 
 async function generatePrintSheet(items) {
   const cols = 2;
-  const rows = 5;
+  const rows = 6;
   const cellW = items[0].printW;
   const cellH = items[0].printH;
   const gap = 40;
@@ -97,23 +101,24 @@ async function generatePrintSheet(items) {
   <rect width="${sheetW}" height="${sheetH}" fill="#ffffff"/>
   <text x="${sheetW / 2}" y="50" text-anchor="middle"
         font-family="'Courier New', Courier, monospace" font-size="24" fill="#333333">
-    House of Dreams — Exhibition QR Codes
+    House of Dreams \u2014 Exhibition QR Codes
   </text>
 ${cells}
 </svg>`;
 
   const filename = 'exhibition-qr-codes.svg';
   writeFileSync(join(OUT_DIR, filename), sheet);
-  console.log(`  ${filename}  →  print sheet (${cols}×${rows})`);
+  console.log(`  ${filename}  →  print sheet (${cols}\u00d7${rows})`);
 }
 
 async function main() {
   console.log('Generating exhibition QR codes...\n');
   console.log(`Base URL: ${BASE_URL}`);
+  console.log(`Papers:   ${EXHIBITION_PAPER_COUNT}`);
   console.log(`Output:   ${OUT_DIR}\n`);
 
   const items = [];
-  for (let id = 1; id <= PAPER_COUNT; id++) {
+  for (let id = 1; id <= EXHIBITION_PAPER_COUNT; id++) {
     items.push(await generateIndividualSvg(id));
   }
 
