@@ -2,7 +2,7 @@
 <html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -88,19 +88,25 @@ body{
   width:100%;
   max-width:380px;
 }
-.paper-number{
-  font-size:clamp(2.4rem,7vw,3.6rem);
-  letter-spacing:.08em;
-  font-weight:normal;
-  line-height:1.1;
+.paper-name-ar{
+  font-size:clamp(1.2rem,3.5vw,1.6rem);
+  line-height:1.4;
+  margin-bottom:8px;
+}
+.paper-dates{
+  font-size:.84rem;
+  color:rgba(255,255,255,.58);
+  letter-spacing:.06em;
+  margin-bottom:8px;
 }
 .paper-label{
   font-size:.76rem;
   letter-spacing:.42em;
   text-transform:uppercase;
   color:rgba(255,255,255,.62);
-  margin-top:8px;
+  margin-top:4px;
 }
+.paper-label[hidden]{display:none}
 
 /* --- Language selector --- */
 .lang-selector{
@@ -216,6 +222,14 @@ body{
   overflow:hidden;
   cursor:pointer;
   position:relative;
+  padding:10px 0;
+  margin:-10px 0;
+  background-clip:content-box;
+}
+.progress-track:focus-visible{
+  outline:2px solid rgba(102,136,204,.7);
+  outline-offset:4px;
+  border-radius:2px;
 }
 .progress-fill{
   height:100%;
@@ -251,6 +265,8 @@ body{
   content:'';
   animation:ellipsis 1.6s steps(1) infinite;
 }
+.loading-indicator.error-state-msg{animation:none}
+.loading-indicator.error-state-msg::after{animation:none;content:''}
 
 /* --- Error state --- */
 .error-state{
@@ -260,6 +276,9 @@ body{
   max-width:380px;
 }
 .error-state .paper-number{
+  font-size:clamp(2.4rem,7vw,3.6rem);
+  font-weight:normal;
+  line-height:1.1;
   color:rgba(255,255,255,.4);
   margin-bottom:16px;
 }
@@ -268,6 +287,38 @@ body{
   line-height:1.6;
   color:rgba(255,255,255,.58);
 }
+.retry-btn{
+  margin-top:16px;
+  padding:10px 20px;
+  background:transparent;
+  color:rgba(255,255,255,.58);
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:14px;
+  font-family:inherit;
+  font-size:.76rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:all .3s ease;
+}
+.retry-btn:hover,.retry-btn:focus-visible{
+  color:#fff;
+  border-color:rgba(255,255,255,.58);
+}
+
+/* --- Archive link --- */
+.archive-link{
+  display:block;
+  text-align:center;
+  margin-top:clamp(24px,4vh,36px);
+  padding:12px;
+  color:rgba(255,255,255,.38);
+  text-decoration:none;
+  font-size:.76rem;
+  letter-spacing:.12em;
+  transition:color .2s ease;
+}
+.archive-link:hover{color:rgba(255,255,255,.7)}
 
 /* --- Footer --- */
 .footer{
@@ -283,7 +334,21 @@ body{
   color:rgba(255,255,255,.28);
 }
 
-/* --- noscript --- */
+/* --- Arabic typography --- */
+:lang(ar),[lang="ar"]{
+  font-family:'Noto Naskh Arabic','Geeza Pro','Traditional Arabic','Arabic Typesetting',serif;
+  letter-spacing:0 !important;
+  word-spacing:.05em;
+}
+:lang(ar) *,[lang="ar"] *{letter-spacing:0 !important}
+
+/* --- Focus indicators (a11y) --- */
+:focus-visible{
+  outline:2px solid rgba(102,136,204,.7);
+  outline-offset:2px;
+}
+:focus:not(:focus-visible){outline:none}
+
 .noscript-msg{
   text-align:center;
   padding:48px 24px;
@@ -304,7 +369,9 @@ body{
 
 <div id="app"></div>
 
-<footer class="footer reveal reveal-d4">
+<a href="/" class="archive-link reveal reveal-d4" lang="en">Explore the full archive &#8594;</a>
+
+<footer class="footer reveal reveal-d4" lang="en">
   <p class="footer-text">houseofdreams.space</p>
 </footer>
 
@@ -313,9 +380,25 @@ body{
   'use strict';
 
   var MIN_ID = 1;
-  var MAX_ID = 10;
+  var MAX_ID = 11;
   var LANG_AR = 'ar';
   var LANG_EN = 'en';
+
+  // Exhibition paper metadata — synced from scripts/exhibition-papers.js
+  // When editing, update BOTH locations.
+  var PAPERS = {
+    1:  { archiveNum: 1,  ar: 'الورقة الأولى',              dates: '11/10/1988 \u2013 1/1/1990' },
+    2:  { archiveNum: 2,  ar: 'الورقة الثانية',             dates: '12/1/1990 \u2013 17/1/1990' },
+    3:  { archiveNum: 16, ar: 'الورقة السادسة عشر',         dates: '22/12/1991 \u2013 24/12/1991' },
+    4:  { archiveNum: 17, ar: 'الورقة السابعة عشر',         dates: '25/12/1991 \u2013 27/12/1991' },
+    5:  { archiveNum: 23, ar: 'الورقة الثالثة والعشرون',     dates: '15/1/1992 \u2013 16/1/1992' },
+    6:  { archiveNum: 33, ar: 'الورقة الثالثة والثلاثون',    dates: '5/3/1992 \u2013 8/3/1992' },
+    7:  { archiveNum: 34, ar: 'الورقة الرابعة والثلاثون',    dates: '8/3/1992 \u2013 11/3/1992' },
+    8:  { archiveNum: 43, ar: 'الورقة الثالثة والأربعون',    dates: '19/5/1992 \u2013 27/5/1992' },
+    9:  { archiveNum: 44, ar: 'الورقة الرابعة والأربعون',    dates: '27/5/1992 \u2013 15/6/1992' },
+    10: { archiveNum: 45, ar: 'الورقة الخامسة والأربعون',    dates: '15/6/1992 \u2013 23/6/1992' },
+    11: { archiveNum: 46, ar: 'الورقة السادسة والأربعون',    dates: '11/7/1992 \u2013 14/7/1992' }
+  };
 
   var SVG_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
   var SVG_PAUSE = '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
@@ -355,34 +438,36 @@ body{
 
   function renderError() {
     app.innerHTML =
-      '<div class="error-state reveal">' +
+      '<div class="error-state reveal" lang="en" role="alert">' +
         '<div class="paper-number">?</div>' +
         '<p class="error-msg">Paper not found.<br>Please scan the QR code again.</p>' +
       '</div>';
   }
 
   function renderPlayer(id) {
+    var paper = PAPERS[id];
     app.innerHTML =
-      '<header class="header reveal">' +
+      '<header class="header reveal" lang="en">' +
         '<p class="kicker">Exhibition Audio Guide</p>' +
         '<h1 class="title">House of Dreams</h1>' +
       '</header>' +
 
       '<section class="paper-id reveal reveal-d1">' +
-        '<div class="paper-number" id="paper-num">' + id + '</div>' +
-        '<p class="paper-label">Paper</p>' +
+        '<div class="paper-name-ar" lang="ar" dir="rtl">' + paper.ar + '</div>' +
+        '<div class="paper-dates" dir="ltr">' + paper.dates + '</div>' +
+        '<p class="paper-label" id="paper-label" lang="en">Paper ' + paper.archiveNum + '</p>' +
       '</section>' +
 
-      '<nav class="lang-selector reveal reveal-d2" role="group" aria-label="Language selection">' +
-        '<button class="lang-btn" id="btn-ar" type="button" aria-pressed="false" aria-label="Arabic">\u0627\u0644\u0639\u0631\u0628\u064A\u0629</button>' +
-        '<button class="lang-btn" id="btn-en" type="button" aria-pressed="false" aria-label="English">English</button>' +
+      '<nav class="lang-selector reveal reveal-d2" role="radiogroup" aria-label="Language selection">' +
+        '<button class="lang-btn" id="btn-ar" type="button" lang="ar" aria-pressed="false" aria-label="Arabic">\u0627\u0644\u0639\u0631\u0628\u064A\u0629</button>' +
+        '<button class="lang-btn" id="btn-en" type="button" lang="en" aria-pressed="false" aria-label="English">English</button>' +
       '</nav>' +
 
       '<div class="player reveal reveal-d3" id="player" hidden>' +
-        '<p class="loading-indicator" id="loading-msg">Loading</p>' +
+        '<p class="loading-indicator" id="loading-msg" aria-live="polite" aria-atomic="true">Loading</p>' +
         '<button class="play-btn" id="play-btn" type="button" disabled aria-label="Play">' + SVG_PLAY + '</button>' +
         '<div class="progress-wrap">' +
-          '<div class="progress-track" id="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
+          '<div class="progress-track" id="progress-track" role="slider" tabindex="0" aria-label="Audio position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0:00 of 0:00">' +
             '<div class="progress-fill" id="progress-fill"></div>' +
           '</div>' +
           '<div class="time-display">' +
@@ -398,6 +483,7 @@ body{
   function initAudio(id) {
     var btnAr = document.getElementById('btn-ar');
     var btnEn = document.getElementById('btn-en');
+    var paperLabel = document.getElementById('paper-label');
     var player = document.getElementById('player');
     var playBtn = document.getElementById('play-btn');
     var progressTrack = document.getElementById('progress-track');
@@ -425,9 +511,11 @@ body{
       if (lang === LANG_AR) {
         document.documentElement.lang = 'ar';
         document.documentElement.dir = 'rtl';
+        paperLabel.hidden = true;
       } else {
         document.documentElement.lang = 'en';
         document.documentElement.dir = 'ltr';
+        paperLabel.hidden = false;
       }
 
       // Reset player state
@@ -441,6 +529,7 @@ body{
       timeDuration.textContent = '0:00';
       loadingMsg.hidden = false;
       loadingMsg.textContent = 'Loading';
+      loadingMsg.classList.remove('error-state-msg');
       player.hidden = false;
       if (raf) { cancelAnimationFrame(raf); raf = null; }
 
@@ -460,12 +549,26 @@ body{
       hasError = true;
       loadingMsg.textContent = 'Audio not yet available';
       loadingMsg.hidden = false;
-      // Remove the ellipsis animation on error
-      loadingMsg.style.setProperty('animation', 'none', '');
-      var afterStyle = document.createElement('style');
-      afterStyle.textContent = '#loading-msg::after{animation:none;content:""}';
-      document.head.appendChild(afterStyle);
+      loadingMsg.classList.add('error-state-msg');
       playBtn.disabled = true;
+      // Show retry button if not already present
+      if (!document.getElementById('retry-btn')) {
+        var btn = document.createElement('button');
+        btn.id = 'retry-btn';
+        btn.className = 'retry-btn';
+        btn.type = 'button';
+        btn.textContent = 'Try again';
+        btn.addEventListener('click', function() {
+          hasError = false;
+          loadingMsg.textContent = 'Loading';
+          loadingMsg.classList.remove('error-state-msg');
+          loadingMsg.hidden = false;
+          playBtn.disabled = true;
+          btn.remove();
+          audio.load();
+        });
+        loadingMsg.parentNode.insertBefore(btn, loadingMsg.nextSibling);
+      }
     });
 
     audio.addEventListener('ended', function() {
@@ -481,6 +584,7 @@ body{
       progressFill.style.width = pct + '%';
       timeCurrent.textContent = formatTime(audio.currentTime);
       progressTrack.setAttribute('aria-valuenow', Math.round(pct));
+      progressTrack.setAttribute('aria-valuetext', formatTime(audio.currentTime) + ' of ' + formatTime(audio.duration));
       if (isPlaying) {
         raf = requestAnimationFrame(updateProgress);
       }
@@ -518,6 +622,35 @@ body{
       }
       ratio = Math.max(0, Math.min(1, ratio));
       audio.currentTime = ratio * audio.duration;
+      updateProgress();
+    });
+
+    // Keyboard seeking (WAI-ARIA slider pattern)
+    var SEEK_STEP = 5;
+    progressTrack.addEventListener('keydown', function(e) {
+      if (!audio.duration) return;
+      var isRtl = document.documentElement.dir === 'rtl';
+      var fwd = isRtl ? 'ArrowLeft' : 'ArrowRight';
+      var bwd = isRtl ? 'ArrowRight' : 'ArrowLeft';
+      switch (e.key) {
+        case fwd: case 'ArrowUp':
+          e.preventDefault();
+          audio.currentTime = Math.min(audio.duration, audio.currentTime + SEEK_STEP);
+          break;
+        case bwd: case 'ArrowDown':
+          e.preventDefault();
+          audio.currentTime = Math.max(0, audio.currentTime - SEEK_STEP);
+          break;
+        case 'Home':
+          e.preventDefault();
+          audio.currentTime = 0;
+          break;
+        case 'End':
+          e.preventDefault();
+          audio.currentTime = audio.duration;
+          break;
+        default: return;
+      }
       updateProgress();
     });
 
