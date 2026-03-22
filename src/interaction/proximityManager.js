@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { audioEngine } from '../audio/audioEngine.js';
-import { INTERACTION } from '../config/constants.js';
+import { AUDIO, INTERACTION } from '../config/constants.js';
 import { diag } from '../utils/diagnostics.js';
 
 const VIEW_ALIGNMENT_MIN_DOT = 0.35;
@@ -25,6 +25,10 @@ export class ProximityManager {
     this.activeLetter = null;
     this.activeSide = null;
     this.activeScore = 0;
+    this.audioActiveLetter = null;
+    this.audioProximityRadius = AUDIO.NARRATION_FADE_FAR;
+    this.audioProximityRadiusSq = this.audioProximityRadius * this.audioProximityRadius;
+    this.audioSwitchHysteresis = AUDIO.AUDIO_SWITCH_HYSTERESIS;
     this.raycaster = new THREE.Raycaster();
     this.raycaster.far = Math.min(this.checkRadius, MAX_RAYCAST_DISTANCE);
     this.focusTargets = this.collectFocusTargets(letters);
@@ -35,6 +39,7 @@ export class ProximityManager {
       activeId: null,
       activeSide: null,
       activeScore: null,
+      audioActiveId: null,
     };
 
     this.cameraPosition = new THREE.Vector3();
@@ -103,6 +108,7 @@ export class ProximityManager {
       diag.log('proximity', `clearTargeting id=${this.activeLetter.userData.id}`);
       this.deactivateLetter(this.activeLetter);
     }
+    this.deactivateAudioLetter();
 
     this.activeLetter = null;
     this.activeSide = null;
@@ -121,9 +127,22 @@ export class ProximityManager {
     const checkRadiusSq = this.checkRadius * this.checkRadius;
     let bestCandidate = null;
     let activeCandidate = null;
+    let nearestAudioLetter = null;
+    let nearestAudioDistSq = Infinity;
 
     this.letters.forEach((letter) => {
-      if (this.cameraPosition.distanceToSquared(letter.position) > checkRadiusSq) {
+      const distSq = this.cameraPosition.distanceToSquared(letter.position);
+
+      // Audio proximity: pure distance, no facing check
+      if (distSq <= this.audioProximityRadiusSq) {
+        if (distSq < nearestAudioDistSq) {
+          nearestAudioLetter = letter;
+          nearestAudioDistSq = distSq;
+        }
+      }
+
+      // Visual targeting: existing logic unchanged
+      if (distSq > checkRadiusSq) {
         return;
       }
 
@@ -141,6 +160,9 @@ export class ProximityManager {
         bestCandidate = scoredLetter;
       }
     });
+
+    // Audio proximity resolution
+    this.resolveAudioTarget(nearestAudioLetter, nearestAudioDistSq);
 
     if ((!activeCandidate || activeCandidate.score < ACTIVE_SCORE_FLOOR) && this.activeLetter) {
       activeCandidate = this.scoreSpecificSide(this.activeLetter, this.activeSide, focusHit);
@@ -392,9 +414,55 @@ export class ProximityManager {
     this.targetState.activeScore = candidate ? candidate.score : null;
   }
 
-  activateLetter(letter) {
+  activateAudioLetter(letter) {
+    if (this.audioActiveLetter === letter) return;
+    if (this.audioActiveLetter) {
+      diag.log('proximity', `audio leave id=${this.audioActiveLetter.userData.id}`);
+    }
+    audioEngine.deactivateNarration();
+    this.audioActiveLetter = letter;
+    this.targetState.audioActiveId = letter.userData.id;
     audioEngine.activateNarration(letter.userData.id);
+    diag.log('proximity', `audio enter id=${letter.userData.id}`);
+  }
 
+  deactivateAudioLetter() {
+    if (!this.audioActiveLetter) return;
+    diag.log('proximity', `audio leave id=${this.audioActiveLetter.userData.id}`);
+    audioEngine.deactivateNarration();
+    this.audioActiveLetter = null;
+    this.targetState.audioActiveId = null;
+  }
+
+  resolveAudioTarget(nearestLetter, nearestDistSq) {
+    if (!nearestLetter) {
+      this.deactivateAudioLetter();
+      return;
+    }
+
+    if (!this.audioActiveLetter) {
+      this.activateAudioLetter(nearestLetter);
+      return;
+    }
+
+    if (nearestLetter === this.audioActiveLetter) {
+      return;
+    }
+
+    const currentDistSq = this.cameraPosition.distanceToSquared(this.audioActiveLetter.position);
+    if (currentDistSq > this.audioProximityRadiusSq) {
+      this.activateAudioLetter(nearestLetter);
+      return;
+    }
+
+    const currentDist = Math.sqrt(currentDistSq);
+    const nearestDist = Math.sqrt(nearestDistSq);
+    if (nearestDist < currentDist - this.audioSwitchHysteresis) {
+      this.activateAudioLetter(nearestLetter);
+    }
+  }
+
+  activateLetter(letter) {
     letter.traverse((child) => {
       if (!child.isMesh || child.userData.isFocusHelper || !child.material) {
         return;
@@ -413,8 +481,6 @@ export class ProximityManager {
   }
 
   deactivateLetter(letter) {
-    audioEngine.deactivateNarration();
-
     letter.traverse((child) => {
       if (!child.isMesh || child.userData.isFocusHelper) {
         return;

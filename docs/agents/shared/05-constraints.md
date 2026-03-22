@@ -60,7 +60,9 @@
 - Letting `visibilitychange` resume audio while the runtime is in `start` or `paused`
 - Letting proximity evaluation trigger narration or letter activation behind loading, start, or pause shells
 - Letting stale async narration loads start after proximity was cleared or switched to another letter
-- Letting per-frame `setNarrationVolume` use `audioEngine.currentNarrationLetterId` instead of `currentTargetState.activeId` — the former would auto-resume narrations that `deactivateNarration` just paused
+- Letting per-frame `setNarrationVolume` use `audioEngine.currentNarrationLetterId` instead of `currentTargetState.audioActiveId` — the former would auto-resume narrations that `deactivateNarration` just paused
+- Letting per-frame `setNarrationVolume` use visual `activeId` instead of `audioActiveId` — volume must be computed from distance to the audio-active letter, not the visually-targeted letter
+- Re-coupling audio activation with visual targeting (viewDot/facingDot) — narration activation must remain distance-only via `audioActiveId`
 - Letting per-frame `setNarrationVolume` run during non-IDLE inspect phases — inspect sets full volume via `restartNarration`, per-frame updates must not override it
 - Letting candidate scoring drift back to raw root-center distance and ignoring readable-side metadata
 - Letting focus scoring depend on display-mesh raycasting instead of the dedicated side colliders

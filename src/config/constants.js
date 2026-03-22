@@ -71,7 +71,8 @@ export const AUDIO = {
   DUCKING_VOLUME: 0.3,
   NARRATION_FADE_NEAR: 2,      // full volume at this distance
   NARRATION_FADE_FAR: 10,      // volume reaches 0 at this distance
-  NARRATION_FADE_EXPONENT: 1.5  // falloff curve (1=linear, >1=faster initial drop)
+  NARRATION_FADE_EXPONENT: 1.5,  // falloff curve (1=linear, >1=faster initial drop)
+  AUDIO_SWITCH_HYSTERESIS: 1.5,  // world-space units; prevents audio flapping in dense zones
 };
 
 // Interaction

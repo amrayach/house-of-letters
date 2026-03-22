@@ -325,6 +325,7 @@ function createEmptyTargetState() {
     activeId: null,
     activeSide: null,
     activeScore: null,
+    audioActiveId: null,
   };
 }
 
@@ -2160,7 +2161,7 @@ function animate() {
     if (proximityManager) {
       if (uiState === UI_STATE.ACTIVE && inspectState.phase === INSPECT_PHASE.IDLE) {
         currentTargetState = proximityManager.update();
-      } else if (currentTargetState.activeId || currentTargetState.candidateId) {
+      } else if (currentTargetState.activeId || currentTargetState.candidateId || currentTargetState.audioActiveId) {
         currentTargetState = proximityManager.clearTargeting();
       } else {
         currentTargetState = EMPTY_TARGET_STATE;
@@ -2175,10 +2176,10 @@ function animate() {
 
     // Spatial narration volume — only during immersive play, not during inspect
     if (inspectState.phase === INSPECT_PHASE.IDLE) {
-      const activeId = currentTargetState?.activeId ?? null;
+      const audioId = currentTargetState?.audioActiveId ?? null;
       audioEngine.setNarrationVolume(
-        computeNarrationVolume(activeId),
-        activeId
+        computeNarrationVolume(audioId),
+        audioId
       );
     }
 

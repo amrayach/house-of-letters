@@ -162,10 +162,13 @@
 ### 8. Proximity detection
 
 - Only while `uiState === active`, `proximityManager.update()`:
-  - prefilters letters within `CHECK_RADIUS`
-  - scores them from expanded trigger-volume distance, readable-side view alignment, readable-side facing, and a center-view focus bonus
-  - keeps a minimal targeting snapshot with `candidateId/candidateSide/candidateScore` plus `activeId/activeSide/activeScore`
-  - uses sticky bias and switch margin so active selection does not flap between nearby letters
+  - runs two parallel passes over all letters:
+    - **audio proximity**: pure distance check within `NARRATION_FADE_FAR` (no facing requirement), tracks nearest letter as `audioActiveId`
+    - **visual targeting**: scored from trigger-volume distance, readable-side view alignment, readable-side facing, and center-view focus bonus, tracks as `activeId`
+  - keeps a minimal targeting snapshot with `candidateId/candidateSide/candidateScore`, `activeId/activeSide/activeScore`, and `audioActiveId`
+  - audio proximity uses hysteresis (`AUDIO_SWITCH_HYSTERESIS`) to prevent flapping in dense zones
+  - visual targeting uses sticky bias and switch margin so active selection does not flap between nearby letters
+  - the audio-active letter and the visually-targeted letter can be different (e.g., hearing nearest letter while looking at a different one)
 - `src/renderer/letters.js` now provides local-space interaction metadata per letter:
   - root bounds center and size
   - expanded trigger box
@@ -176,9 +179,11 @@
   - collider-based focus targets used for scoring
   - inspect anchors consumed by the dedicated inspect-mode camera framing
 - Outside active runtime states, `main.js` calls `clearTargeting()` so highlight, narration, and active-letter UI do not leak behind loading, start, or pause shells.
-- Activation side effects:
-  - `audioEngine.activateNarration(letterId)`
+- Visual activation side effects (triggered by `activeId`, requires facing):
   - emissive tint on non-glass letter meshes (`emissive.setHex(0x333333)`)
+- Audio activation side effects (triggered by `audioActiveId`, distance-only):
+  - `audioEngine.activateNarration(letterId)` — starts/resumes narration for nearest letter
+  - `audioEngine.deactivateNarration()` — pauses narration when letter leaves audio range
 - `main.js` uses the returned `targetState.activeId` to:
   - keep a shell-facing `displayedActiveLetterId`
   - update `themeMixer` when the active ID changes
@@ -240,12 +245,13 @@
   - URLs are registered at start
   - actual `Howl` objects are created lazily on first proximity trigger
   - pending narration requests are invalidated on focus loss or target switches, so late audio loads cannot start after the user has already left that letter
-  - narration volume scales with distance from the active letter per frame (`AUDIO.NARRATION_FADE_NEAR` to `AUDIO.NARRATION_FADE_FAR` with configurable exponent)
+  - narration activation is driven by distance-only audio proximity (`audioActiveId`), independent of visual targeting (viewDot/facingDot) — turning away from a letter does not stop its narration
+  - narration volume scales with distance from the audio-active letter per frame (`AUDIO.NARRATION_FADE_NEAR` to `AUDIO.NARRATION_FADE_FAR` with configurable exponent)
   - `activateNarration(letterId)` resumes from the paused position for the same letter, or pauses the old narration and starts fresh for a different letter
   - `deactivateNarration()` pauses (not stops) the narration, preserving the playhead position for later resume
   - `restartNarration(letterId)` always seeks to the beginning and plays at full volume — available in audioEngine but not currently called by main.js
   - inspect mode does not interrupt narration — on inspect entry, narration continues from the current playhead at full volume; on exit, per-frame distance-based volume updates resume smoothly
-  - `setNarrationVolume(volume)` is called per-frame from `main.js` using `currentTargetState.activeId` and auto-pauses when volume reaches 0, auto-resumes when volume rises above 0
+  - `setNarrationVolume(volume)` is called per-frame from `main.js` using `currentTargetState.audioActiveId` (not visual `activeId`) and auto-pauses when volume reaches 0, auto-resumes when volume rises above 0
   - per-frame volume updates are skipped during inspect mode (`inspectState.phase !== IDLE`) — inspect entry sets full volume explicitly via `currentNarration.volume(AUDIO.NARRATION_VOLUME)`
   - `isGloballyPaused` prevents per-frame volume updates from interfering with the global pause/visibility system
   - narration `onend` restores theme volume and clears current narration state
