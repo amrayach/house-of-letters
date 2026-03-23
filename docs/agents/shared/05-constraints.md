@@ -91,6 +91,8 @@
 - Removing the `isTransitioningOutOfLoading` or `isTransitioningOutOfStart` guards from `syncUiChrome` — these prevent the state machine from instant-hiding the start screen during CSS opacity transitions
 - Showing the start screen AFTER hiding the loading screen instead of before — the crossfade relies on z-index stacking (loading 2000 on top of start 1000) so start must be unhidden first
 - Removing `groundTimeline.preWarm()` from `transitionToGame()` — the pre-warm uploads ~48K triangles of timeline geometry to GPU during the start screen phase; without it, the first ACTIVE frame pays the upload cost as a visible hitch
+- Removing the `uiState === ACTIVE` gate from letter sway/bob animation — without it, ~10-20 letter transforms animate every frame behind opaque overlays during LOADING/START, wasting frame budget and competing with CSS transition compositing
+- Removing the `debugPanelVisible` gate from the debug position display in `animate()` — without it, a per-frame string allocation + DOM write fires in all UI states including behind opaque overlays
 
 ## Cloudflare Pages routing constraints
 

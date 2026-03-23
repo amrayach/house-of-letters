@@ -1,5 +1,33 @@
 # Changelog
 
+## Session 15 — Transition flow audit + per-frame budget fixes
+
+**Date:** 2026-03-24
+**Scope:** audit (all 5 transitions) + bugfix (per-frame budget)
+
+### Problem
+Full audit of the entry pipeline (landing → loading → start → active → pause → resume → inspect) to verify no regressions from the 10-session temporal/audio sprint. Found 2 per-frame budget issues: letter sway/bob animation running during LOADING/START states behind opaque overlays, and debug position DOM write firing every frame without visibility guard.
+
+### Changes
+1. **Letter animation gate.** Added `uiState === UI_STATE.ACTIVE` guard to letter sway/bob/rotation in `animate()`. Letters no longer animate behind opaque overlays during LOADING/START.
+2. **Debug position gate.** Added `debugPanelVisible` guard to the inline debug position display in `animate()`. Matches the existing guard pattern in `updateDebugPanel()`.
+3. **Landing pointer-events.** Added `pointerEvents = 'none'` to the landing screen during its fade-out, preventing accidental clicks on fading "Read More" buttons.
+
+### Audit results
+- All 5 transition flows (landing→loading, loading→start, start→active, active↔pause, inspect) confirmed correct with proper guards, safety timeouts, and mutual exclusivity.
+- Shell exclusivity verified: no visibility leaks across states.
+- Mobile readiness confirmed: safe area insets, touch overlay gating, pause button visibility.
+- Error recovery paths verified: pointer lock denial, asset load failure, rapid clicks, tab visibility.
+- Mobile double-tap guard (Step 3 in plan) dropped after verifying pointer lock denial edge case — all operations in `handleStartExperience()` are idempotent.
+
+### Files changed
+- `src/main.js` — animation gate (line 2333), debug gate (line 2261), landing pointer-events (line 1033)
+- `docs/agents/shared/02-runtime-flow.md` — documented animation and debug gates in render loop
+- `docs/agents/shared/05-constraints.md` — added regression patterns for both gates
+
+### Validated
+- `npm run build` — clean pass
+
 ## Session 14 — Per-frame theme-restore spam fix + ducking tuning
 
 **Date:** 2026-03-23

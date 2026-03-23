@@ -278,7 +278,8 @@
   - active-gated proximity update, suspended while inspect is active
   - preview/subtitle/theme updates when the active letter changes
   - sequential chronology spine update from `uiState`, `viewMode`, `inspectState.phase`, `candidateId`, `activeId`, and current movement speed
-  - near-letter sway/bob/rotation animation around stored base transforms
+  - near-letter sway/bob/rotation animation around stored base transforms, gated behind `uiState === active` to avoid wasting frame budget behind opaque overlays during loading/start
+  - debug position display update, gated behind `debugPanelVisible` to avoid per-frame DOM writes when the panel is hidden
   - `renderer.render(scene, camera)`
 
 ## Ownership summary

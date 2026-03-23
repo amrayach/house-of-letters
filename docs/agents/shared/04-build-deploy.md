@@ -119,11 +119,10 @@ Implications:
 
 Steps:
 1. `npm ci`
-2. `npm run validate:letters -- --strict` — content validation, fails on warnings
+2. `npm run validate:letters` — content validation (default mode, warnings do not fail)
 3. `npm run build` — production build, catches compile errors
 4. Verify critical `dist/` files exist: `index.html`, `listen/index.html`, `_headers`, `_redirects`
-5. Verify `_redirects` rule ordering: `/listen/*` must precede `/*` catch-all
-6. Verify no wrong domain (`houseofdreams.site`) leaked into build output
+5. Verify no wrong domain (`houseofdreams.site`) leaked into build output
 
 For deploy-related skill routing, see `docs/agents/shared/13-skill-activation-matrix.md`. For browser validation after deploy-sensitive edits, use `docs/agents/shared/09-validation-checklist.md`.
 

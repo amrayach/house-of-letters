@@ -1030,6 +1030,7 @@ function handleEnterFromLanding() {
   // (with its "ARCHIVE LOADING" card) is already fully visible.
   if (landingScreen) {
     landingScreen.style.opacity = '0';
+    landingScreen.style.pointerEvents = 'none';
 
     let hasSettled = false;
     const settle = () => {
@@ -2257,7 +2258,7 @@ function animate() {
     updateInspectTransition(delta);
 
     // Update debug position display
-    if (debugPositionDisplay) {
+    if (debugPanelVisible && debugPositionDisplay) {
       debugPositionDisplay.textContent = `X: ${camera.position.x.toFixed(1)} Y: ${camera.position.y.toFixed(1)} Z: ${camera.position.z.toFixed(1)}`;
     }
 
@@ -2329,7 +2330,7 @@ function animate() {
     // Animate Lights - DISABLED to ensure consistent lighting on front/back
     // No light animation code here anymore
 
-    if (letterObjects.length > 0) {
+    if (uiState === UI_STATE.ACTIVE && letterObjects.length > 0) {
       // Optimization: Only animate letters within view distance
       const animationRadiusSq = ANIMATION.LETTER_ANIMATION_RADIUS * ANIMATION.LETTER_ANIMATION_RADIUS;
 
