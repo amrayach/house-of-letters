@@ -53,7 +53,7 @@
 
 - Breaking the `assetsLoaded && loadingSceneComplete` gate and trapping the user on loading/start screens
 - Starting the LoadingScene or asset loading before the landing CTA is clicked — the landing page must be instant with no GPU-heavy work
-- Running `beginLoadingSequence()` synchronously in the same frame as the landing fade-out — the `new LoadingScene()` constructor blocks the main thread for 100-300ms, freezing the CSS fade animation. It must be deferred by 2 `requestAnimationFrame` calls after setting `landingScreen.style.opacity = '0'`. This is a recurring regression.
+- Running `beginLoadingSequence()` during the landing fade-out — the `new LoadingScene()` constructor blocks the main thread for 100-300ms, freezing the CSS fade animation. It must run only AFTER the landing fade completes (via `transitionend` on the landing screen, with a 700ms safety timeout). This is a recurring regression — do not replace `transitionend` with `requestAnimationFrame` deferrals, which only delay the block by ~33ms into the middle of the 600ms fade.
 - Creating the LoadingScene while `#loading-screen` is still hidden — the container needs non-zero dimensions for the renderer
 - Starting audio before a user gesture and losing playback on mobile/Chrome/Safari
 - Regressing pointer-lock pause/resume while fixing mobile controls, or vice versa
@@ -78,12 +78,15 @@
 - Letting dense zone 4 promotion turn into multiple readable floor labels at once
 - Letting chronology rendering imply exact per-letter dates instead of grouped labels
 - Renaming asset paths without updating `letters.json` and intro paths
-- Assuming `theme` changes affect audible behavior today
+- Assuming `theme` changes affect audible behavior today (the mixer uses camera position, not letter theme)
+- Moving `themeMixer.update()` back into `updateActiveLetterUI()` — it must run per-frame to track camera position, not only on letter-change events
+- Calling `restoreBackgroundThemeVolume()` without it reading `themeABaseVolume`/`themeBBaseVolume` — it must restore to the crossfade-aware base volumes, not fixed 1.0
+- Removing the `_themeRestored` dirty flag from `setNarrationVolume()` — without it, `restoreBackgroundThemeVolume()` fires every frame when no narration is active (stale `currentNarration` Howl survives `deactivateNarration`), flooding the diagnostic log and constantly restarting Howler fades
 - Breaking the non-glass active-state emissive tint while changing letter materials or mesh naming
 - Forgetting that `animate()` should sway around stored base rotation/height instead of overwriting them absolutely
 - Removing the ground timeline `hasBeenRevealed` one-time latch or the `isHidden` per-frame visibility gate without understanding both are needed
 - Auto-playing theme before AudioContext is resumed from a user gesture (the landing CTA gesture unlocks audio for the session)
-- Moving `startDeferredLetterLoad()` back onto the synchronous click/lock handler path — it was deferred to `setTimeout(0)` because queuing 40 GLB fetches costs ~30ms
+- Moving `startDeferredLetterLoad()` back onto the synchronous click/lock handler path or reducing the `setTimeout(600)` delay below the start-screen fadeout duration (500ms) — the delay ensures 40 GLB fetch requests don't compete with the CSS compositor during the fade
 - Moving `loadingScene.dispose()` back onto the visual-critical transition path — it was deferred to `requestIdleCallback` because synchronous disposal of ~50 GPU resources causes a visible freeze during the Loading → Start crossfade
 - Removing the `isTransitioningOutOfLoading` or `isTransitioningOutOfStart` guards from `syncUiChrome` — these prevent the state machine from instant-hiding the start screen during CSS opacity transitions
 - Showing the start screen AFTER hiding the loading screen instead of before — the crossfade relies on z-index stacking (loading 2000 on top of start 1000) so start must be unhidden first

@@ -19,6 +19,7 @@ export class AudioEngine {
     this.activeNarrationRequestToken = 0;
     this.resumeNarrationOnNextResume = false;
     this.isGloballyPaused = false;
+    this._themeRestored = false;
     this.activeNarrations = new Set();
     this.pausedActiveNarrations = new Set();
   }
@@ -61,8 +62,20 @@ export class AudioEngine {
   }
 
   restoreBackgroundThemeVolume() {
-    if (this.backgroundTheme && this.backgroundTheme.playing()) {
+    this._themeRestored = true;
+    if (this.themeA) {
+      // Dual-theme mode: restore each theme to its crossfade-aware base volume
+      if (this.themeA.playing()) {
+        this.themeA.fade(this.themeA.volume(), this.themeABaseVolume, AUDIO.FADE_DURATION);
+      }
+      if (this.themeB && this.themeB.playing()) {
+        this.themeB.fade(this.themeB.volume(), this.themeBBaseVolume, AUDIO.FADE_DURATION);
+      }
+      diag.log('audio', `theme-restore baseA=${this.themeABaseVolume.toFixed(2)} baseB=${this.themeBBaseVolume.toFixed(2)}`);
+    } else if (this.backgroundTheme && this.backgroundTheme.playing()) {
+      // Legacy single-theme fallback
       this.backgroundTheme.fade(this.backgroundTheme.volume(), AUDIO.THEME_VOLUME, AUDIO.FADE_DURATION);
+      diag.log('audio', 'theme-restore single');
     }
   }
 
@@ -168,6 +181,7 @@ export class AudioEngine {
   }
 
   async activateNarration(letterId) {
+    this._themeRestored = false;
     const requestToken = ++this.activeNarrationRequestToken;
 
     // Same letter: resume from paused position
@@ -294,6 +308,7 @@ export class AudioEngine {
 
   async activatePolyphonicNarration(letterId) {
     if (this.activeNarrations.has(letterId)) return;
+    this._themeRestored = false;
     this.activeNarrations.add(letterId);
 
     if (!this.narrations[letterId] && this.narrationUrls[letterId]) {
@@ -381,12 +396,16 @@ export class AudioEngine {
     if (volume <= 0) {
       const wasPlaying = this.currentNarration.playing();
       if (wasPlaying) this.currentNarration.pause();
-      this.restoreBackgroundThemeVolume();
+      if (!this._themeRestored) {
+        this.restoreBackgroundThemeVolume();
+      }
       if (wasPlaying && diag.shouldLogVolume(0, activeId)) {
         diag.log('audio', `setNarrationVolume PAUSE activeId=${activeId} currId=${this.currentNarrationLetterId}`);
       }
       return;
     }
+
+    this._themeRestored = false;
 
     // Only auto-resume/adjust if the current narration matches the active letter.
     // Prevents resuming a stale narration during async loading of a new one.
@@ -492,6 +511,19 @@ export class AudioEngine {
     document.addEventListener('visibilitychange', this.visibilityHandler);
   }
 
+  getDebugState() {
+    return {
+      themeABase: this.themeABaseVolume,
+      themeBBase: this.themeBBaseVolume,
+      themeAActual: this.themeA ? this.themeA.volume() : null,
+      themeBActual: this.themeB ? this.themeB.volume() : null,
+      narrationId: this.currentNarrationLetterId,
+      narrationVol: this.currentNarration ? this.currentNarration.volume() : null,
+      narrationPlaying: this.currentNarration ? this.currentNarration.playing() : false,
+      isDucking: this.currentNarration ? this.currentNarration.playing() : this.activeNarrations.size > 0,
+    };
+  }
+
   /**
    * Dispose all audio resources
    */
@@ -513,6 +545,7 @@ export class AudioEngine {
     this.activeNarrationRequestToken += 1;
     this.resumeNarrationOnNextResume = false;
     this.isGloballyPaused = false;
+    this._themeRestored = false;
     this.activeNarrations.clear();
     this.pausedActiveNarrations.clear();
 

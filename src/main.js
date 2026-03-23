@@ -11,7 +11,7 @@ import { audioEngine } from '@audio/audioEngine.js';
 import { themeMixer } from '@audio/themeMixer.js';
 import { ProximityManager } from '@interaction/proximityManager.js';
 import { AUDIO, ANIMATION, INSPECT, LOADING_TIMEOUT_MS, TIMELINE, VELOCITY } from '@config/constants.js';
-import { computeWalkingSpeed } from '@config/zoneVelocity.js';
+import { computeWalkingSpeed, getCurrentZone } from '@config/zoneVelocity.js';
 import { START_SHELL_CONTENT } from '@config/startShellContent.js';
 import { LANDING_CONTENT } from '@config/landingContent.js';
 import lettersData from '@data/letters.json';
@@ -161,8 +161,20 @@ const speedValueDisplay = document.getElementById('speed-value');
 const currentSpeedDisplay = document.getElementById('current-speed');
 const debugVelocityBoost = document.getElementById('debug-velocity-boost');
 const debugPositionDisplay = document.getElementById('debug-position');
+const debugZone = document.getElementById('debug-zone');
+const debugFps = document.getElementById('debug-fps');
+const debugThemeA = document.getElementById('debug-theme-a');
+const debugThemeB = document.getElementById('debug-theme-b');
+const debugCrossfadeT = document.getElementById('debug-crossfade-t');
+const debugNarration = document.getElementById('debug-narration');
+const debugDucking = document.getElementById('debug-ducking');
+const debugVisualTarget = document.getElementById('debug-visual-target');
+const debugAudioTarget = document.getElementById('debug-audio-target');
+const debugNearestDist = document.getElementById('debug-nearest-dist');
+const debugDiagTail = document.getElementById('debug-diag-tail');
 
 let manualSpeedOverride = false;
+let debugPanelVisible = false;
 
 function handleSpeedSliderInput(e) {
   const speed = parseInt(e.target.value, 10);
@@ -206,6 +218,7 @@ const INSPECT_PHASE = Object.freeze({
 
 const POINTER_LOCK_FALLBACK_MS = 1800;
 let perfFirstActiveFrame = false; // DEV: one-shot flag for first-frame-after-ACTIVE profiling
+let devActiveFrameCount = 0; // DEV: counts frames after ACTIVE for budget tracking
 
 const landingScreen = document.getElementById('landing-screen');
 const landingCta = document.getElementById('landing-cta');
@@ -1010,20 +1023,26 @@ function handleEnterFromLanding() {
   // Reveal loading screen behind landing (needs dimensions for LoadingScene renderer)
   if (loadingScreen) loadingScreen.hidden = false;
 
-  // Fade out landing screen first — let the CSS transition start on the GPU compositor
-  // before blocking the main thread with LoadingScene construction
+  // Fade out landing screen COMPLETELY before constructing LoadingScene.
+  // new LoadingScene() blocks the main thread for 100-300ms — if it runs during the
+  // CSS fade, the transition freezes visibly. By waiting for transitionend, the fade
+  // completes smoothly and the constructor block happens while the loading screen
+  // (with its "ARCHIVE LOADING" card) is already fully visible.
   if (landingScreen) {
     landingScreen.style.opacity = '0';
-    // Defer heavy work by 2 frames so the browser paints the fade-out first
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        beginLoadingSequence();
-      });
-    });
-    setTimeout(() => {
+
+    let hasSettled = false;
+    const settle = () => {
+      if (hasSettled) return;
+      hasSettled = true;
+      landingScreen.removeEventListener('transitionend', onLandingFadeEnd);
       landingScreen.hidden = true;
       setUiState(UI_STATE.LOADING);
-    }, 600);
+      beginLoadingSequence();
+    };
+    const onLandingFadeEnd = (e) => { if (e.propertyName === 'opacity') settle(); };
+    landingScreen.addEventListener('transitionend', onLandingFadeEnd);
+    setTimeout(settle, 700); // safety fallback (600ms transition + 100ms margin)
   } else {
     beginLoadingSequence();
   }
@@ -1111,7 +1130,7 @@ function syncUiChrome() {
   const desktopImmersive = immersiveActive && !isTouchDevice;
   const mobileImmersive = immersiveActive && isTouchDevice;
   const shouldShowLetterUi = immersiveActive && inspectState.phase === INSPECT_PHASE.IDLE && Boolean(displayedActiveLetterId);
-  const shouldShowDebug = debugUiEnabled && !isTouchDevice && (isActive || uiState === UI_STATE.PAUSED);
+  const shouldShowDebug = debugPanelVisible && debugUiEnabled && !isTouchDevice && (isActive || uiState === UI_STATE.PAUSED);
 
   document.body.dataset.uiState = uiState;
   document.body.dataset.viewMode = viewMode;
@@ -1260,7 +1279,6 @@ function updateActiveLetterUI(activeLetterId) {
   }
 
   displayedActiveLetterId = activeLetterId;
-  themeMixer.update(camera.position.z);
 
   if (!activeLetterId) {
     clearActiveLetterUI();
@@ -1599,9 +1617,9 @@ function handleDesktopLock() {
   if (import.meta.env.DEV) performance.mark('hol:lock-after-ui');
   audioEngine.resume();
   if (import.meta.env.DEV) performance.mark('hol:lock-before-deferred');
-  // Defer deferred load to next macrotask so the first active frame paints without
-  // the synchronous cost of queuing 40 GLB fetch requests (~30ms measured).
-  setTimeout(() => void startDeferredLetterLoad(), 0);
+  // Defer deferred load until after the start-screen fadeout (500ms CSS transition + margin).
+  // Prevents 40 GLB fetch requests from competing with the CSS compositor during the fade.
+  setTimeout(() => void startDeferredLetterLoad(), 600);
   if (import.meta.env.DEV) {
     performance.mark('hol:lock-done');
     performance.measure('hol:lock-pre-ui', 'hol:lock-begin', 'hol:lock-before-ui');
@@ -1675,9 +1693,9 @@ function handleStartExperience() {
     fadeOutStartScreen();
     setUiState(UI_STATE.ACTIVE);
     audioEngine.resume();
-    // Defer deferred load to next macrotask so the first active frame paints without
-    // the synchronous cost of queuing 40 GLB fetch requests (~30ms measured).
-    setTimeout(() => void startDeferredLetterLoad(), 0);
+    // Defer deferred load until after the start-screen fadeout (500ms CSS transition + margin).
+    // Prevents 40 GLB fetch requests from competing with the CSS compositor during the fade.
+    setTimeout(() => void startDeferredLetterLoad(), 600);
     if (import.meta.env.DEV) {
       performance.mark('hol:start-touch-done');
       performance.measure('hol:start-bootstrap', 'hol:start-begin', 'hol:start-after-bootstrap');
@@ -1714,6 +1732,15 @@ function handlePointerLockError() {
 }
 
 function handleInspectKeyDown(event) {
+  // Backtick (`) → toggle debug panel (only during active/paused, desktop only)
+  if (event.code === 'Backquote' && debugUiEnabled
+      && (uiState === UI_STATE.ACTIVE || uiState === UI_STATE.PAUSED)) {
+    event.preventDefault();
+    debugPanelVisible = !debugPanelVisible;
+    debugPanel.hidden = !debugPanelVisible;
+    return;
+  }
+
   // Ctrl+Shift+L → copy diagnostic logs to clipboard
   if (event.ctrlKey && event.shiftKey && event.code === 'KeyL') {
     event.preventDefault();
@@ -2049,6 +2076,79 @@ function beginLoadingSequence() {
 
 // 7. Animation Loop
 const clock = new THREE.Clock();
+let debugFpsFrames = 0;
+let debugFpsTime = 0;
+let debugFpsValue = 0;
+
+function updateDebugPanel(delta) {
+  if (!debugPanelVisible) return;
+
+  // FPS (smoothed over ~0.5s)
+  debugFpsFrames++;
+  debugFpsTime += delta;
+  if (debugFpsTime >= 0.5) {
+    debugFpsValue = Math.round(debugFpsFrames / debugFpsTime);
+    debugFpsTime = 0;
+    debugFpsFrames = 0;
+  }
+  if (debugFps) debugFps.textContent = debugFpsValue || '—';
+
+  // Zone
+  if (debugZone) {
+    const zi = getCurrentZone(camera.position.z);
+    debugZone.textContent = zi.zoneName;
+  }
+
+  // Audio state
+  const audio = audioEngine.getDebugState();
+  if (debugThemeA) {
+    debugThemeA.textContent = audio.themeAActual != null
+      ? `${audio.themeABase.toFixed(2)} / ${audio.themeAActual.toFixed(2)}`
+      : '—';
+  }
+  if (debugThemeB) {
+    debugThemeB.textContent = audio.themeBActual != null
+      ? `${audio.themeBBase.toFixed(2)} / ${audio.themeBActual.toFixed(2)}`
+      : '—';
+  }
+  if (debugCrossfadeT) {
+    const t = themeMixer.crossfadeT;
+    debugCrossfadeT.textContent = t >= 0 ? t.toFixed(2) : '—';
+  }
+  if (debugNarration) {
+    debugNarration.textContent = audio.narrationId
+      ? `#${audio.narrationId} vol=${(audio.narrationVol ?? 0).toFixed(2)}${audio.narrationPlaying ? '' : ' (paused)'}`
+      : 'none';
+  }
+  if (debugDucking) {
+    debugDucking.textContent = audio.isDucking ? 'yes' : 'no';
+  }
+
+  // Proximity
+  if (debugVisualTarget) {
+    debugVisualTarget.textContent = currentTargetState?.activeId
+      ? `#${currentTargetState.activeId} (${currentTargetState.activeSide || '?'})`
+      : 'none';
+  }
+  if (debugAudioTarget) {
+    debugAudioTarget.textContent = currentTargetState?.audioActiveId
+      ? `#${currentTargetState.audioActiveId}`
+      : 'none';
+  }
+  if (debugNearestDist && currentTargetState?.audioActiveId) {
+    const obj = letterObjectById.get(currentTargetState.audioActiveId);
+    debugNearestDist.textContent = obj
+      ? camera.position.distanceTo(obj.position).toFixed(1)
+      : '—';
+  } else if (debugNearestDist) {
+    debugNearestDist.textContent = '—';
+  }
+
+  // Diagnostics tail
+  if (debugDiagTail) {
+    debugDiagTail.textContent = diag.last(8);
+  }
+}
 
 function updateInspectTransition(delta) {
   if (
@@ -2112,6 +2212,7 @@ function animate() {
   try {
     const isFirstActiveFrame = perfFirstActiveFrame && uiState === UI_STATE.ACTIVE;
     if (import.meta.env.DEV && isFirstActiveFrame) performance.mark('hol:first-active-frame-begin');
+    const devFrameStart = (import.meta.env.DEV && uiState === UI_STATE.ACTIVE && devActiveFrameCount < 300) ? performance.now() : 0;
 
     const delta = clock.getDelta();
     const elapsedTime = clock.getElapsedTime();
@@ -2124,7 +2225,9 @@ function animate() {
     }
 
     // Dynamic velocity: adjust walking speed based on camera z-position
-    if (uiState === UI_STATE.ACTIVE && !manualSpeedOverride && viewMode === VIEW_MODE.IMMERSIVE) {
+    // Skip during start-screen fadeout — user can't move, saves frame budget for CSS compositor
+    if (uiState === UI_STATE.ACTIVE && !manualSpeedOverride && viewMode === VIEW_MODE.IMMERSIVE
+        && !isTransitioningOutOfStart) {
       const dynamicSpeed = computeWalkingSpeed(camera.position.z, VELOCITY.BASE_SPEED);
       setWalkingSpeed(dynamicSpeed);
       if (speedSlider) {
@@ -2158,9 +2261,10 @@ function animate() {
       debugPositionDisplay.textContent = `X: ${camera.position.x.toFixed(1)} Y: ${camera.position.y.toFixed(1)} Z: ${camera.position.z.toFixed(1)}`;
     }
 
-    // Check Proximity
+    // Check Proximity — skip during start-screen fadeout (no movement, saves frame budget)
     if (proximityManager) {
-      if (uiState === UI_STATE.ACTIVE && inspectState.phase === INSPECT_PHASE.IDLE) {
+      if (uiState === UI_STATE.ACTIVE && inspectState.phase === INSPECT_PHASE.IDLE
+          && !isTransitioningOutOfStart) {
         currentTargetState = proximityManager.update();
       } else if (currentTargetState.activeId || currentTargetState.candidateId ||
                  (AUDIO.POLYPHONIC_MODE
@@ -2178,8 +2282,13 @@ function animate() {
 
     updateActiveLetterUI(currentTargetState?.activeId ?? null);
 
-    // Spatial narration volume — only during immersive play, not during inspect
-    if (inspectState.phase === INSPECT_PHASE.IDLE) {
+    // Theme crossfade — per-frame to track camera position smoothly
+    if (uiState === UI_STATE.ACTIVE && !isTransitioningOutOfStart) {
+      themeMixer.update(camera.position.z);
+    }
+
+    // Spatial narration volume — only during immersive play, not during inspect or fadeout
+    if (inspectState.phase === INSPECT_PHASE.IDLE && !isTransitioningOutOfStart) {
       if (AUDIO.POLYPHONIC_MODE) {
         const ids = currentTargetState?.audioActiveIds ?? [];
         if (ids.length > 0) {
@@ -2253,9 +2362,15 @@ function animate() {
       });
     }
 
-    // Update atmosphere zone colors and dust animation
+    // Debug panel — only runs when panel is visible
+    updateDebugPanel(delta);
+
+    // Update atmosphere zone colors (light — 5 color copies, runs always for smooth transitions)
     updateAtmosphere(camera.position.z, delta);
-    updateDust(dustParticles, elapsedTime);
+    // Dust particle animation — skip when canvas is invisible behind opaque overlays
+    if (uiState === UI_STATE.ACTIVE || isTransitioningOutOfStart || isTransitioningOutOfLoading) {
+      updateDust(dustParticles, elapsedTime);
+    }
 
     // Render via post-processing composer
     composer.render(delta);
@@ -2273,6 +2388,14 @@ function animate() {
       performance.measure('hol:faf-proximity', 'hol:faf-after-controls', 'hol:faf-after-proximity');
       performance.measure('hol:faf-timeline', 'hol:faf-after-proximity', 'hol:faf-after-timeline');
       performance.measure('hol:faf-render', 'hol:faf-after-timeline', 'hol:first-active-frame-end');
+    }
+    // DEV: track frame budget for first 300 active frames (~5 seconds)
+    if (import.meta.env.DEV && devFrameStart > 0) {
+      devActiveFrameCount++;
+      const frameMs = performance.now() - devFrameStart;
+      if (frameMs > 20) {
+        console.warn(`[perf] Frame ${devActiveFrameCount}: ${frameMs.toFixed(1)}ms (budget exceeded)`);
+      }
     }
   } catch (error) {
     console.error('[animate] Frame error:', error);

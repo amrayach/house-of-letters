@@ -607,6 +607,7 @@ body {
   align-items: center;
   gap: 0.95rem;
   padding: clamp(28px, 4vw, 42px);
+  text-align: center;
 }
 
 #start-screen h1 {
@@ -619,6 +620,8 @@ body {
 
 #start-screen .shell-lede {
   max-width: 24rem;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Pause Screen */
@@ -793,6 +796,24 @@ body {
   accent-color: #ffa500;
 }
 
+#debug-panel {
+  max-width: 320px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.debug-section-header {
+  font-size: 0.72rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 165, 0, 0.7);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 #speed-value,
 #current-speed {
   min-width: 45px;
@@ -801,8 +822,30 @@ body {
   color: #00ff88;
 }
 
-body.debug-enabled[data-ui-state="active"][data-input-mode="desktop"] #debug-panel:not([hidden]),
-body.debug-enabled[data-ui-state="paused"][data-input-mode="desktop"] #debug-panel:not([hidden]) {
+.debug-diag-tail {
+  max-height: 120px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  color: #33cc66;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(51, 204, 102, 0.15);
+  border-radius: 4px;
+  padding: var(--space-2);
+  margin-top: var(--space-1);
+  white-space: pre;
+  word-break: break-all;
+}
+
+.debug-row span:last-child {
+  font-family: monospace;
+  color: #00ff88;
+  text-align: right;
+  min-width: 45px;
+}
+
+#debug-panel:not([hidden]) {
   display: block;
 }
 

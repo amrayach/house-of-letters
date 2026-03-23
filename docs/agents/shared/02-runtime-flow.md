@@ -48,11 +48,11 @@
 - Panels have a collapsed max-height (~3 lines). A "Read more" button appears only when text overflows.
 - The landing screen has a staggered entrance animation (`landing-revealed` class triggers CSS keyframes).
 - Clicking the CTA calls `handleEnterFromLanding()`:
+  - Initializes AudioContext and prepares theme/narration audio
   - Unhides `#loading-screen` (so the LoadingScene container has correct dimensions)
-  - Creates the `LoadingScene` and starts it
-  - Starts the async asset loading
-  - Fades out the landing screen (opacity → 0 → hidden)
-  - After fade: sets `uiState` to `LOADING`
+  - Starts landing screen fade-out (CSS opacity transition, 600ms)
+  - Waits for `transitionend` on the landing screen (with 700ms safety timeout) before proceeding — this ensures the `new LoadingScene()` constructor (100-300ms synchronous block) runs AFTER the fade completes, not during it
+  - After fade: hides landing, sets `uiState` to `LOADING`, creates the `LoadingScene` and starts it, begins async asset loading
 - `handleEnterFromLanding()` is guarded by `hasLeftLanding` to prevent double-click issues.
 - The landing screen is NOT managed by `syncUiChrome()` — its visibility uses manual opacity transition + hidden, same pattern as the loading screen in `transitionToGame()`.
 
@@ -261,9 +261,11 @@
   - `isGloballyPaused` prevents per-frame volume updates from interfering with the global pause/visibility system
   - narration `onend` restores theme volume and clears current narration state
 - Theme mixing:
-  - `letter.theme` exists in data
-  - `themeMixer.update(...)` only logs/state-tracks
-  - no current code swaps or crossfades background themes per letter/zone
+  - `letter.theme` exists in data but is not consumed by the mixer
+  - `themeMixer.update(cameraZ)` runs per-frame during ACTIVE state (not on letter change) and computes a linear crossfade between theme A and theme B based on camera z-position
+  - `setThemeVolumes(volA, volB)` stores base volumes and sets Howl volumes each frame
+  - `restoreBackgroundThemeVolume()` fades both themes to their crossfade-aware base volumes (not a fixed 1.0) after narration ends or deactivates
+  - per-frame call order in animate: proximityManager.update() → updateActiveLetterUI() → themeMixer.update() → setNarrationVolume()
 
 ### 12. Archive render loop
 
@@ -334,7 +336,7 @@
 | Intro gate = `assetsLoaded && loadingSceneComplete` | `assetsLoaded` now means the core startup subset only, so older "all letters before entry" assumptions are wrong and any missed callback still leaves the user stuck on loading/start flow | skip intro, slow network, partial startup model failure, timeout path |
 | Two render loops during loading | intro and archive both render before the start screen; performance changes hit load time too | FPS and CPU/GPU load during initial boot |
 | Theme auto-plays on buffer ready after landing CTA | AudioContext is resumed on landing CTA user gesture; `onload` callback plays if not globally paused; `playBackgroundTheme` on `startBtn` click is a no-op if already playing | desktop click path, mobile first tap, tab hide during buffering, resume after tab hide |
-| Deferred load is deferred to next macrotask | `startDeferredLetterLoad()` is wrapped in `setTimeout(0)` so the first active frame paints without the ~30ms cost of queuing 40 GLB fetches | deferred load still starts, late-letter integration still works, one-shot guard still prevents duplicates |
+| Deferred load is deferred past the start-screen fadeout | `startDeferredLetterLoad()` is wrapped in `setTimeout(600)` so the 500ms CSS transition completes before 40 GLB fetches queue — prevents network burst from competing with the CSS compositor during the fade | deferred load still starts (600ms later), late-letter integration still works, one-shot guard still prevents duplicates; if the delay is shortened below 500ms, the fadeout may jank on mid-range hardware |
 | `themeMixer` vs `letter.theme` | metadata suggests per-letter themes, runtime does not implement them | do not assume JSON theme edits change audible behavior |
 | Highlight logic vs material replacement | the active-state cue uses emissive tint on non-glass meshes | active-letter visual feedback after material or non-glass detection edits |
 | Letter animation vs loader orientation | loader stores the base facing angle and height, and `animate()` sways around those stored values | letter facing/orientation after motion changes |

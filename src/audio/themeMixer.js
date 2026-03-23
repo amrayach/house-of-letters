@@ -1,13 +1,21 @@
 import { audioEngine } from './audioEngine.js';
 import { AUDIO } from '@config/constants.js';
+import { diag } from '@utils/diagnostics.js';
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, value));
 }
 
+const CROSSFADE_LOG_THRESHOLD = 0.05;
+
 export class ThemeMixer {
   constructor() {
     this.lastT = -1;
+    this.lastLoggedT = -1;
+  }
+
+  get crossfadeT() {
+    return this.lastT;
   }
 
   update(cameraZ) {
@@ -24,6 +32,12 @@ export class ThemeMixer {
     const volumeB = AUDIO.THEME_VOLUME * t;
 
     audioEngine.setThemeVolumes(volumeA, volumeB);
+
+    // Throttled diagnostic log for crossfade changes
+    if (Math.abs(t - this.lastLoggedT) >= CROSSFADE_LOG_THRESHOLD) {
+      this.lastLoggedT = t;
+      diag.log('audio', `crossfade t=${t.toFixed(2)} volA=${volumeA.toFixed(2)} volB=${volumeB.toFixed(2)}`);
+    }
   }
 }
 

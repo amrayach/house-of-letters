@@ -99,6 +99,39 @@ export function computeWalkingSpeed(cameraZ, baseSpeed) {
   return baseSpeed;
 }
 
+const ZONE_NAMES = [
+  'Zone 1: Silence (1988)',
+  'Zone 2: Early writing (1990–91)',
+  'Zone 3: Acceleration (1991–92)',
+  'Zone 4: Dense writing (1992)',
+];
+
+/**
+ * Get the current zone for a given camera z-position.
+ *
+ * @param {number} worldZ - Camera world-space z position
+ * @returns {{ zone: number, zoneName: string }}
+ */
+export function getCurrentZone(worldZ) {
+  for (const zone of zoneBounds) {
+    if (worldZ >= zone.zMin && worldZ <= zone.zMax) {
+      return { zone: zone.id, zoneName: ZONE_NAMES[zone.id - 1] };
+    }
+  }
+
+  // In gap or beyond — find nearest zone
+  let nearest = zoneBounds[0];
+  let nearestDist = Infinity;
+  for (const zone of zoneBounds) {
+    const dist = worldZ < zone.zMin ? zone.zMin - worldZ : worldZ - zone.zMax;
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearest = zone;
+    }
+  }
+  return { zone: nearest.id, zoneName: ZONE_NAMES[nearest.id - 1] + ' (gap)' };
+}
+
 /**
  * Get derived zone boundaries (for debugging / diagnostics).
  */

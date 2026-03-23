@@ -62,6 +62,59 @@ function createNoopTimeline() {
   };
 }
 
+// ── Zone gradient utilities (computed at build time, zero per-frame cost) ──
+
+function computeGradientStops(anchors, gradientHexArray) {
+  const zoneZValues = {};
+  for (const a of anchors) {
+    if (a.zone > 0) {
+      if (!zoneZValues[a.zone]) zoneZValues[a.zone] = [];
+      zoneZValues[a.zone].push(a.anchorPosition.z);
+    }
+  }
+
+  const zoneIds = Object.keys(zoneZValues).map(Number).sort((a, b) => a - b);
+  return zoneIds.map((zoneId, i) => {
+    const values = zoneZValues[zoneId];
+    const mid = (Math.min(...values) + Math.max(...values)) / 2;
+    const color = new THREE.Color(gradientHexArray[i] ?? gradientHexArray[gradientHexArray.length - 1]);
+    return { z: mid, color };
+  });
+}
+
+const _gradientScratch = new THREE.Color();
+
+function sampleGradient(z, stops) {
+  if (stops.length === 0) return new THREE.Color(0xcbb581);
+  if (z <= stops[0].z) return stops[0].color.clone();
+  if (z >= stops[stops.length - 1].z) return stops[stops.length - 1].color.clone();
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (z <= stops[i + 1].z) {
+      const t = (z - stops[i].z) / (stops[i + 1].z - stops[i].z);
+      return stops[i].color.clone().lerp(stops[i + 1].color, t);
+    }
+  }
+  return stops[stops.length - 1].color.clone();
+}
+
+function applySpineVertexColors(geometry, stops, darken) {
+  const posAttr = geometry.attributes.position;
+  const count = posAttr.count;
+  const colors = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const z = posAttr.getZ(i);
+    _gradientScratch.copy(sampleGradient(z, stops));
+    if (darken < 1.0) _gradientScratch.multiplyScalar(darken);
+    colors[i * 3] = _gradientScratch.r;
+    colors[i * 3 + 1] = _gradientScratch.g;
+    colors[i * 3 + 2] = _gradientScratch.b;
+  }
+
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+}
+
 function createMaterial(color, opacity) {
   return new THREE.MeshBasicMaterial({
     color,
@@ -333,17 +386,30 @@ function createTubeMesh(curve, radius, tubularSegments, radialSegments, color, o
   return mesh;
 }
 
-function createAnchorRecord(anchor, textureCache, cfg, sharedGeometry) {
+function createAnchorRecord(anchor, textureCache, cfg, sharedGeometry, gradientStops) {
+  // Zone-tinted anchor colors: blend between fixed gold and local zone color
+  let coreColor = cfg.COLOR_CORE;
+  let ringColor = cfg.COLOR_HALO;
+  if (gradientStops) {
+    const blend = cfg.ZONE_GRADIENT_ANCHOR_BLEND ?? 0.6;
+    const haloDarken = cfg.ZONE_GRADIENT_HALO_DARKEN ?? 0.55;
+    const zoneColor = sampleGradient(anchor.anchorPosition.z, gradientStops);
+    coreColor = new THREE.Color(cfg.COLOR_CORE).lerp(zoneColor, blend);
+    ringColor = new THREE.Color(cfg.COLOR_HALO).lerp(
+      zoneColor.clone().multiplyScalar(haloDarken), blend,
+    );
+  }
+
   const anchorRing = new THREE.Mesh(
     sharedGeometry.anchorRingGeometry,
-    createMaterial(cfg.COLOR_HALO, cfg.AMBIENT_ANCHOR_RING_OPACITY),
+    createMaterial(ringColor, cfg.AMBIENT_ANCHOR_RING_OPACITY),
   );
   anchorRing.rotation.x = -Math.PI / 2;
   anchorRing.position.copy(anchor.anchorPosition);
 
   const anchorCore = new THREE.Mesh(
     sharedGeometry.anchorCoreGeometry,
-    createMaterial(cfg.COLOR_CORE, cfg.AMBIENT_ANCHOR_OPACITY),
+    createMaterial(coreColor, cfg.AMBIENT_ANCHOR_OPACITY),
   );
   anchorCore.rotation.x = -Math.PI / 2;
   anchorCore.position.copy(anchor.anchorPosition);
@@ -502,6 +568,13 @@ export function createGroundTimeline({ scene, letters, chronology, constants } =
   const spineCurve = new THREE.CatmullRomCurve3(spineControlPoints, false, 'centripetal', 0.2);
   const distortedCurve = new THREE.CatmullRomCurve3(distortedControlPoints, false, 'centripetal', 0.2);
 
+  // Compute zone gradient stops from anchor positions (build-time only)
+  const gradientStops = cfg.ZONE_GRADIENT?.length > 0
+    ? computeGradientStops(orderedAnchors, cfg.ZONE_GRADIENT)
+    : [];
+  const hasGradient = gradientStops.length >= 2;
+  const haloDarken = cfg.ZONE_GRADIENT_HALO_DARKEN ?? 0.55;
+
   const spineHalo = createTubeMesh(
     spineCurve,
     cfg.SPINE_HALO_RADIUS,
@@ -527,13 +600,33 @@ export function createGroundTimeline({ scene, letters, chronology, constants } =
     cfg.AMBIENT_CORE_OPACITY,
   );
 
+  // Apply zone gradient vertex colors to spine meshes (build-time, zero per-frame cost)
+  if (hasGradient) {
+    applySpineVertexColors(spineCore.geometry, gradientStops, 1.0);
+    spineCore.material.vertexColors = true;
+    spineCore.material.color.set(0xffffff);
+    spineCore.material.needsUpdate = true;
+
+    applySpineVertexColors(spineHalo.geometry, gradientStops, haloDarken);
+    spineHalo.material.vertexColors = true;
+    spineHalo.material.color.set(0xffffff);
+    spineHalo.material.needsUpdate = true;
+
+    applySpineVertexColors(spineDistortedHalo.geometry, gradientStops, haloDarken);
+    spineDistortedHalo.material.vertexColors = true;
+    spineDistortedHalo.material.color.set(0xffffff);
+    spineDistortedHalo.material.needsUpdate = true;
+  }
+
   const sharedGeometry = {
     anchorCoreGeometry: new THREE.CircleGeometry(cfg.ANCHOR_CORE_RADIUS, 32),
     anchorRingGeometry: new THREE.RingGeometry(cfg.ANCHOR_RING_INNER_RADIUS, cfg.ANCHOR_RING_OUTER_RADIUS, 40),
     labelPlaneGeometry: new THREE.PlaneGeometry(1, 1),
   };
 
-  const anchorRecords = orderedAnchors.map((anchor) => createAnchorRecord(anchor, textureCache, cfg, sharedGeometry));
+  const anchorRecords = orderedAnchors.map((anchor) =>
+    createAnchorRecord(anchor, textureCache, cfg, sharedGeometry, hasGradient ? gradientStops : null),
+  );
   const anchorRecordById = new Map(anchorRecords.map((record) => [record.id, record]));
 
   rootGroup.add(spineHalo);

@@ -53,7 +53,7 @@ export const CAMERA = {
   FOV: 75,
   NEAR: 0.1,
   FAR: 1000,
-  INITIAL_POSITION: { x: 9, y: 1.6, z: -186 } // At ground timeline spine head (paper 1 world z=-168, +18 head padding)
+  INITIAL_POSITION: { x: 0, y: 1.6, z: -186 } // On ground timeline spine head (paper 1 world z=-168, +18 head padding)
 };
 
 // Models
@@ -70,7 +70,7 @@ export const AUDIO = {
   THEME_VOLUME: 1.0,
   NARRATION_VOLUME: 1.0,
   FADE_DURATION: 500,
-  DUCKING_VOLUME: 0.3,
+  DUCKING_VOLUME: 0.15,
   NARRATION_FADE_NEAR: 1.5,    // full volume at this distance
   NARRATION_FADE_FAR: 8,       // volume reaches 0 at this distance
   NARRATION_FADE_EXPONENT: 1.0,  // falloff curve (<1=convex/slower drop, 1=linear, >1=concave/faster drop)
@@ -170,6 +170,11 @@ export const TIMELINE = {
   COLOR_CORE: 0xcbb581,
   COLOR_HALO: 0x6f6a53,
   COLOR_FOCUSED: 0xf2dda0,
+  // Zone gradient: subtle cool→warm shift along the archive's emotional arc.
+  // Interpolated smoothly between zone midpoints at build time (zero runtime cost).
+  ZONE_GRADIENT: [0x7a8a9e, 0x9e9a7a, 0xcbb581, 0xe8c86a],
+  ZONE_GRADIENT_HALO_DARKEN: 0.55,   // halo brightness relative to core gradient
+  ZONE_GRADIENT_ANCHOR_BLEND: 0.6,   // how much zone color vs fixed gold for anchors
   DISTORTION_AMPLITUDE: 0.75,
 };
 

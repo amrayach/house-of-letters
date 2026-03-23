@@ -1,5 +1,153 @@
 # Changelog
 
+## Session 14 — Per-frame theme-restore spam fix + ducking tuning
+
+**Date:** 2026-03-23
+**Scope:** bugfix (per-frame restore spam) + tuning (ducking volume)
+
+### Problem
+Runtime testing of Session 13 fixes revealed a new bug: `setNarrationVolume()` calls `restoreBackgroundThemeVolume()` every frame when no narration is active. After `deactivateNarration()` pauses a narration, `this.currentNarration` remains set (preserving playhead for resume). Per-frame calls with vol=0 pass the `!this.currentNarration` guard and hit the vol≤0 branch, which calls `restoreBackgroundThemeVolume()` unconditionally. This:
+- Floods the 600-entry diagnostic ring buffer in ~10 seconds
+- Constantly restarts Howler's 500ms fade, pinning theme volumes and preventing proper ducking recovery
+- Drowns out all useful diagnostic entries (crossfade, proximity, narration events)
+
+Separately, with ducking at 0.3 (30% of base), theme B remained perceptually louder than narration in zone 4.
+
+### Changes
+1. **`_themeRestored` dirty flag.** Added to `audioEngine.js`. Set `true` after `restoreBackgroundThemeVolume()` fires. Cleared when narration activates or when `setNarrationVolume()` receives vol > 0. The vol≤0 path in `setNarrationVolume()` checks `!this._themeRestored` before calling restore — fires once on transition to silence, then stops.
+2. **Ducking volume reduced.** `DUCKING_VOLUME` changed from 0.3 to 0.15 — theme ducks to 15% of base at full narration instead of 30%.
+
+### Per-frame path BEFORE fix (no narration active)
+1. `computeNarrationVolume(null)` → 0
+2. `setNarrationVolume(0, null)` → passes `!this.currentNarration` guard (stale Howl set)
+3. vol≤0 branch → `restoreBackgroundThemeVolume()` fires every frame
+4. Each call: Howler cancels previous 500ms fade, starts new one → theme pinned
+
+### Per-frame path AFTER fix (no narration active)
+1. `computeNarrationVolume(null)` → 0
+2. `setNarrationVolume(0, null)` → passes `!this.currentNarration` guard
+3. vol≤0 branch → `this._themeRestored` is true → restore skipped
+4. Theme fade completes naturally from the single restore call
+
+### Files changed
+- `src/audio/audioEngine.js` — `_themeRestored` flag in constructor, restoreBackgroundThemeVolume, setNarrationVolume, activateNarration, activatePolyphonicNarration, dispose
+- `src/config/constants.js` — DUCKING_VOLUME 0.3 → 0.15
+- `docs/agents/shared/changelog.md` — this entry
+
+### Validated
+- `npm run build` — clean pass
+- Runtime verified (453-entry diagnostic log over ~200 seconds):
+  - Restore spam eliminated — each `theme-restore` appears exactly once per narration deactivation
+  - Crossfade smooth: t=0.05 → 0.97 in ~0.05 steps, no jumps
+  - Crossfade-aware restore values track camera position correctly (baseA+baseB sum to 1.0)
+  - Narration reaches vol=0.98 at close range with ducking at 0.15
+  - Narration lifecycle clean: sequential activate/deactivate pairs, no overlaps, stale token catches working
+- Remaining: some narration MP3s have lower inherent loudness (asset issue, client will provide normalized files)
+
+## Session 13 — Audio pipeline fixes + debug panel expansion
+
+**Date:** 2026-03-23
+**Scope:** bugfix (audio crossfade) + dev tooling (debug panel)
+
+### Problem
+4 client-reported audio issues traced to 2 root causes:
+- C1: `themeMixer.update()` only ran on visual letter change (inside `updateActiveLetterUI()`), not per-frame — walking through the crossfade zone without targeting letters produced no crossfade at all.
+- C2: `restoreBackgroundThemeVolume()` always faded `this.backgroundTheme` (= themeA) to fixed `THEME_VOLUME` (1.0), ignoring themeB and the current crossfade position — caused volume spikes after narration end in zones 3-4.
+
+### Changes
+1. **C1 fix: theme mixer moved to per-frame.** Removed `themeMixer.update()` from `updateActiveLetterUI()`. Added per-frame call in animate loop between `updateActiveLetterUI()` and `setNarrationVolume()`, gated behind `uiState === ACTIVE && !isTransitioningOutOfStart`.
+2. **C2 fix: crossfade-aware theme restore.** `restoreBackgroundThemeVolume()` now fades both themeA and themeB to their respective base volumes (`themeABaseVolume`/`themeBBaseVolume`) in dual-theme mode. Legacy single-theme path preserved.
+3. **Debug panel expansion.** Added zone display, FPS, audio state (theme A/B volumes, crossfade T, narration, ducking), proximity state (visual/audio targets, nearest distance), and diagnostics log tail (last 8 entries from ring buffer). Panel toggled with backtick (`) key, dev-only.
+4. **Audio diagnostics.** Added `diag.log()` in `restoreBackgroundThemeVolume()` and throttled crossfade logging in `themeMixer.update()`. Added `getDebugState()` getter to audioEngine and `crossfadeT` getter to themeMixer.
+5. **Zone helper.** Added `getCurrentZone(worldZ)` to `zoneVelocity.js` — returns zone number + archivally-named label from existing zone boundaries.
+
+### Per-frame call order in animate (audio-relevant)
+1. `proximityManager.update()` — updates targeting snapshot
+2. `updateActiveLetterUI()` — UI only, no mixer
+3. `themeMixer.update(cameraZ)` — sets base volumes via `setThemeVolumes()`
+4. `setNarrationVolume()` — ducks using fresh base volumes
+
+### Files changed
+- `src/main.js` — per-frame mixer, debug panel wiring/toggle/update, import getCurrentZone
+- `src/audio/audioEngine.js` — restoreBackgroundThemeVolume fix, getDebugState getter, diag logging
+- `src/audio/themeMixer.js` — diag logging, crossfadeT getter
+- `src/config/zoneVelocity.js` — getCurrentZone helper, ZONE_NAMES
+- `index.html` — expanded debug panel HTML
+- `src/styles/main.css` — debug panel section headers, diag tail styling, max-width
+- `docs/agents/shared/02-runtime-flow.md` — theme mixer description updated
+- `docs/agents/shared/00-project-overview.md` — theme mixer description updated
+- `.claude/rules/audio.md` — per-frame mixer, restoreBackgroundThemeVolume documentation
+- `docs/agents/shared/changelog.md` — this entry
+
+### Validated
+- `npm run build` — clean pass
+- Static: no remaining `themeMixer.update` inside `updateActiveLetterUI`
+- Static: `applyThemeDucking()` reads `themeABaseVolume`/`themeBBaseVolume` fields (not Howl getters) — no compound ducking
+- Static: all 5 `restoreBackgroundThemeVolume()` call sites benefit from the fix
+- Runtime verified via Session 14 diagnostic log:
+  - Smooth crossfade z 100→180 confirmed (t=0.05→0.97)
+  - Crossfade-aware restore confirmed (baseA+baseB track camera position)
+  - Dense zone 4 walk confirmed (single narration, smooth ducking)
+- Debug panel and backtick toggle: manual verified working
+
+## Session 12 — Ground timeline zone gradient
+
+**Date:** 2026-03-23
+**Scope:** visual polish — single subsystem (ground timeline rendering)
+
+### Changes
+1. **Zone gradient on spine.** The 3 spine tube meshes (core, halo, distorted) now use per-vertex colors that shift from cool steel blue-grey (zone 1, #7a8a9e) through transitional warm grey (zone 2, #9e9a7a), warm gold (zone 3, #cbb581), to bright amber (zone 4, #e8c86a). Colors are computed at geometry build time using smooth linear interpolation between zone midpoints — zero per-frame cost.
+2. **Zone-tinted anchors.** Each anchor's core and ring colors are blended 60% toward the local zone gradient color, shifting less dramatically than the spine for highlight headroom.
+3. **Spawn position.** Camera spawn moved from x=9 to x=0, directly on the timeline centerline.
+4. **Start screen centering.** Fixed `.shell-lede` block centering with `margin: auto`.
+
+### Technical approach
+- Vertex colors via `geometry.setAttribute('color', Float32BufferAttribute)` with `material.vertexColors = true` and white base color
+- Halo meshes use the same gradient darkened by 0.55× to preserve the core/halo brightness hierarchy
+- Gradient stops computed from actual anchor z-positions (adapts if positions change)
+- Falls back to fixed colors if `ZONE_GRADIENT` is empty or undefined
+
+### Files changed
+- `src/config/constants.js` — ZONE_GRADIENT array, ZONE_GRADIENT_HALO_DARKEN, ZONE_GRADIENT_ANCHOR_BLEND, camera spawn x=0
+- `src/renderer/groundTimeline.js` — vertex color utilities, spine/anchor gradient application
+- `src/styles/main.css` — .shell-lede centering, .shell-panel-start text-align
+- `docs/agents/shared/changelog.md` — this entry
+
+### Validated
+- `npm run build` clean
+- Needs browser verification: gradient visible along spine, anchors tinted, focus highlight still works, preWarm still works
+
+## Session 11 — Transition frame-budget optimization
+
+**Date:** 2026-03-23
+**Scope:** targeted performance — reduce per-frame waste during Start→Active transition
+
+### Problem
+After the temporal/audio sprint (Sessions 5–10), transitions felt rough. A full audit confirmed all 13 transition smoothing features are code-intact — the roughness is a frame-budget issue: `setUiState(ACTIVE)` fires on the same tick as `fadeOutStartScreen()`, enabling velocity computation, proximity scanning, and narration volume while the start screen is still fading. These are wasted computations (user can't move during the fadeout) competing with the CSS compositor. Additionally, 40 GLB fetch requests queue via `setTimeout(0)` during the fadeout, and dust particle updates (500 sin() calls/frame) run behind opaque overlays.
+
+### Changes
+1. **Fixed Landing→Loading freeze.** `new LoadingScene()` constructor (100-300ms synchronous block) was running 33ms into the landing fade via a 2-rAF deferral — freezing the CSS transition mid-animation. Replaced with `transitionend`-based deferral: the landing fade completes smoothly (600ms), THEN the LoadingScene constructs while the loading card is already fully visible.
+2. **Gated ACTIVE-only work during Start→Active fadeout.** Dynamic velocity, proximity scanning, and narration volume skip frames where `isTransitioningOutOfStart` is true. These resume automatically when the fadeout completes.
+3. **Delayed deferred load.** Changed `setTimeout(0)` → `setTimeout(600)` for `startDeferredLetterLoad()` in both desktop (`handleDesktopLock`) and mobile (`handleStartExperience`) paths. The 600ms delay ensures the 500ms CSS transition completes before 40 network requests fire.
+4. **Gated dust updates.** `updateDust()` now only runs when `uiState === ACTIVE` or during screen fadeouts. Saves ~500 sin() calls/frame during Loading and Start states when dust is invisible behind opaque overlays.
+5. **DEV-gated frame budget tracker.** Tracks frame times for the first 300 frames (~5 seconds) after entering ACTIVE. Logs warnings for frames exceeding 20ms. Entirely tree-shaken in production builds.
+
+### Files changed
+- `src/main.js` — animate loop guards, deferred load delay, DEV profiling
+- `docs/agents/shared/changelog.md` — this entry
+- `docs/agents/shared/02-runtime-flow.md` — deferred load timing update
+
+### What was NOT changed
+- `transitionToGame()`, `fadeOutStartScreen()`, `syncUiChrome()` guards — all intact
+- CSS transitions and `will-change` declarations — all intact
+- Velocity zones, audio proximity, polyphonic narration, theme crossfade logic — all intact (only timing relative to transitions changed)
+- Letter positions, spatial distribution — unchanged
+
+### Validated
+- `npm run build` clean
+- `npm run validate:letters` passes
+- Needs browser verification: smooth fadeout, velocity zones, audio proximity, theme crossfade, inspect mode, pause/resume
+
 ## Session 1 — Movement speed + loading text cleanup
 
 **Date:** 2026-03-19

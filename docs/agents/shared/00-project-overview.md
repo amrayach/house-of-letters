@@ -46,7 +46,7 @@ A companion standalone page at `/listen/?p={id}` (`public/listen/index.html`) se
 
 ## Appears incomplete
 
-- Theme transitions: `src/audio/themeMixer.js` only records/logs state and does not crossfade audio
+- Theme transitions: `src/audio/themeMixer.js` now performs per-frame dual-theme crossfade based on camera z-position; `letter.theme` metadata exists but is not consumed by the mixer
 - Subtitles/text content: `letters.json` text fields are empty, so `src/main.js` falls back to `Listening to Letter X...`
 - Spatial audio: current audio is not true positional audio
 - Asset pipeline workflow: `scripts/compress-glb.js` expects `.glb` inputs in `public/assets/textures/`, but that directory is currently empty
