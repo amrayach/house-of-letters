@@ -241,10 +241,11 @@ export async function loadLetters(scene, lettersData, renderer, onProgress = nul
             data.position.z * MODEL.GRID_SCALE
           );
 
-          // Make the model face the camera (origin)
+          // Face the corridor centerline (x=0) with a forward bias.
+          // Papers near center face forward; papers further out angle inward.
           const angle = Math.atan2(
             data.position.x * MODEL.GRID_SCALE,
-            data.position.z * MODEL.GRID_SCALE
+            8
           );
           model.rotation.y = angle;
 

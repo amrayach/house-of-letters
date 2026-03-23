@@ -85,9 +85,14 @@ Observed runtime schema: 46 records, all with the same keys today.
 - Zone z-ranges in current runtime file (temporal distribution, ~203 units total):
   - zone 1: `-42.00`
   - zone 2: `-13.85 .. 31.05`
-  - zone 3: `39.80 .. 89.66`
-  - zone 4: `91.68 .. 160.74`
+  - zone 3: `39.80 .. 89.47`
+  - zone 4: `91.15 .. 160.74`
 - Z-positions are temporally distributed: physical distance reflects time between diary entries. Source data: `src/data/diary_index_001_048.csv`. Parameters: scale=0.7, power=0.6, minZGap=0.5.
+- X-positions use a widening corridor layout: zone-dependent spread (zone 1: centered, zone 2: ±3, zone 3: ±6, zone 4: ±10 JSON units) with smooth blending at zone boundaries. The visitor experiences a narrow corridor widening into an open room.
+  - zone 1 x: `0.00`
+  - zone 2 x: `-0.31 .. 3.17`
+  - zone 3 x: `-4.84 .. 4.67`
+  - zone 4 x: `-9.92 .. 6.85`
 - All current asset references in `letters.json` resolve to existing files under `public/`.
 
 ## Provisional grouped chronology mapping
@@ -170,9 +175,9 @@ Observed runtime schema: 46 records, all with the same keys today.
 ### Script-owned or semi-generated
 
 - `scripts/generate-letter-positions.cjs`
-  - **Temporal Layout v4**: z-positions are derived from diary entry dates in `src/data/diary_index_001_048.csv`
-  - uses power-law gap transform: `zGap = MIN_Z_GAP + SCALE × dayGap^POWER` (defaults: 2.0, 0.4, 0.5)
-  - x-positions use the meander algorithm (S-curve river shape with zone 3 mirror)
+  - **Temporal Layout v5 (Widening Corridor)**: z-positions are derived from diary entry dates in `src/data/diary_index_001_048.csv`
+  - uses power-law gap transform: `zGap = MIN_Z_GAP + SCALE × dayGap^POWER` (defaults: 0.7, 0.6, 0.5)
+  - x-positions use zone-dependent corridor spread (zone 1: 0, zone 2: ±3, zone 3: ±6, zone 4: ±10) with smoothstep blending at zone boundaries
   - zone z-boundaries are derived from paper positions, not prescribed
   - preserves existing metadata when present (narration, theme, images, model paths, text)
   - papers 47-48 in CSV are skipped (not in the 46-letter archive)

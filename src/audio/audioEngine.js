@@ -5,6 +5,10 @@ import { diag } from '@utils/diagnostics.js';
 export class AudioEngine {
   constructor() {
     this.backgroundTheme = null;
+    this.themeA = null;
+    this.themeB = null;
+    this.themeABaseVolume = AUDIO.THEME_VOLUME;
+    this.themeBBaseVolume = 0;
     this.currentNarration = null;
     this.currentNarrationLetterId = null;
     this.narrations = {};
@@ -15,6 +19,8 @@ export class AudioEngine {
     this.activeNarrationRequestToken = 0;
     this.resumeNarrationOnNextResume = false;
     this.isGloballyPaused = false;
+    this.activeNarrations = new Set();
+    this.pausedActiveNarrations = new Set();
   }
 
   init() {
@@ -66,6 +72,52 @@ export class AudioEngine {
     }
   }
 
+  prepareBothThemes(urlA, urlB) {
+    if (this.themeA && this.themeB) return;
+
+    const createTheme = (url, volume, label) => {
+      const howl = new Howl({
+        src: [url],
+        loop: true,
+        volume,
+        html5: true,
+        onload: () => {
+          if (!this.isGloballyPaused && howl && !howl.playing()) {
+            howl.play();
+            diag.log('audio', `${label} autoplay on buffer ready`);
+          }
+        },
+      });
+      return howl;
+    };
+
+    this.themeA = createTheme(urlA, this.themeABaseVolume, 'themeA');
+    this.themeB = createTheme(urlB, this.themeBBaseVolume, 'themeB');
+    this.backgroundTheme = this.themeA;
+    diag.log('audio', 'prepareBothThemes buffering');
+  }
+
+  playBothThemes(urlA, urlB) {
+    this.prepareBothThemes(urlA, urlB);
+    if (this.themeA && !this.themeA.playing()) this.themeA.play();
+    if (this.themeB && !this.themeB.playing()) this.themeB.play();
+    diag.log('audio', 'playBothThemes');
+  }
+
+  setThemeVolumes(volumeA, volumeB) {
+    this.themeABaseVolume = volumeA;
+    this.themeBBaseVolume = volumeB;
+    if (this.themeA) this.themeA.volume(volumeA);
+    if (this.themeB) this.themeB.volume(volumeB);
+  }
+
+  applyThemeDucking(duckRatio) {
+    if (duckRatio <= 0) return;
+    const duckScale = 1 - duckRatio * (1 - AUDIO.DUCKING_VOLUME / AUDIO.THEME_VOLUME);
+    if (this.themeA) this.themeA.volume(this.themeABaseVolume * duckScale);
+    if (this.themeB) this.themeB.volume(this.themeBBaseVolume * duckScale);
+  }
+
   pauseCurrentNarration() {
     if (this.currentNarration && this.currentNarration.playing()) {
       this.currentNarration.pause();
@@ -102,6 +154,10 @@ export class AudioEngine {
             this.currentNarration = null;
             this.currentNarrationLetterId = null;
             this.resumeNarrationOnNextResume = false;
+            this.restoreBackgroundThemeVolume();
+          }
+          this.activeNarrations.delete(letterId);
+          if (!isCurrent && this.activeNarrations.size === 0) {
             this.restoreBackgroundThemeVolume();
           }
         }
@@ -236,6 +292,89 @@ export class AudioEngine {
     this.restoreBackgroundThemeVolume();
   }
 
+  async activatePolyphonicNarration(letterId) {
+    if (this.activeNarrations.has(letterId)) return;
+    this.activeNarrations.add(letterId);
+
+    if (!this.narrations[letterId] && this.narrationUrls[letterId]) {
+      diag.log('audio', `poly activate id=${letterId} lazy-loading`);
+      try {
+        await this.loadNarration(letterId, this.narrationUrls[letterId]);
+      } catch (error) {
+        diag.log('audio', `poly activate id=${letterId} LOAD FAILED`, error?.message);
+        this.activeNarrations.delete(letterId);
+        return;
+      }
+    }
+
+    const narration = this.narrations[letterId];
+    if (!narration) {
+      this.activeNarrations.delete(letterId);
+      return;
+    }
+
+    if (narration.state() === 'loading') {
+      try {
+        await new Promise((resolve, reject) => {
+          narration.once('load', resolve);
+          narration.once('loaderror', reject);
+        });
+      } catch (error) {
+        diag.log('audio', `poly activate id=${letterId} LOAD WAIT FAILED`, error?.message);
+        this.activeNarrations.delete(letterId);
+        return;
+      }
+    }
+
+    if (!this.activeNarrations.has(letterId)) {
+      diag.log('audio', `poly activate id=${letterId} STALE (left range during load)`);
+      return;
+    }
+
+    narration.play();
+    diag.log('audio', `poly activate id=${letterId} PLAYING`);
+  }
+
+  deactivatePolyphonicNarration(letterId) {
+    if (!this.activeNarrations.has(letterId)) return;
+    this.activeNarrations.delete(letterId);
+    const howl = this.narrations[letterId];
+    if (howl && howl.playing()) {
+      howl.pause();
+    }
+    if (this.activeNarrations.size === 0) {
+      this.restoreBackgroundThemeVolume();
+    }
+    diag.log('audio', `poly deactivate id=${letterId}`);
+  }
+
+  setPolyphonicVolumes(volumeMap) {
+    if (this.isGloballyPaused) return;
+
+    let maxVol = 0;
+
+    for (const [letterId, volume] of volumeMap) {
+      const howl = this.narrations[letterId];
+      if (!howl || howl.state() !== 'loaded') continue;
+
+      if (volume <= 0) {
+        if (howl.playing()) howl.pause();
+      } else {
+        if (!howl.playing() && this.activeNarrations.has(letterId)) {
+          howl.play();
+        }
+        howl.volume(volume);
+        if (volume > maxVol) maxVol = volume;
+      }
+    }
+
+    if (maxVol > 0) {
+      this.applyThemeDucking(maxVol / AUDIO.NARRATION_VOLUME);
+    } else {
+      this.setThemeVolumes(this.themeABaseVolume, this.themeBBaseVolume);
+    }
+  }
+
   setNarrationVolume(volume, activeId) {
     if (this.isGloballyPaused || !this.currentNarration) return;
 
@@ -267,18 +406,17 @@ export class AudioEngine {
     }
 
     // Proportional theme ducking: theme swells back as narration fades with distance
-    if (this.backgroundTheme) {
-      const ratio = volume / AUDIO.NARRATION_VOLUME;
-      const themeVol = AUDIO.THEME_VOLUME + (AUDIO.DUCKING_VOLUME - AUDIO.THEME_VOLUME) * ratio;
-      this.backgroundTheme.volume(themeVol);
-    }
+    const duckRatio = volume / AUDIO.NARRATION_VOLUME;
+    this.applyThemeDucking(duckRatio);
   }
 
   pause() {
     this.isGloballyPaused = true;
 
-    // Pause background theme
-    if (this.backgroundTheme && this.backgroundTheme.playing()) {
+    // Pause background themes
+    if (this.themeA && this.themeA.playing()) this.themeA.pause();
+    if (this.themeB && this.themeB.playing()) this.themeB.pause();
+    if (!this.themeA && this.backgroundTheme && this.backgroundTheme.playing()) {
       this.backgroundTheme.pause();
     }
 
@@ -289,14 +427,26 @@ export class AudioEngine {
       this.currentNarration.pause();
     }
 
-    diag.log('audio', `pause currId=${this.currentNarrationLetterId} willResume=${this.resumeNarrationOnNextResume}`);
+    // Pause polyphonic narrations
+    this.pausedActiveNarrations = new Set();
+    for (const id of this.activeNarrations) {
+      const howl = this.narrations[id];
+      if (howl && howl.playing()) {
+        howl.pause();
+        this.pausedActiveNarrations.add(id);
+      }
+    }
+
+    diag.log('audio', `pause currId=${this.currentNarrationLetterId} willResume=${this.resumeNarrationOnNextResume} polyPaused=${this.pausedActiveNarrations.size}`);
   }
 
   resume() {
     this.isGloballyPaused = false;
 
-    // Resume background theme
-    if (this.backgroundTheme && !this.backgroundTheme.playing()) {
+    // Resume background themes
+    if (this.themeA && !this.themeA.playing()) this.themeA.play();
+    if (this.themeB && !this.themeB.playing()) this.themeB.play();
+    if (!this.themeA && this.backgroundTheme && !this.backgroundTheme.playing()) {
       this.backgroundTheme.play();
     }
 
@@ -308,7 +458,17 @@ export class AudioEngine {
     const resumedNarration = this.resumeNarrationOnNextResume;
     this.resumeNarrationOnNextResume = false;
 
-    diag.log('audio', `resume currId=${this.currentNarrationLetterId} narrationResumed=${resumedNarration}`);
+    // Resume polyphonic narrations
+    for (const id of this.pausedActiveNarrations) {
+      const howl = this.narrations[id];
+      if (howl && !howl.playing() && this.activeNarrations.has(id)) {
+        howl.play();
+      }
+    }
+    const polyResumed = this.pausedActiveNarrations.size;
+    this.pausedActiveNarrations.clear();
+
+    diag.log('audio', `resume currId=${this.currentNarrationLetterId} narrationResumed=${resumedNarration} polyResumed=${polyResumed}`);
   }
 
   /**
@@ -343,14 +503,18 @@ export class AudioEngine {
 
     this.shouldResumeOnVisibility = null;
 
+    if (this.themeA) { this.themeA.unload(); this.themeA = null; }
+    if (this.themeB) { this.themeB.unload(); this.themeB = null; }
     if (this.backgroundTheme) {
-      this.backgroundTheme.unload();
+      if (this.backgroundTheme !== this.themeA) this.backgroundTheme.unload();
       this.backgroundTheme = null;
     }
 
     this.activeNarrationRequestToken += 1;
     this.resumeNarrationOnNextResume = false;
     this.isGloballyPaused = false;
+    this.activeNarrations.clear();
+    this.pausedActiveNarrations.clear();
 
     // Unload all cached narrations
     Object.values(this.narrations).forEach((narration) => {

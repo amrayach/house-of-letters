@@ -94,14 +94,15 @@ flowchart LR
 
 ### Audio
 
-- `audioEngine.js` is the only working audio backend.
-- `themeMixer.js` is not a real mixer yet. Do not assume `letter.theme` changes playback.
+- `audioEngine.js` is the only working audio backend. It manages dual themes (themeA + themeB) and narrations.
+- `themeMixer.js` owns the per-frame crossfade computation: it receives camera z-position and calls `audioEngine.setThemeVolumes()`.
 - `ProximityManager` decides when narration starts/stops; `main.js` decides when the overall audio system is initialized.
 
 ### Theme mixing
 
-- Current owner is nominal only: `src/audio/themeMixer.js`.
-- Current behavior is logging/state only; soundtrack switching still effectively belongs to `audioEngine.playBackgroundTheme(AUDIO.THEME_PATH)` in `main.js`.
+- Owner: `src/audio/themeMixer.js`.
+- Computes linear crossfade between theme A (zones 1-2) and theme B (zones 3-4) based on camera z-position.
+- `audioEngine.js` owns the Howl instances, ducking, pause/resume, and disposal for both themes.
 
 ### Proximity
 

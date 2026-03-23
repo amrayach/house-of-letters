@@ -30,7 +30,9 @@
 - Treat `src/audio/themeMixer.js` as placeholder until it actually controls playback.
 - Treat `src/data/letters.json` as declarative content, not a runtime state cache.
 - Do not back-fill speculative chronology fields into `src/data/letters.json` while exact per-letter dates are still unavailable.
-- Letter z-positions are temporally meaningful: each paper's z reflects its anchor date relative to paper 1. Do not add z-jitter, randomize z-positions, or redistribute z evenly within zones — this would destroy the temporal signal. X-positions (meander) are not temporally meaningful and can be jittered or redesigned independently.
+- Letter z-positions are temporally meaningful: each paper's z reflects its anchor date relative to paper 1. Do not add z-jitter, randomize z-positions, or redistribute z evenly within zones — this would destroy the temporal signal. X-positions use a widening corridor layout (zone-dependent spread) and are not temporally meaningful.
+- Letter x-positions follow the widening corridor intent: zone 1 is a narrow passage (centered), zone 4 is a wide room (±10 units). Do not flatten all papers to x=0 or impose a uniform x-spread across zones — the spatial widening is the core visitor experience metaphor.
+- Letter orientation faces the corridor centerline (x=0) with a forward bias, not the world origin. Papers at the center face forward; papers further out angle inward.
 
 ## Performance-sensitive areas
 
@@ -62,7 +64,9 @@
 - Letting stale async narration loads start after proximity was cleared or switched to another letter
 - Letting per-frame `setNarrationVolume` use `audioEngine.currentNarrationLetterId` instead of `currentTargetState.audioActiveId` — the former would auto-resume narrations that `deactivateNarration` just paused
 - Letting per-frame `setNarrationVolume` use visual `activeId` instead of `audioActiveId` — volume must be computed from distance to the audio-active letter, not the visually-targeted letter
-- Re-coupling audio activation with visual targeting (viewDot/facingDot) — narration activation must remain distance-only via `audioActiveId`
+- Re-coupling audio activation with visual targeting (viewDot/facingDot) — narration activation must remain distance-only via `audioActiveId`/`audioActiveIds`
+- In polyphonic mode, using a single monotonic request token for stale-load prevention — each narration uses `activeNarrations.has(letterId)` membership check after async
+- In polyphonic mode, ducking theme based on sum of all narration volumes instead of `Math.max` — sum causes over-ducking with multiple narrations
 - Letting per-frame `setNarrationVolume` run during non-IDLE inspect phases — inspect sets full volume via `restartNarration`, per-frame updates must not override it
 - Letting candidate scoring drift back to raw root-center distance and ignoring readable-side metadata
 - Letting focus scoring depend on display-mesh raycasting instead of the dedicated side colliders

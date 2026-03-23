@@ -6,6 +6,7 @@ Use this as the watchlist for shell-state and overlay regressions after UI edits
 
 | State | Failure pattern | Why fragile | Primary trigger | Regression check |
 | --- | --- | --- | --- | --- |
+| landing screen | panels overlap center title on short viewports, or bottom panels misalign on mobile | grid uses `min-height: 100%` with `1fr auto 1fr` rows — short viewports push panels into scroll; desktop `align-self: end` on bottom panels persists into mobile flex layout if not reset | browser with toolbars/debug banners reducing viewport height, resize, mobile portrait | verify at 1440×750 (no overlap, scrollable), 390×844 (all four panels aligned), 1920×1080 (foyer composition intact) |
 | loading screen | HUD/debug leaks under the overlay, or the new panel loses hierarchy/crops at narrow widths | renderer and overlay DOM mount before the loading handoff completes, and the panel now depends on responsive spacing | boot, slow loads, skip intro, narrow viewport reload | confirm only loading scene and loading overlay are visible before transition and that the loading panel remains centered/readable |
 | start screen | reticle/controls/bird's-eye/touch HUD leak into the shell, or the entry panel collapses into a flat full-screen veil | shell visibility is split between HTML defaults, CSS, and runtime gating, and the shell now relies on a single focal panel | loading completion, resize, refresh on mobile | confirm start shell is visually exclusive on desktop/mobile and that the entry panel keeps clear title-copy-CTA hierarchy |
 | pause screen | active HUD remains visible behind the pause shell | pause depends on different desktop and mobile control branches, but shell gating should now own all overlay visibility | desktop unlock, mobile pause tap, resume failure | confirm pause shell is exclusive and recoverable in both input modes |
@@ -34,6 +35,8 @@ Run these after any shell, HUD, pointer-lock, or responsive overlay change:
 8. Mobile degraded deferred session -> pill visible -> pause -> resume -> inspect -> exit.
 9. Mobile active-letter proximity with subtitle and preview visible.
 10. Loading/start panel hierarchy at a narrow mobile width after resize or refresh.
+11. Landing page at 1440×750 (short desktop) — panels don't overlap title, page scrolls.
+12. Landing page at 390×844 (mobile) — all four panels left-aligned consistently.
 
 ## Current evidence set
 

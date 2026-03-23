@@ -43,9 +43,9 @@ Client request series: movement speed / timeline / audio / landing page (session
 - New: `isGloballyPaused` state to prevent per-frame volume updates from interfering with pause screen/visibility handler
 
 ### New constants (constants.js)
-- `AUDIO.NARRATION_FADE_NEAR` (2) — full volume distance
-- `AUDIO.NARRATION_FADE_FAR` (10) — zero volume distance
-- `AUDIO.NARRATION_FADE_EXPONENT` (1.5) — falloff curve shape
+- `AUDIO.NARRATION_FADE_NEAR` (1.5) — full volume distance
+- `AUDIO.NARRATION_FADE_FAR` (12) — zero volume distance (also audio proximity radius)
+- `AUDIO.NARRATION_FADE_EXPONENT` (0.7) — falloff curve shape (<1 = convex/slower drop)
 - Removed: `AUDIO.MAX_DISTANCE` (unused placeholder, replaced by above)
 
 ### Files changed

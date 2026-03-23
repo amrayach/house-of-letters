@@ -64,15 +64,20 @@ export const MODEL = {
 
 // Audio
 export const AUDIO = {
-  THEME_PATH: '/assets/audio/theme_1.mp3',
+  THEME_PATH_A: '/assets/audio/theme_1.mp3',
+  THEME_PATH_B: '/assets/audio/theme_2.mp3',
+  THEME_PATH: '/assets/audio/theme_1.mp3',  // legacy single-theme fallback
   THEME_VOLUME: 1.0,
   NARRATION_VOLUME: 1.0,
   FADE_DURATION: 500,
   DUCKING_VOLUME: 0.3,
-  NARRATION_FADE_NEAR: 2,      // full volume at this distance
-  NARRATION_FADE_FAR: 10,      // volume reaches 0 at this distance
-  NARRATION_FADE_EXPONENT: 1.5,  // falloff curve (1=linear, >1=faster initial drop)
+  NARRATION_FADE_NEAR: 1.5,    // full volume at this distance
+  NARRATION_FADE_FAR: 8,       // volume reaches 0 at this distance
+  NARRATION_FADE_EXPONENT: 1.0,  // falloff curve (<1=convex/slower drop, 1=linear, >1=concave/faster drop)
   AUDIO_SWITCH_HYSTERESIS: 1.5,  // world-space units; prevents audio flapping in dense zones
+  POLYPHONIC_MODE: false,        // true = all in-range narrations play simultaneously
+  THEME_CROSSFADE_START: 100,    // world-z where crossfade begins (zone 2 territory, theme A)
+  THEME_CROSSFADE_END: 180,      // world-z where crossfade ends (zone 3 territory, theme B)
 };
 
 // Interaction

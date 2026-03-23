@@ -326,6 +326,7 @@ function createEmptyTargetState() {
     activeSide: null,
     activeScore: null,
     audioActiveId: null,
+    audioActiveIds: [],
   };
 }
 
@@ -1174,7 +1175,7 @@ function blurActiveElement() {
 }
 
 function prepareAudio() {
-  audioEngine.prepareBackgroundTheme(AUDIO.THEME_PATH);
+  audioEngine.prepareBothThemes(AUDIO.THEME_PATH_A, AUDIO.THEME_PATH_B);
   lettersData.forEach((letter) => {
     if (letter.narration) {
       audioEngine.registerNarration(letter.id, letter.narration);
@@ -1259,7 +1260,7 @@ function updateActiveLetterUI(activeLetterId) {
   }
 
   displayedActiveLetterId = activeLetterId;
-  themeMixer.update(activeLetterId);
+  themeMixer.update(camera.position.z);
 
   if (!activeLetterId) {
     clearActiveLetterUI();
@@ -1664,7 +1665,7 @@ function handleStartExperience() {
   if (import.meta.env.DEV) performance.mark('hol:start-begin');
   bootstrapExperience();
   if (import.meta.env.DEV) performance.mark('hol:start-after-bootstrap');
-  audioEngine.playBackgroundTheme(AUDIO.THEME_PATH);
+  audioEngine.playBothThemes(AUDIO.THEME_PATH_A, AUDIO.THEME_PATH_B);
   if (import.meta.env.DEV) performance.mark('hol:start-after-audio');
 
   if (isTouchDevice) {
@@ -2161,7 +2162,10 @@ function animate() {
     if (proximityManager) {
       if (uiState === UI_STATE.ACTIVE && inspectState.phase === INSPECT_PHASE.IDLE) {
         currentTargetState = proximityManager.update();
-      } else if (currentTargetState.activeId || currentTargetState.candidateId || currentTargetState.audioActiveId) {
+      } else if (currentTargetState.activeId || currentTargetState.candidateId ||
+                 (AUDIO.POLYPHONIC_MODE
+                   ? currentTargetState.audioActiveIds?.length > 0
+                   : currentTargetState.audioActiveId)) {
         currentTargetState = proximityManager.clearTargeting();
       } else {
         currentTargetState = EMPTY_TARGET_STATE;
@@ -2176,11 +2180,22 @@ function animate() {
 
     // Spatial narration volume — only during immersive play, not during inspect
     if (inspectState.phase === INSPECT_PHASE.IDLE) {
-      const audioId = currentTargetState?.audioActiveId ?? null;
-      audioEngine.setNarrationVolume(
-        computeNarrationVolume(audioId),
-        audioId
-      );
+      if (AUDIO.POLYPHONIC_MODE) {
+        const ids = currentTargetState?.audioActiveIds ?? [];
+        if (ids.length > 0) {
+          const volumeMap = new Map();
+          for (const id of ids) {
+            volumeMap.set(id, computeNarrationVolume(id));
+          }
+          audioEngine.setPolyphonicVolumes(volumeMap);
+        }
+      } else {
+        const audioId = currentTargetState?.audioActiveId ?? null;
+        audioEngine.setNarrationVolume(
+          computeNarrationVolume(audioId),
+          audioId
+        );
+      }
     }
 
     syncInspectUi();

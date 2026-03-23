@@ -1,7 +1,7 @@
 /**
- * Letter Position Generator — Temporal Layout v4
- * Distributes letter z-positions proportionally to temporal gaps between diary papers.
- * X-positions use the meander algorithm with zone 3 mirrored for S-flow.
+ * Letter Position Generator — Temporal Layout v5 (Widening Corridor)
+ * Z-positions: proportional to temporal gaps between diary papers.
+ * X-positions: zone-dependent corridor spread (narrow → wide room).
  * Deterministic via seeded PRNG.
  *
  * Input: src/data/diary_index_001_048.csv (client diary index)
@@ -23,19 +23,14 @@ const TEMPORAL_CONFIG = {
   validYearRange: [1988, 1992], // auto-correct year typos outside this range
 };
 
-// ── Meander configuration (x-axis only) ──────────────────────────────
-const MEANDER_CONFIG = {
-  freq: 0.16,
-  freq2: 0.05,
-  mix2: 0.5,
-  phase: 2.45,
-  baseAmp: 1.5,
-  maxAmp: 9,
-  ampCurve: 0.8,
-  jitX: 0.2,
-  minSp: 2.5,
-  seed: 42,
-  mirrorZ3: true,
+// ── Corridor spread configuration (x-axis only) ─────────────────────
+// Widening corridor: narrow passage → open room.
+// Spread values are half-widths in JSON units (multiplied by GRID_SCALE at runtime).
+const CORRIDOR_CONFIG = {
+  zoneSpread: { 1: 0, 2: 3, 3: 6, 4: 10 },  // half-width per zone
+  blendPapers: 2,   // number of papers over which to blend between zone spreads
+  minSp: 2.5,       // minimum 2D distance between any two papers
+  seed: 42,         // deterministic PRNG seed
 };
 
 // ── Zone definitions (letterCount only — z-ranges are derived) ───────
@@ -309,45 +304,45 @@ function deriveZoneBoundaries(positions) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// MEANDER X-POSITION (unchanged algorithm)
+// CORRIDOR X-SPREAD (zone-dependent widening)
 // ═══════════════════════════════════════════════════════════════════════
 
-function meanderX(z, amp) {
-  const { freq, freq2, mix2, phase } = MEANDER_CONFIG;
-  return amp * (Math.sin(freq * z + phase) + mix2 * Math.sin(freq2 * z + phase * 1.7 + 0.8));
-}
+/**
+ * Compute the effective half-width for a paper based on its zone and position
+ * within that zone. Papers near zone boundaries blend between adjacent zone
+ * spreads for a smooth corridor widening effect.
+ */
+function computeCorridorSpread(paperIndex, zone, indexInZone, zoneLetterCount) {
+  const { zoneSpread, blendPapers } = CORRIDOR_CONFIG;
+  const currentSpread = zoneSpread[zone] ?? 0;
 
-function amplitudeAt(z) {
-  const { baseAmp, maxAmp, ampCurve } = MEANDER_CONFIG;
-  const totalZRange = ZONES[ZONES.length - 1].zEnd - ZONES[0].zStart;
-  const t = Math.max(0, Math.min(1, (z - ZONES[0].zStart) / totalZRange));
-  return baseAmp + (maxAmp - baseAmp) * Math.pow(t, ampCurve);
-}
-
-function applyZone3Mirror(x, z) {
-  if (!MEANDER_CONFIG.mirrorZ3) return x;
-
-  const z3 = ZONES.find((zo) => zo.id === 3);
-  if (!z3) return x;
-
-  const blendWidth = 3;
-  const enterStart = z3.zStart - blendWidth;
-  const enterEnd = z3.zStart + blendWidth;
-  const exitStart = z3.zEnd - blendWidth;
-  const exitEnd = z3.zEnd + blendWidth;
-
-  if (z >= enterEnd && z <= exitStart) {
-    return -x;
-  } else if (z > enterStart && z < enterEnd) {
-    const t = (z - enterStart) / (enterEnd - enterStart);
-    const blend = t * t * (3 - 2 * t);
-    return x * (1 - 2 * blend);
-  } else if (z > exitStart && z < exitEnd) {
-    const t = (z - exitStart) / (exitEnd - exitStart);
-    const blend = t * t * (3 - 2 * t);
-    return x * (-1 + 2 * blend);
+  // Skip blending for zones with too few papers to have distinct entry/exit regions
+  if (zoneLetterCount <= blendPapers * 2) {
+    return currentSpread;
   }
-  return x;
+
+  // Find adjacent zone spreads for blending
+  const prevZone = ZONES.find((z) => z.id === zone - 1);
+  const nextZone = ZONES.find((z) => z.id === zone + 1);
+  const prevSpread = prevZone ? (zoneSpread[prevZone.id] ?? 0) : currentSpread;
+  const nextSpread = nextZone ? (zoneSpread[nextZone.id] ?? 0) : currentSpread;
+
+  // Blend at zone entry (first blendPapers papers)
+  if (indexInZone < blendPapers && prevZone) {
+    const t = indexInZone / blendPapers;
+    const smooth = t * t * (3 - 2 * t); // smoothstep
+    return prevSpread + (currentSpread - prevSpread) * smooth;
+  }
+
+  // Blend at zone exit (last blendPapers papers)
+  const distFromEnd = zoneLetterCount - 1 - indexInZone;
+  if (distFromEnd < blendPapers && nextZone) {
+    const t = distFromEnd / blendPapers;
+    const smooth = t * t * (3 - 2 * t); // smoothstep
+    return nextSpread + (currentSpread - nextSpread) * smooth;
+  }
+
+  return currentSpread;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -355,19 +350,27 @@ function applyZone3Mirror(x, z) {
 // ═══════════════════════════════════════════════════════════════════════
 
 function generateLetterPositions(temporalPositions) {
-  const rand = mulberry32(MEANDER_CONFIG.seed);
+  const rand = mulberry32(CORRIDOR_CONFIG.seed);
   const allPositions = [];
+
+  // Track index within each zone for blending
+  const zoneCounters = {};
 
   for (const tp of temporalPositions) {
     const z = tp.z;
+    const zone = tp.zone;
 
-    // Meandering centerline x (uses derived zone boundaries)
-    const amp = amplitudeAt(z);
-    let x = meanderX(z, amp);
-    x = applyZone3Mirror(x, z);
+    if (!zoneCounters[zone]) zoneCounters[zone] = 0;
+    const indexInZone = zoneCounters[zone]++;
+    const zoneLetterCount = ZONES.find((zn) => zn.id === zone)?.letterCount ?? 1;
 
-    // Perpendicular x-jitter only (no z-jitter — z is temporally meaningful)
-    x += (rand() - 0.5) * 2 * MEANDER_CONFIG.jitX;
+    // Corridor spread: zone-dependent half-width with boundary blending
+    const spread = computeCorridorSpread(
+      allPositions.length, zone, indexInZone, zoneLetterCount,
+    );
+
+    // Random x within ±spread (uniform distribution via seeded PRNG)
+    const x = spread > 0 ? (rand() - 0.5) * 2 * spread : 0;
 
     allPositions.push({
       id: tp.paperId,
@@ -378,7 +381,7 @@ function generateLetterPositions(temporalPositions) {
   }
 
   // ── Spacing enforcement relaxation ─────────────────────────────────
-  const minSp = MEANDER_CONFIG.minSp;
+  const minSp = CORRIDOR_CONFIG.minSp;
   for (let pass = 0; pass < 20; pass++) {
     let moved = false;
     for (let i = 0; i < allPositions.length; i++) {
@@ -460,7 +463,7 @@ function validateSpacing(letters) {
   for (let i = 0; i < letters.length; i++) {
     for (let j = i + 1; j < letters.length; j++) {
       const dist = distance2D(letters[i].position, letters[j].position);
-      if (dist < MEANDER_CONFIG.minSp) {
+      if (dist < CORRIDOR_CONFIG.minSp) {
         console.log(
           `  WARNING: Letters ${letters[i].id} and ${letters[j].id} are only ${dist.toFixed(2)} units apart!`
         );
@@ -470,7 +473,7 @@ function validateSpacing(letters) {
   }
 
   if (valid) {
-    console.log(`  All letters meet minimum spacing requirement of ${MEANDER_CONFIG.minSp} units.`);
+    console.log(`  All letters meet minimum spacing requirement of ${CORRIDOR_CONFIG.minSp} units.`);
   }
 
   return valid;
@@ -481,8 +484,8 @@ function validateSpacing(letters) {
 // ═══════════════════════════════════════════════════════════════════════
 
 function main() {
-  console.log('Letter Position Generator — Temporal Layout v4');
-  console.log('===============================================\n');
+  console.log('Letter Position Generator — Temporal Layout v5 (Widening Corridor)');
+  console.log('================================================================\n');
 
   // 1. Parse CSV and extract anchor dates
   console.log('Parsing diary index CSV...');
@@ -517,7 +520,7 @@ function main() {
   console.log(`  Total z-range: ${temporalPositions[0].z.toFixed(1)} to ${temporalPositions[temporalPositions.length - 1].z.toFixed(1)} (${(temporalPositions[temporalPositions.length - 1].z - temporalPositions[0].z).toFixed(1)} units)`);
 
   // 5. Generate full positions (x from meander, spacing enforcement)
-  console.log('\nGenerating meander x-positions and enforcing spacing...');
+  console.log('\nGenerating corridor x-positions and enforcing spacing...');
   const newPositions = generateLetterPositions(temporalPositions);
   console.log(`  Generated ${newPositions.length} letter positions.`);
 
@@ -543,9 +546,20 @@ function main() {
     );
   }
 
-  // 8. Configuration summary
+  // 8. Configuration summary + x-range per zone
+  console.log('\nX-range per zone:');
+  for (const zone of ZONES) {
+    const zoneLetters = finalLetters.filter((l) => l.zone === zone.id);
+    const xValues = zoneLetters.map((l) => l.position.x);
+    const xMin = Math.min(...xValues);
+    const xMax = Math.max(...xValues);
+    const xAvg = xValues.reduce((a, b) => a + b, 0) / xValues.length;
+    console.log(
+      `  Zone ${zone.id}: x ∈ [${xMin.toFixed(2)}, ${xMax.toFixed(2)}], avg=${xAvg.toFixed(2)}, spread=${CORRIDOR_CONFIG.zoneSpread[zone.id]}`
+    );
+  }
   console.log('\nTemporal config:', JSON.stringify(TEMPORAL_CONFIG, null, 2));
-  console.log('Meander config:', JSON.stringify(MEANDER_CONFIG, null, 2));
+  console.log('Corridor config:', JSON.stringify(CORRIDOR_CONFIG, null, 2));
 
   // 9. Write output
   const outputPath = path.join(__dirname, '../src/data/letters.json');

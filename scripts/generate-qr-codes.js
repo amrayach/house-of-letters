@@ -1,8 +1,8 @@
 /**
- * Generate exhibition QR codes for /listen/?p=1 through /listen/?p=11.
+ * Generate exhibition QR codes for /listen/?p=1 through /listen/?p=12.
  *
  * Output:
- *   generated/qr-codes/qr-paper-{1..11}.svg  — individual SVGs with bilingual labels
+ *   generated/qr-codes/qr-paper-{1..12}.svg  — individual SVGs with bilingual labels
  *   generated/qr-codes/exhibition-qr-codes.svg — single print sheet, 2×6 grid
  *
  * Usage:

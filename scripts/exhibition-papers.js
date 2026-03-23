@@ -1,7 +1,7 @@
 /**
  * Exhibition paper metadata — single source of truth.
  *
- * Maps listener IDs (1–11, used in QR URLs and audio filenames) to archive
+ * Maps listener IDs (1–12, used in QR URLs and audio filenames) to archive
  * paper numbers, Arabic archival names, and diary entry date spans.
  *
  * Imported by: scripts/generate-qr-codes.js
@@ -22,6 +22,8 @@ export const EXHIBITION_PAPERS = {
   9:  { archiveNum: 44, ar: 'الورقة الرابعة والأربعون',    dates: '27/5/1992 – 15/6/1992' },
   10: { archiveNum: 45, ar: 'الورقة الخامسة والأربعون',    dates: '15/6/1992 – 23/6/1992' },
   11: { archiveNum: 46, ar: 'الورقة السادسة والأربعون',    dates: '11/7/1992 – 14/7/1992' },
+  12: { archiveNum: 6,  ar: 'الورقة السادسة',              dates: '12/2/1991 – 7/4/1991' },
+  13: { archiveNum: 3,  ar: 'الورقة الثالثة',              dates: '19/7/1990 – 8/9/1990' },
 };
 
 export const EXHIBITION_PAPER_COUNT = Object.keys(EXHIBITION_PAPERS).length;

@@ -163,12 +163,13 @@
 
 - Only while `uiState === active`, `proximityManager.update()`:
   - runs two parallel passes over all letters:
-    - **audio proximity**: pure distance check within `NARRATION_FADE_FAR` (no facing requirement), tracks nearest letter as `audioActiveId`
+    - **audio proximity**: pure distance check within `NARRATION_FADE_FAR` (no facing requirement); in polyphonic mode (`AUDIO.POLYPHONIC_MODE`), tracks ALL letters in range as `audioActiveIds`; in single mode, tracks nearest letter as `audioActiveId` with hysteresis
     - **visual targeting**: scored from trigger-volume distance, readable-side view alignment, readable-side facing, and center-view focus bonus, tracks as `activeId`
-  - keeps a minimal targeting snapshot with `candidateId/candidateSide/candidateScore`, `activeId/activeSide/activeScore`, and `audioActiveId`
-  - audio proximity uses hysteresis (`AUDIO_SWITCH_HYSTERESIS`) to prevent flapping in dense zones
+  - keeps a minimal targeting snapshot with `candidateId/candidateSide/candidateScore`, `activeId/activeSide/activeScore`, `audioActiveId`, and `audioActiveIds`
+  - single-narration mode: audio proximity uses hysteresis (`AUDIO_SWITCH_HYSTERESIS`) to prevent flapping in dense zones
+  - polyphonic mode: all letters within audio range play simultaneously at distance-weighted volumes; no hysteresis needed since letters don't compete for a single slot
   - visual targeting uses sticky bias and switch margin so active selection does not flap between nearby letters
-  - the audio-active letter and the visually-targeted letter can be different (e.g., hearing nearest letter while looking at a different one)
+  - the audio-active letter(s) and the visually-targeted letter can be different (e.g., hearing nearest letter while looking at a different one)
 - `src/renderer/letters.js` now provides local-space interaction metadata per letter:
   - root bounds center and size
   - expanded trigger box
@@ -235,18 +236,22 @@
 
 ### 11. Narration and theme behavior
 
-- Background theme:
-  - theme auto-plays once buffered after the landing CTA click (`prepareBackgroundTheme` `onload` callback); `playBackgroundTheme` on `startBtn` click is a no-op if already playing
-  - it uses `Howl({ html5: true, loop: true })`
-  - it ducks proportionally while narration plays — theme volume interpolates between `AUDIO.THEME_VOLUME` and `AUDIO.DUCKING_VOLUME` based on narration volume ratio
-  - document visibility always pauses it when the tab is hidden
-  - document visibility only resumes it automatically when `main.js` still reports `uiState === active`
+- Background themes (dual-theme crossfade):
+  - two themes loaded at boot: theme A (`theme_1.mp3`, zones 1-2) and theme B (`theme_2.mp3`, zones 3-4)
+  - both auto-play once buffered; `themeMixer.update(cameraZ)` sets per-frame volumes based on camera z-position
+  - crossfade: linear interpolation between `THEME_CROSSFADE_START` (100 world-z, full A) and `THEME_CROSSFADE_END` (180 world-z, full B)
+  - both use `Howl({ html5: true, loop: true })`
+  - both duck proportionally while narration plays — `applyThemeDucking(duckRatio)` scales each theme's base volume by a common duck multiplier
+  - document visibility pauses both when the tab is hidden
+  - document visibility only resumes both automatically when `main.js` still reports `uiState === active`
 - Narration:
   - URLs are registered at start
   - actual `Howl` objects are created lazily on first proximity trigger
   - pending narration requests are invalidated on focus loss or target switches, so late audio loads cannot start after the user has already left that letter
-  - narration activation is driven by distance-only audio proximity (`audioActiveId`), independent of visual targeting (viewDot/facingDot) — turning away from a letter does not stop its narration
-  - narration volume scales with distance from the audio-active letter per frame (`AUDIO.NARRATION_FADE_NEAR` to `AUDIO.NARRATION_FADE_FAR` with configurable exponent)
+  - narration activation is driven by distance-only audio proximity, independent of visual targeting (viewDot/facingDot) — turning away from a letter does not stop its narration
+  - in polyphonic mode (`AUDIO.POLYPHONIC_MODE`): all letters within `NARRATION_FADE_FAR` play simultaneously at independent distance-based volumes; `setPolyphonicVolumes(volumeMap)` sets each Howl's volume per frame; theme ducks based on the loudest narration (`Math.max`), not the sum
+  - in single-narration mode: only the nearest letter plays; `setNarrationVolume(volume, activeId)` targets one narration per frame
+  - narration volume scales with distance per frame (`AUDIO.NARRATION_FADE_NEAR` to `AUDIO.NARRATION_FADE_FAR` with configurable exponent)
   - `activateNarration(letterId)` resumes from the paused position for the same letter, or pauses the old narration and starts fresh for a different letter
   - `deactivateNarration()` pauses (not stops) the narration, preserving the playhead position for later resume
   - `restartNarration(letterId)` always seeks to the beginning and plays at full volume — available in audioEngine but not currently called by main.js

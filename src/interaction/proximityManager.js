@@ -26,6 +26,7 @@ export class ProximityManager {
     this.activeSide = null;
     this.activeScore = 0;
     this.audioActiveLetter = null;
+    this.audioActiveLetters = new Set();
     this.audioProximityRadius = AUDIO.NARRATION_FADE_FAR;
     this.audioProximityRadiusSq = this.audioProximityRadius * this.audioProximityRadius;
     this.audioSwitchHysteresis = AUDIO.AUDIO_SWITCH_HYSTERESIS;
@@ -40,6 +41,7 @@ export class ProximityManager {
       activeSide: null,
       activeScore: null,
       audioActiveId: null,
+      audioActiveIds: [],
     };
 
     this.cameraPosition = new THREE.Vector3();
@@ -108,7 +110,16 @@ export class ProximityManager {
       diag.log('proximity', `clearTargeting id=${this.activeLetter.userData.id}`);
       this.deactivateLetter(this.activeLetter);
     }
-    this.deactivateAudioLetter();
+    if (AUDIO.POLYPHONIC_MODE) {
+      for (const letter of this.audioActiveLetters) {
+        audioEngine.deactivatePolyphonicNarration(letter.userData.id);
+      }
+      this.audioActiveLetters.clear();
+      this.targetState.audioActiveIds = [];
+      this.targetState.audioActiveId = null;
+    } else {
+      this.deactivateAudioLetter();
+    }
 
     this.activeLetter = null;
     this.activeSide = null;
@@ -129,12 +140,16 @@ export class ProximityManager {
     let activeCandidate = null;
     let nearestAudioLetter = null;
     let nearestAudioDistSq = Infinity;
+    const currentFrameAudioLetters = AUDIO.POLYPHONIC_MODE ? new Set() : null;
 
     this.letters.forEach((letter) => {
       const distSq = this.cameraPosition.distanceToSquared(letter.position);
 
       // Audio proximity: pure distance, no facing check
       if (distSq <= this.audioProximityRadiusSq) {
+        if (AUDIO.POLYPHONIC_MODE) {
+          currentFrameAudioLetters.add(letter);
+        }
         if (distSq < nearestAudioDistSq) {
           nearestAudioLetter = letter;
           nearestAudioDistSq = distSq;
@@ -162,7 +177,11 @@ export class ProximityManager {
     });
 
     // Audio proximity resolution
-    this.resolveAudioTarget(nearestAudioLetter, nearestAudioDistSq);
+    if (AUDIO.POLYPHONIC_MODE) {
+      this.resolvePolyphonicAudioTargets(currentFrameAudioLetters, nearestAudioLetter);
+    } else {
+      this.resolveAudioTarget(nearestAudioLetter, nearestAudioDistSq);
+    }
 
     if ((!activeCandidate || activeCandidate.score < ACTIVE_SCORE_FLOOR) && this.activeLetter) {
       activeCandidate = this.scoreSpecificSide(this.activeLetter, this.activeSide, focusHit);
@@ -412,6 +431,27 @@ export class ProximityManager {
     this.targetState.activeId = candidate ? candidate.letter.userData.id : null;
     this.targetState.activeSide = candidate ? candidate.side : null;
     this.targetState.activeScore = candidate ? candidate.score : null;
+  }
+
+  resolvePolyphonicAudioTargets(inRangeLetters, nearestLetter) {
+    // Deactivate letters that left range
+    for (const letter of this.audioActiveLetters) {
+      if (!inRangeLetters.has(letter)) {
+        audioEngine.deactivatePolyphonicNarration(letter.userData.id);
+        this.audioActiveLetters.delete(letter);
+      }
+    }
+
+    // Activate letters that entered range
+    for (const letter of inRangeLetters) {
+      if (!this.audioActiveLetters.has(letter)) {
+        audioEngine.activatePolyphonicNarration(letter.userData.id);
+        this.audioActiveLetters.add(letter);
+      }
+    }
+
+    this.targetState.audioActiveIds = Array.from(this.audioActiveLetters, (l) => l.userData.id);
+    this.targetState.audioActiveId = nearestLetter ? nearestLetter.userData.id : null;
   }
 
   activateAudioLetter(letter) {
