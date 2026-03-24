@@ -124,7 +124,8 @@ Observed runtime schema: 46 records, all with the same keys today.
 | Narration | `/assets/audio/narration_{n}.mp3` | only 15 narration files exist; records reuse them |
 | Theme | `/assets/audio/theme_1.mp3` or `/assets/audio/theme_2.mp3` | data exists, runtime switching does not |
 | Intro assets | `/3d_sednaya/*.js`, `/3d_sednaya/panchromatic.jpg` | used only by `LoadingScene`; `_headers` adds 7-day cache |
-| Exhibition listen audio | `/assets/listen/{id}_ar.mp3`, `/assets/listen/{id}_en.mp3` | standalone listener page; IDs 1-11; listener IDs map to archive paper numbers via `scripts/exhibition-papers.js`; not referenced by `letters.json` or the 3D archive runtime |
+| Exhibition listen audio | `/assets/listen/{id}_ar.mp3` | standalone listener page; IDs 1-13; listener IDs map to archive paper numbers via `scripts/exhibition-papers.js`; not referenced by `letters.json` or the 3D archive runtime |
+| Exhibition transcripts | `/assets/listen/transcripts/{id}_en.txt` | English translation transcripts; plain UTF-8 text with paragraph breaks; fetched by the listener page when English is selected; IDs 1, 2, 3, 5, 6, 7, 8, 9, 12 have transcripts; IDs 4, 10, 11, 13 are missing |
 
 ## Model/audio/image relationships
 
