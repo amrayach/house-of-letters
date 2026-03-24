@@ -158,6 +158,22 @@ body{
   box-shadow:0 0 24px rgba(102,136,204,.18);
 }
 .lang-btn[aria-pressed="true"]::before{opacity:1}
+.lang-label{
+  display:block;
+  font-size:1rem;
+  letter-spacing:.06em;
+}
+.lang-format{
+  display:block;
+  font-size:.7rem;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.44);
+  margin-top:4px;
+}
+.lang-btn[aria-pressed="true"] .lang-format{
+  color:rgba(255,255,255,.6);
+}
 
 /* --- Player --- */
 .player{
@@ -502,8 +518,14 @@ body{
       '</section>' +
 
       '<nav class="lang-selector reveal reveal-d2" role="radiogroup" aria-label="Language selection">' +
-        '<button class="lang-btn" id="btn-ar" type="button" lang="ar" aria-pressed="false" aria-label="Arabic">\u0627\u0644\u0639\u0631\u0628\u064A\u0629</button>' +
-        '<button class="lang-btn" id="btn-en" type="button" lang="en" aria-pressed="false" aria-label="English">English</button>' +
+        '<button class="lang-btn" id="btn-ar" type="button" lang="ar" aria-pressed="false" aria-label="Arabic narration">' +
+          '<span class="lang-label">\u0627\u0644\u0639\u0631\u0628\u064A\u0629</span>' +
+          '<span class="lang-format">\u266A narration</span>' +
+        '</button>' +
+        '<button class="lang-btn" id="btn-en" type="button" lang="en" aria-pressed="false" aria-label="English transcript">' +
+          '<span class="lang-label">English</span>' +
+          '<span class="lang-format">transcript</span>' +
+        '</button>' +
       '</nav>' +
 
       '<div class="player reveal reveal-d3" id="player" hidden>' +
