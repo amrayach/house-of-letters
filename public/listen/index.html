@@ -108,57 +108,6 @@ body{
 }
 .paper-label[hidden]{display:none}
 
-/* --- Language selector --- */
-.lang-selector{
-  display:flex;
-  gap:12px;
-  justify-content:center;
-  padding:clamp(28px,5vh,44px) 0 0;
-  width:100%;
-  max-width:380px;
-}
-.lang-btn{
-  flex:1;
-  max-width:160px;
-  min-height:52px;
-  padding:14px 12px;
-  background:transparent;
-  color:#fff;
-  border:1px solid rgba(255,255,255,.28);
-  border-radius:14px;
-  font-family:inherit;
-  font-size:1rem;
-  letter-spacing:.06em;
-  cursor:pointer;
-  transition:all .3s ease;
-  position:relative;
-  overflow:hidden;
-}
-.lang-btn::before{
-  content:'';
-  position:absolute;
-  inset:0;
-  border-radius:inherit;
-  background:radial-gradient(circle at top center,rgba(112,144,255,.08) 0%,transparent 60%);
-  opacity:0;
-  transition:opacity .3s ease;
-  pointer-events:none;
-}
-.lang-btn:hover::before,.lang-btn:focus-visible::before{opacity:1}
-.lang-btn:hover,.lang-btn:focus-visible{
-  border-color:rgba(255,255,255,.58);
-}
-.lang-btn:focus-visible{
-  outline:2px solid rgba(102,136,204,.7);
-  outline-offset:2px;
-}
-.lang-btn[aria-pressed="true"]{
-  border-color:rgba(102,136,204,.7);
-  background:linear-gradient(180deg,rgba(11,16,26,.78) 0%,rgba(5,6,10,.9) 100%);
-  box-shadow:0 0 24px rgba(102,136,204,.18);
-}
-.lang-btn[aria-pressed="true"]::before{opacity:1}
-
 /* --- Player --- */
 .player{
   width:100%;
@@ -349,43 +298,6 @@ body{
 }
 :focus:not(:focus-visible){outline:none}
 
-/* --- Transcript pane --- */
-.transcript-pane{
-  width:100%;
-  max-width:380px;
-  padding:clamp(28px,5vh,40px) 0 0;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-}
-.transcript-pane[hidden]{display:none}
-.transcript-scroll{
-  max-height:min(54vh, 420px);
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
-  -webkit-mask-image:linear-gradient(to bottom, #000 85%, transparent 100%);
-  mask-image:linear-gradient(to bottom, #000 85%, transparent 100%);
-  padding-bottom:24px;
-}
-.transcript-scroll::-webkit-scrollbar{width:3px}
-.transcript-scroll::-webkit-scrollbar-track{background:transparent}
-.transcript-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:2px}
-.transcript-text{
-  font-family:'Courier New',Courier,monospace;
-  font-size:.95rem;
-  line-height:1.7;
-  color:rgba(255,255,255,.82);
-  text-align:left;
-  white-space:pre-wrap;
-  word-wrap:break-word;
-}
-.transcript-text p{
-  margin-bottom:1.2em;
-}
-.transcript-text p:last-child{
-  margin-bottom:0;
-}
-
 .noscript-msg{
   text-align:center;
   padding:48px 24px;
@@ -419,7 +331,6 @@ body{
   var MIN_ID = 1;
   var MAX_ID = 13;
   var LANG_AR = 'ar';
-  var LANG_EN = 'en';
 
   // Exhibition paper metadata — synced from scripts/exhibition-papers.js
   // When editing, update BOTH locations.
@@ -458,10 +369,6 @@ body{
     return '/assets/listen/' + id + '_' + lang + '.mp3';
   }
 
-  function transcriptPath(id) {
-    return '/assets/listen/transcripts/' + id + '_en.txt';
-  }
-
   function formatTime(sec) {
     if (!sec || !isFinite(sec)) return '0:00';
     var m = Math.floor(sec / 60);
@@ -498,15 +405,10 @@ body{
       '<section class="paper-id reveal reveal-d1">' +
         '<div class="paper-name-ar" lang="ar" dir="rtl">' + paper.ar + '</div>' +
         '<div class="paper-dates" dir="ltr">' + paper.dates + '</div>' +
-        '<p class="paper-label" id="paper-label" lang="en">Paper ' + paper.archiveNum + '</p>' +
+        '<p class="paper-label" id="paper-label" lang="en" hidden>Paper ' + paper.archiveNum + '</p>' +
       '</section>' +
 
-      '<nav class="lang-selector reveal reveal-d2" role="radiogroup" aria-label="Language selection">' +
-        '<button class="lang-btn" id="btn-ar" type="button" lang="ar" aria-pressed="false" aria-label="Arabic">\u0627\u0644\u0639\u0631\u0628\u064A\u0629</button>' +
-        '<button class="lang-btn" id="btn-en" type="button" lang="en" aria-pressed="false" aria-label="English">English</button>' +
-      '</nav>' +
-
-      '<div class="player reveal reveal-d3" id="player" hidden>' +
+      '<div class="player reveal reveal-d2" id="player">' +
         '<p class="loading-indicator" id="loading-msg" aria-live="polite" aria-atomic="true">Loading</p>' +
         '<button class="play-btn" id="play-btn" type="button" disabled aria-label="Play">' + SVG_PLAY + '</button>' +
         '<div class="progress-wrap">' +
@@ -520,20 +422,12 @@ body{
         '</div>' +
       '</div>' +
 
-      '<div class="transcript-pane reveal reveal-d3" id="transcript-pane" hidden>' +
-        '<p class="loading-indicator" id="transcript-loading" aria-live="polite" aria-atomic="true">Loading</p>' +
-        '<div class="transcript-scroll" id="transcript-scroll">' +
-          '<article class="transcript-text" id="transcript-text" role="article" lang="en"></article>' +
-        '</div>' +
-      '</div>';
+    '';
 
     initAudio(id);
   }
 
   function initAudio(id) {
-    var btnAr = document.getElementById('btn-ar');
-    var btnEn = document.getElementById('btn-en');
-    var paperLabel = document.getElementById('paper-label');
     var player = document.getElementById('player');
     var playBtn = document.getElementById('play-btn');
     var progressTrack = document.getElementById('progress-track');
@@ -541,136 +435,26 @@ body{
     var timeCurrent = document.getElementById('time-current');
     var timeDuration = document.getElementById('time-duration');
     var loadingMsg = document.getElementById('loading-msg');
-    var transcriptPane = document.getElementById('transcript-pane');
-    var transcriptLoading = document.getElementById('transcript-loading');
-    var transcriptText = document.getElementById('transcript-text');
-    var transcriptScroll = document.getElementById('transcript-scroll');
 
     var audio = new Audio();
     audio.preload = 'metadata';
-    var currentLang = null;
     var isPlaying = false;
     var hasError = false;
     var raf = null;
-    var transcriptCache = {};
 
-    function resetAudioPlayer() {
-      isPlaying = false;
-      hasError = false;
-      playBtn.innerHTML = SVG_PLAY;
-      playBtn.setAttribute('aria-label', 'Play');
-      playBtn.disabled = true;
-      progressFill.style.width = '0%';
-      timeCurrent.textContent = '0:00';
-      timeDuration.textContent = '0:00';
-      loadingMsg.hidden = false;
-      loadingMsg.textContent = 'Loading';
-      loadingMsg.classList.remove('error-state-msg');
-      if (raf) { cancelAnimationFrame(raf); raf = null; }
-      audio.pause();
-      // Remove stale retry button
-      var oldRetry = document.getElementById('retry-btn');
-      if (oldRetry) oldRetry.remove();
-    }
-
-    function showAudioPlayer(langId) {
-      transcriptPane.hidden = true;
-      player.hidden = false;
-      resetAudioPlayer();
-      audio.src = audioPath(langId, LANG_AR);
-      audio.load();
-    }
-
-    function showTranscript(langId) {
-      player.hidden = true;
-      audio.pause();
-      if (raf) { cancelAnimationFrame(raf); raf = null; }
-
-      transcriptPane.hidden = false;
-      transcriptText.innerHTML = '';
-      transcriptScroll.scrollTop = 0;
-
-      // Check cache first
-      if (transcriptCache[langId]) {
-        renderTranscriptText(transcriptCache[langId]);
-        return;
-      }
-
-      // Show loading
-      transcriptLoading.hidden = false;
-      transcriptLoading.textContent = 'Loading';
-      transcriptLoading.classList.remove('error-state-msg');
-
-      fetch(transcriptPath(langId))
-        .then(function(res) {
-          if (!res.ok) throw new Error(res.status);
-          var ct = res.headers.get('content-type') || '';
-          if (ct.indexOf('text/html') !== -1) throw new Error('not-found');
-          return res.text();
-        })
-        .then(function(text) {
-          transcriptCache[langId] = text;
-          renderTranscriptText(text);
-        })
-        .catch(function() {
-          transcriptLoading.textContent = 'Transcript not yet available';
-          transcriptLoading.hidden = false;
-          transcriptLoading.classList.add('error-state-msg');
-        });
-    }
-
-    function renderTranscriptText(text) {
-      transcriptLoading.hidden = true;
-      var paragraphs = text.split(/\n\n+/);
-      var html = '';
-      for (var i = 0; i < paragraphs.length; i++) {
-        var p = paragraphs[i].trim();
-        if (p) {
-          html += '<p>' + escapeHtml(p) + '</p>';
-        }
-      }
-      transcriptText.innerHTML = html;
-    }
-
-    function escapeHtml(str) {
-      return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    function selectLang(lang) {
-      if (currentLang === lang) return;
-      currentLang = lang;
-
-      // Update button states
-      btnAr.setAttribute('aria-pressed', lang === LANG_AR ? 'true' : 'false');
-      btnEn.setAttribute('aria-pressed', lang === LANG_EN ? 'true' : 'false');
-
-      // Update document direction for Arabic
-      if (lang === LANG_AR) {
-        document.documentElement.lang = 'ar';
-        document.documentElement.dir = 'rtl';
-        paperLabel.hidden = true;
-        showAudioPlayer(id);
-      } else {
-        document.documentElement.lang = 'en';
-        document.documentElement.dir = 'ltr';
-        paperLabel.hidden = false;
-        showTranscript(id);
-      }
-    }
+    // Set Arabic direction and start loading
+    document.documentElement.lang = 'ar';
+    document.documentElement.dir = 'rtl';
+    audio.src = audioPath(id, LANG_AR);
+    audio.load();
 
     audio.addEventListener('loadedmetadata', function() {
-      if (currentLang !== LANG_AR) return;
       timeDuration.textContent = formatTime(audio.duration);
       loadingMsg.hidden = true;
       playBtn.disabled = false;
     });
 
     audio.addEventListener('error', function() {
-      if (currentLang !== LANG_AR) return;
       hasError = true;
       loadingMsg.textContent = 'Audio not yet available';
       loadingMsg.hidden = false;
@@ -715,7 +499,7 @@ body{
     }
 
     playBtn.addEventListener('click', function() {
-      if (hasError || currentLang !== LANG_AR) return;
+      if (hasError) return;
       if (isPlaying) {
         audio.pause();
         isPlaying = false;
@@ -776,8 +560,6 @@ body{
       updateProgress();
     });
 
-    btnAr.addEventListener('click', function() { selectLang(LANG_AR); });
-    btnEn.addEventListener('click', function() { selectLang(LANG_EN); });
   }
 })();
 </script>
