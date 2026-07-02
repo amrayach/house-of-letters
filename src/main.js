@@ -13,7 +13,7 @@ import { ProximityManager } from '@interaction/proximityManager.js';
 import { AUDIO, ANIMATION, INSPECT, LOADING_TIMEOUT_MS, TIMELINE, VELOCITY } from '@config/constants.js';
 import { computeWalkingSpeed, getCurrentZone } from '@config/zoneVelocity.js';
 import { START_SHELL_CONTENT } from '@config/startShellContent.js';
-import { LANDING_CONTENT } from '@config/landingContent.js';
+import { LANDING_COPY } from '@config/siteCopy.js';
 import lettersData from '@data/letters.json';
 import { validatedProvisionalChronology } from '@data/provisionalChronology.js';
 import { diag } from '@utils/diagnostics.js';
@@ -973,36 +973,62 @@ function syncStartShellContent() {
   setElementHidden(startContextBlock, !START_SHELL_CONTENT.context);
 }
 
-function syncLandingContent() {
-  if (!landingScreen) return;
-  const subtitleEl = landingScreen.querySelector('.landing-subtitle');
-  if (subtitleEl) subtitleEl.textContent = LANDING_CONTENT.subtitle;
+const LANG_STORAGE_KEY = 'hod-lang';
 
-  LANDING_CONTENT.panels.forEach((panel) => {
-    const panelEl = landingScreen.querySelector(`[data-panel="${panel.id}"]`);
-    if (!panelEl) return;
-    const body = panelEl.querySelector('.landing-panel-body');
-    const kicker = panelEl.querySelector('.shell-kicker');
-    const readMore = panelEl.querySelector('.landing-read-more');
-    if (kicker) kicker.textContent = panel.kicker;
-    if (body) body.textContent = panel.body;
-    // Show "Read more" only if text overflows collapsed height
-    if (body && readMore) {
-      requestAnimationFrame(() => {
-        if (body.scrollHeight > body.clientHeight) {
-          readMore.hidden = false;
-        }
-      });
-    }
-  });
+function getInitialLang() {
+  const param = new URLSearchParams(window.location.search).get('lang');
+  if (param === 'ar' || param === 'en') return param;
+  try {
+    const stored = localStorage.getItem(LANG_STORAGE_KEY);
+    if (stored === 'ar' || stored === 'en') return stored;
+  } catch { /* storage unavailable (private mode) */ }
+  return (navigator.language || '').toLowerCase().startsWith('ar') ? 'ar' : 'en';
 }
 
-function handleLandingReadMore(e) {
-  const panel = e.target.closest('.landing-panel');
-  if (!panel) return;
-  const expanded = panel.classList.toggle('expanded');
-  e.target.textContent = expanded ? 'Read less' : 'Read more';
-  e.target.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+let landingLang = getInitialLang();
+
+function applyLandingLanguage(lang) {
+  if (!landingScreen) return;
+  landingLang = lang;
+  try { localStorage.setItem(LANG_STORAGE_KEY, lang); } catch { /* ignore */ }
+
+  const copy = LANDING_COPY[lang];
+
+  landingScreen.querySelectorAll('.landing-localized').forEach((el) => {
+    el.setAttribute('lang', lang);
+    el.setAttribute('dir', copy.dir);
+  });
+
+  setElementText(landingScreen.querySelector('#landing-subtitle'), copy.subtitle);
+
+  const introEl = landingScreen.querySelector('#landing-intro');
+  if (introEl) {
+    introEl.textContent = '';
+    copy.intro.forEach((paragraph) => {
+      const p = document.createElement('p');
+      p.textContent = paragraph;
+      introEl.appendChild(p);
+    });
+  }
+
+  setElementText(landingScreen.querySelector('#landing-note'), copy.note);
+  setElementText(landingScreen.querySelector('#landing-support'), copy.support);
+  setElementText(landingCta, copy.cta);
+
+  const aboutLink = landingScreen.querySelector('#landing-about-link');
+  if (aboutLink) {
+    aboutLink.textContent = copy.aboutLabel;
+    aboutLink.setAttribute('href', `/about/?lang=${lang}`);
+  }
+
+  const arBtn = landingScreen.querySelector('#lang-btn-ar');
+  const enBtn = landingScreen.querySelector('#lang-btn-en');
+  if (arBtn) arBtn.setAttribute('aria-pressed', String(lang === 'ar'));
+  if (enBtn) enBtn.setAttribute('aria-pressed', String(lang === 'en'));
+}
+
+function syncLandingContent() {
+  applyLandingLanguage(landingLang);
 }
 
 let hasLeftLanding = false;
@@ -1938,13 +1964,12 @@ if (inspectOrbitToggleBtn) {
   inspectOrbitToggleBtn.addEventListener('click', handleTouchOrbitToggle);
 }
 
-// Landing screen event delegation
+// Landing language toggle
 if (landingScreen) {
-  landingScreen.addEventListener('click', (e) => {
-    if (e.target.classList.contains('landing-read-more')) {
-      handleLandingReadMore(e);
-    }
-  });
+  const langArBtn = landingScreen.querySelector('#lang-btn-ar');
+  const langEnBtn = landingScreen.querySelector('#lang-btn-en');
+  if (langArBtn) langArBtn.addEventListener('click', () => applyLandingLanguage('ar'));
+  if (langEnBtn) langEnBtn.addEventListener('click', () => applyLandingLanguage('en'));
 }
 
 if (landingCta) {

@@ -7,24 +7,25 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#000000" />
-    <title>House of Dreams</title>
-    <meta name="description" content="An interactive 3D archive of 105 prison papers written by Ahed Sheikh Hassan during his detention in Syrian prisons, 1987–1994." />
+    <title>House of Dreams — بيت الأحلام</title>
+    <meta name="description" content="House of Dreams — an archival and audiovisual project built around the prison writings of Ahed Sheikh Hassan, written in Sednaya Prison between 1988 and 1993." />
     <link rel="canonical" href="https://www.houseofdreams.space/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://www.houseofdreams.space/" />
-    <meta property="og:title" content="House of Dreams" />
-    <meta property="og:description" content="An interactive archive of 105 prison papers written by Ahed Sheikh Hassan during his detention in Syrian prisons, 1987–1994." />
+    <meta property="og:title" content="House of Dreams — بيت الأحلام" />
+    <meta property="og:description" content="An archival and audiovisual project built around the prison writings of Ahed Sheikh Hassan, written in Sednaya Prison between 1988 and 1993." />
     <meta property="og:image" content="https://www.houseofdreams.space/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ar_SY" />
 
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="House of Dreams" />
-    <meta name="twitter:description" content="An interactive archive of 105 prison papers written by Ahed Sheikh Hassan during his detention in Syrian prisons, 1987–1994." />
+    <meta name="twitter:title" content="House of Dreams — بيت الأحلام" />
+    <meta name="twitter:description" content="An archival and audiovisual project built around the prison writings of Ahed Sheikh Hassan, written in Sednaya Prison between 1988 and 1993." />
     <meta name="twitter:image" content="https://www.houseofdreams.space/og-image.png" />
 
     <!-- Favicon -->
@@ -37,32 +38,31 @@
   <body>
     <!-- Landing Screen (first screen the user sees) -->
     <div id="landing-screen" role="main" aria-label="House of Dreams — Landing">
-      <div class="landing-grid">
-        <div class="landing-panel landing-panel-tl" data-panel="project">
-          <p class="shell-kicker"></p>
-          <div class="landing-panel-body"></div>
-          <button class="landing-read-more" type="button" aria-expanded="false" hidden>Read more</button>
+      <div class="landing-column">
+        <header class="landing-header">
+          <h1 class="landing-title">
+            <span class="landing-title-ar" lang="ar" dir="rtl">بيت الأحلام</span>
+            <span class="landing-title-en" lang="en">House of Dreams</span>
+          </h1>
+          <p id="landing-subtitle" class="landing-subtitle landing-localized"></p>
+        </header>
+        <hr class="landing-rule" />
+        <div id="landing-intro" class="landing-intro landing-localized"></div>
+        <div class="landing-actions">
+          <button id="landing-cta" class="btn landing-localized">Enter the Archive</button>
         </div>
-        <div class="landing-panel landing-panel-tr" data-panel="ahed">
-          <p class="shell-kicker"></p>
-          <div class="landing-panel-body"></div>
-          <button class="landing-read-more" type="button" aria-expanded="false" hidden>Read more</button>
-        </div>
-        <div class="landing-center">
-          <h1 class="landing-title">House of Dreams</h1>
-          <p class="landing-subtitle"></p>
-          <button id="landing-cta" class="btn">Enter the Archive</button>
-        </div>
-        <div class="landing-panel landing-panel-bl" data-panel="party">
-          <p class="shell-kicker"></p>
-          <div class="landing-panel-body"></div>
-          <button class="landing-read-more" type="button" aria-expanded="false" hidden>Read more</button>
-        </div>
-        <div class="landing-panel landing-panel-br" data-panel="papers">
-          <p class="shell-kicker"></p>
-          <div class="landing-panel-body"></div>
-          <button class="landing-read-more" type="button" aria-expanded="false" hidden>Read more</button>
-        </div>
+        <hr class="landing-rule" />
+        <footer class="landing-footer">
+          <p id="landing-note" class="landing-note landing-localized"></p>
+          <p id="landing-support" class="landing-note landing-localized"></p>
+          <nav class="landing-meta-row" aria-label="Site">
+            <a id="landing-about-link" class="landing-link landing-localized" href="/about/">About the project</a>
+            <div class="landing-lang-toggle" role="group" aria-label="Language">
+              <button id="lang-btn-ar" class="lang-btn" type="button" lang="ar" aria-pressed="false">العربية</button>
+              <button id="lang-btn-en" class="lang-btn" type="button" lang="en" aria-pressed="true">English</button>
+            </div>
+          </nav>
+        </footer>
       </div>
     </div>
 
