@@ -1,7 +1,7 @@
 /**
  * Exhibition paper metadata — single source of truth.
  *
- * Maps listener IDs (1–12, used in QR URLs and audio filenames) to archive
+ * Maps listener IDs (1–13, used in QR URLs and audio filenames) to archive
  * paper numbers, Arabic archival names, and diary entry date spans.
  *
  * Imported by: scripts/generate-qr-codes.js

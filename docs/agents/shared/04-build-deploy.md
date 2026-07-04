@@ -63,7 +63,7 @@ Implication:
 
 ## `_headers`
 
-Current rules cover 15 path patterns with `Content-Type`, `Access-Control-Allow-Origin`, and `Cache-Control` headers:
+Current rules cover 14 path patterns with `Content-Type`, `Access-Control-Allow-Origin`, and `Cache-Control` headers:
 
 | Path pattern | Content-Type | CORS | Cache-Control |
 | --- | --- | --- | --- |

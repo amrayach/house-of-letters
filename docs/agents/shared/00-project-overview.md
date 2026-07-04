@@ -40,7 +40,7 @@ Keep user-facing text and documentation consistent with these facts about the ar
 | Area | Primary paths | Current state |
 | --- | --- | --- |
 | Rendering | `src/renderer/*` | active and central; scene, lighting, controls, GLB loading, cinematic intro, minor particle support |
-| Audio | `src/audio/*` | partly complete; `audioEngine.js` is working Howler playback, `themeMixer.js` is still a placeholder |
+| Audio | `src/audio/*` | partly complete; `audioEngine.js` is working Howler playback, `themeMixer.js` owns the dual-theme A/B crossfade driven by camera z-position |
 | Interaction | `src/interaction/*` | active; readable-side targeting, inspect entry support, and mobile touch controls are implemented |
 | Config and content | `src/config/constants.js`, `src/data/letters.json` | active; constants and 46-letter runtime dataset drive behavior |
 | Shared loaders | `src/utils/loaders.js` | active; shared GLTF/texture/audio loaders plus preload helper |
@@ -62,7 +62,7 @@ Keep user-facing text and documentation consistent with these facts about the ar
 ## Appears incomplete
 
 - Theme transitions: `src/audio/themeMixer.js` now performs per-frame dual-theme crossfade based on camera z-position; `letter.theme` metadata exists but is not consumed by the mixer
-- Subtitles/text content: `letters.json` text fields are empty, so `src/main.js` falls back to `Listening to Letter X...`
+- Subtitles/text content: `letters.json` text fields are empty, so `src/main.js` falls back to `Paper N · <date range>` sourced from `src/data/paperDates.js`
 - Spatial audio: current audio is not true positional audio
 - Asset pipeline workflow: `scripts/compress-glb.js` expects `.glb` inputs in `public/assets/textures/`, but that directory is currently empty
 - Position-generation workflow: `scripts/generate-letter-positions.cjs` still uses older zone bounds and `.wav` fallback defaults, so regenerated output needs review before merging
