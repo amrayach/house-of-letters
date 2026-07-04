@@ -683,7 +683,7 @@ function startDeferredLetterLoad() {
   });
   console.log(`Starting deferred background load for ${deferredLetters.length} late letters.`);
 
-  deferredLetterLoadPromise = loadLetters(scene, deferredLetters, renderer)
+  deferredLetterLoadPromise = loadLetters(scene, deferredLetters, renderer, null, { staggered: true })
     .then((loadedLetters) => {
       const integratedLetters = finalizeDeferredLetterLoad({ loadedLetters });
 

@@ -195,9 +195,31 @@ function loadModelWithRetry(path, retryCount = 0, onDownloadProgress = null) {
   });
 }
 
-export async function loadLetters(scene, lettersData, renderer, onProgress = null) {
+/**
+ * Yield until the browser has painted a frame (with a timeout fallback for
+ * hidden tabs, where requestAnimationFrame is throttled indefinitely).
+ * Used between staggered model integrations so each GLTF parse gets its own
+ * frame instead of stacking into one long main-thread stall.
+ */
+function yieldToFrame() {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (!settled) {
+        settled = true;
+        resolve();
+      }
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => setTimeout(finish, 0));
+    }
+    setTimeout(finish, 100);
+  });
+}
+
+export async function loadLetters(scene, lettersData, renderer, onProgress = null, options = {}) {
+  const { staggered = false } = options;
   const letterObjects = [];
-  const loadPromises = [];
   let loadedCount = 0;
   const totalCount = lettersData.length;
   const textureAnisotropy = renderer?.capabilities
@@ -212,11 +234,11 @@ export async function loadLetters(scene, lettersData, renderer, onProgress = nul
 
   console.log(`Attempting to load ${lettersData.length} GLB files...`);
 
-  lettersData.forEach((data) => {
+  const startLoad = (data) => {
     const path = data.model;
     console.log(`Queueing: ${path}`);
 
-    const loadPromise = new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       // Track per-model download progress
       const onDownloadProgress = (loaded, total) => {
         downloadProgress.set(data.id, { loaded, total });
@@ -313,15 +335,23 @@ export async function loadLetters(scene, lettersData, renderer, onProgress = nul
                     existingMap.colorSpace = THREE.SRGBColorSpace;
                     existingMap.anisotropy = textureAnisotropy;
                     existingMap.needsUpdate = true;
-                    
+
                     console.log(`[TEXTURE] ${child.name} has texture: ${existingMap.image?.width}x${existingMap.image?.height}`);
-                    
+
                     // Replace with a simple MeshBasicMaterial to eliminate lighting issues
                     child.material = new THREE.MeshBasicMaterial({
                       map: existingMap,
                       side: THREE.DoubleSide,
                       transparent: false
                     });
+
+                    // Upload to the GPU now (while a loading/start screen or the
+                    // staggered background queue absorbs the cost) instead of on
+                    // the first frame the mesh enters the camera frustum, which
+                    // showed up as walking-path hitches.
+                    if (renderer && typeof renderer.initTexture === 'function') {
+                      renderer.initTexture(existingMap);
+                    }
                   } else {
                     console.warn(`[NO TEXTURE] ${child.name} has no texture map`);
                     // Keep original material for non-textured parts
@@ -404,23 +434,40 @@ export async function loadLetters(scene, lettersData, renderer, onProgress = nul
           reject(error);
         });
     });
+  };
 
-    loadPromises.push(loadPromise);
-  });
+  let results;
 
-  // Wait for all models to load, but don't fail if some models are missing
-  const results = await Promise.allSettled(loadPromises);
-  
+  if (staggered) {
+    // Background/deferred path: one model at a time, yielding a frame between
+    // integrations. Loading all models concurrently fired dozens of synchronous
+    // GLTF parses back-to-back on the main thread (300-500ms long tasks right
+    // after entering the archive — the reported 1-3s hang).
+    results = [];
+    for (const data of lettersData) {
+      try {
+        results.push({ status: 'fulfilled', value: await startLoad(data) });
+      } catch (error) {
+        results.push({ status: 'rejected', reason: error });
+      }
+      await yieldToFrame();
+    }
+  } else {
+    // Startup path: parallel — the loading screen absorbs the cost and total
+    // wall time matters more than per-frame smoothness.
+    results = await Promise.allSettled(lettersData.map(startLoad));
+  }
+
   // Log results
   const successful = results.filter(r => r.status === 'fulfilled').length;
   const failed = results.filter(r => r.status === 'rejected');
-  
+
   console.log(`Loaded ${successful}/${lettersData.length} letter models`);
-  
+
   if (failed.length > 0) {
     console.warn(`Failed to load ${failed.length} models:`, failed.map(r => r.reason));
   }
-  
+
   // Return whatever models were successfully loaded
   return letterObjects;
 }
