@@ -57,13 +57,13 @@ Current file:
 
 Implication:
 
-- The listener page uses directory-based routing: `public/listen/index.html` is served natively by Cloudflare Pages for `/listen/` requests. No `_redirects` rule is needed for it.
+- The listener and about pages use directory-based routing: `public/listen/index.html` and `public/about/index.html` are served natively by Cloudflare Pages for `/listen/` and `/about/` requests, respectively. No `_redirects` rule is needed for either.
 - All non-file routes fall through to `index.html` for the main SPA.
 - If Pages Functions or another SSR/runtime layer is added later, `_redirects` stops being the full routing story.
 
 ## `_headers`
 
-Current rules cover 14 path patterns with `Content-Type`, `Access-Control-Allow-Origin`, and `Cache-Control` headers:
+Current rules cover 15 path patterns with `Content-Type`, `Access-Control-Allow-Origin`, and `Cache-Control` headers:
 
 | Path pattern | Content-Type | CORS | Cache-Control |
 | --- | --- | --- | --- |
@@ -80,11 +80,12 @@ Current rules cover 14 path patterns with `Content-Type`, `Access-Control-Allow-
 | `/` | — | — | `public, max-age=60, must-revalidate` |
 | `/index.html` | — | — | `public, max-age=60, must-revalidate` |
 | `/listen/index.html` | — | — | `public, max-age=60, must-revalidate` |
+| `/about/index.html` | — | — | `public, max-age=60, must-revalidate` |
 
 Cache-Control strategy:
 
 - **Vite-hashed bundles** (JS/CSS): `immutable` with 1-year `max-age` — the content hash in the filename changes on every build, so browsers cache forever and never re-fetch stale versions.
-- **HTML shells** (`index.html`, `listen/index.html`): 60-second `max-age` — short cache so new deploys propagate quickly. HTML references the hashed bundle URLs, so a new deploy = new HTML = new bundles.
+- **HTML shells** (`index.html`, `listen/index.html`, `about/index.html`): 60-second `max-age` — short cache so new deploys propagate quickly. HTML references the hashed bundle URLs, so a new deploy = new HTML = new bundles.
 - **Stable binary assets** (GLB, MP3, JPG, textures): 7-day `max-age` with `must-revalidate` — filenames are stable (not hashed), so browsers cache long but check for updates after expiry.
 
 Implications:
@@ -98,10 +99,25 @@ Implications:
 - `public/listen/index.html` is a standalone HTML file — not processed by Vite, not a module entry point.
 - It is copied as-is to `dist/listen/index.html` during build, like all `public/` files.
 - Cloudflare Pages serves it natively for `/listen/` requests via directory-based routing (no `_redirects` rule needed).
-- The page reads the paper ID from `?p=N` query parameter at runtime. IDs 1–11.
+- The page reads the paper ID from `?p=N` query parameter at runtime. IDs 1–13.
 - Each listener ID maps to an archive paper number and Arabic archival name via `scripts/exhibition-papers.js` (synced inline copy in the page).
 - It has zero dependency on the 3D archive: no Three.js, no Howler, no imports from `src/`.
 - Audio files are expected at `/assets/listen/{id}_{lang}.mp3` (see `public/assets/listen/README.md`).
+
+## About page
+
+- `public/about/index.html` is a standalone HTML file — not processed by Vite, not a module entry point. Same self-contained pattern as `/listen/`: no Three.js, no Howler, no imports from `src/`.
+- It is copied as-is to `dist/about/index.html` during build, like all `public/` files.
+- Cloudflare Pages serves it natively for `/about/` requests via directory-based routing (no `_redirects` rule needed).
+- Bilingual (EN/AR) static page: project, Ahed's biography, writings, objects, exhibition info, and a credits section (crediting Heinrich-Böll-Stiftung's support).
+- Gets the same 60-second HTML cache rule as `/index.html` and `/listen/index.html` (see `_headers` above) and the same dist existence check in CI (see CI pipeline below).
+
+## Shared `?lang=` query-param convention
+
+`/`, `/listen/`, and `/about/` all support the same `?lang=` query-param override for bilingual (EN/AR) content:
+
+- `/` (landing) resolves and persists the language choice to `localStorage['hod-lang']`; `?lang=ar` or `?lang=en` on the URL overrides it for that load.
+- `/listen/` and `/about/` read `?lang=` directly at runtime via `URLSearchParams(window.location.search).get('lang')` — they do not persist to localStorage.
 
 ## Deployment-sensitive constraints
 
@@ -121,7 +137,7 @@ Steps:
 1. `npm ci`
 2. `npm run validate:letters` — content validation (default mode, warnings do not fail)
 3. `npm run build` — production build, catches compile errors
-4. Verify critical `dist/` files exist: `index.html`, `listen/index.html`, `_headers`, `_redirects`
+4. Verify critical `dist/` files exist: `index.html`, `listen/index.html`, `about/index.html`, `_headers`, `_redirects`
 5. Verify no wrong domain (`houseofdreams.site`) leaked into build output
 
 For deploy-related skill routing, see `docs/agents/shared/13-skill-activation-matrix.md`. For browser validation after deploy-sensitive edits, use `docs/agents/shared/09-validation-checklist.md`.

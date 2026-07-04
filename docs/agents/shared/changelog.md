@@ -1,5 +1,18 @@
 # Changelog
 
+## Session 16 — Brutalist archival redesign + content corrections (2026-07-02)
+
+Client pre-launch brief (Alaa Sheikh Hassan). Spec: docs/superpowers/specs/2026-07-02-brutalist-archival-redesign-design.md.
+
+- **Factual corrections site-wide**: Ahed Sheikh Hassan is Syrian (was wrongly "Palestinian" on the landing panel), arrested 1987 for Communist Labor Party membership, Sednaya Prison named everywhere (EN spelling "Sednaya"), writings dated 1988–1993, imprisonment 1987–1994. All meta tags rewritten.
+- **Landing rebuilt** as bilingual (EN/AR) single-column archival page per client's structure: title / subtitle / intro (client's verbatim text) / CTA / author note + Heinrich-Böll-Stiftung support line / About link / language toggle. `src/config/siteCopy.js` replaces `landingContent.js`. Language: `localStorage['hod-lang']`, `?lang=` override. The landing→loading `transitionend` handoff is unchanged.
+- **Brutalist retheme** of `src/styles/main.css`: all radius tokens → 0, blue accent → white, 17 gradients / 12 backdrop-filters / all box-shadows / glow animations removed; panels solid rgba(8,8,10,.92) with 1px borders; reveals are opacity-only. Functional touch circles (joystick, action/pause buttons) kept.
+- **New `/about/` page**: self-contained bilingual static page (listen-page pattern) with six sections and a credits colophon (Alaa Sheikh Hassan, Abdallah Al-Fahl, Amr Ayash, Bashar Darwish, Louay Kanawati, Hekmat Al-Qassar; supported by Heinrich-Böll-Stiftung). `_headers` cache rule + CI dist check added.
+- **Archive orientation**: subtitle and inspect header now show real per-paper diary dates from new `src/data/paperDates.js` (generated from `diary_index_001_048.csv` by `scripts/generate-paper-dates.cjs`; papers 33/40/45 end-date overrides pending client verification) and a "N / 46" sequence. User-facing "Letter" renamed "Paper".
+- **Inspect prev/next**: buttons + arrow keys step chronologically by content swap — camera does not move, narration keeps following physical proximity (documented UX decision). Orbit mode falls back to scan for unloaded deferred papers.
+- **/listen/**: restyled to the same design contract; prev/next navigation across the 13 papers in diary-chronological order `[1, 2, 13, 12, 3, 4, 5, 6, 7, 8, 9, 10, 11]` (synced with `EXHIBITION_CHRONO_ORDER` in `scripts/exhibition-papers.js`), "N / 13" position indicator, `?lang=` auto-select, meta description fixed (no longer claims 105 narrations). File ≤ 26 KB.
+- **Open client items**: verify 105 paper count; intro paragraph 2 (smuggled during imprisonment vs after release); Arabic transliterations of credits + exhibition title; OG photo; papers 33/40/45 end dates.
+
 ## Session 15 — Transition flow audit + per-frame budget fixes
 
 **Date:** 2026-03-24

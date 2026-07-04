@@ -7,12 +7,25 @@
 - Deployment target: `Cloudflare Pages`
 - Production domain: `https://www.houseofdreams.space/`
 - Runtime identity mismatch: package and repo say `house-of-letters`; UI title says `House of Dreams`
+- Design language: brutalist/monochrome — no border radii, gradients, shadows, or blur; design tokens live in `src/styles/main.css` under `:root`
 
 ## What this project is
 
 This app loads scanned letters as 3D GLB objects, places them in a navigable space, uses readable-side targeting to decide which letter is in focus, plays narration when the user approaches a readable letter face, and wraps the experience in a cinematic loading intro plus overlay UI.
 
-A companion standalone page at `/listen/?p={id}` (`public/listen/index.html`) serves as an exhibition audio guide: visitors at the physical installation scan QR codes next to diary papers and hear Arabic or English narration on their phones. This page is fully self-contained — no Three.js, no Vite processing, no runtime dependencies on the 3D archive. It displays each paper's Arabic archival name, diary entry date span, and archive paper number.
+The site has three routes:
+
+- `/` — a bilingual (EN/AR) single-column landing page leading into the 3D archive. Landing copy lives in `src/config/siteCopy.js` (`src/config/landingContent.js` was deleted). Language persists via `localStorage['hod-lang']`, overridable per-load with a `?lang=` query param.
+- `/listen/?p={id}` (`public/listen/index.html`) — a companion standalone exhibition audio guide: visitors at the physical installation scan QR codes next to diary papers and hear Arabic or English narration on their phones. Covers 13 papers with prev/next chronological navigation between them. This page is fully self-contained — no Three.js, no Vite processing, no runtime dependencies on the 3D archive. It displays each paper's Arabic archival name, diary entry date span, and archive paper number.
+- `/about/` (`public/about/index.html`) — a bilingual (EN/AR) About page covering the project, Ahed's biography, writings, objects, exhibition info, and credits (including Heinrich-Böll-Stiftung). Same self-contained pattern as `/listen/`.
+
+## Canonical facts
+
+Keep user-facing text and documentation consistent with these facts about the archive's subject:
+
+- Ahed Sheikh Hassan (1956–1996), Syrian, arrested 1987 for Communist Labor Party membership, imprisoned in Sednaya Prison 1987–1994, writings dated 1988–1993.
+- English spelling is always "Sednaya" (not "Saydnaya" or other variants).
+- The user-facing term for one archive sheet is "Paper N". The internal code/data model still uses "letter" (e.g. `letters.json`, `letterId`) — only user-facing copy changed.
 
 ## Runtime entry points
 
@@ -20,6 +33,7 @@ A companion standalone page at `/listen/?p={id}` (`public/listen/index.html`) se
 - `src/main.js`: orchestration entry point; initializes scene, loading flow, controls, audio, proximity, UI updates, and the animation loop
 - `src/styles/main.css`: styles the loading screen, start/pause screens, HUD, inspect UI, mobile controls, and preview UI
 - `public/listen/index.html`: standalone exhibition audio listener — self-contained HTML/CSS/JS, no Vite processing, served via directory-based routing
+- `public/about/index.html`: standalone bilingual About page — self-contained HTML/CSS/JS, no Vite processing, served via directory-based routing
 
 ## Major subsystems
 
@@ -42,7 +56,8 @@ A companion standalone page at `/listen/?p={id}` (`public/listen/index.html`) se
 - Readable-side targeting plus full-size inspect overlay
 - Howler-based theme playback and narration lazy loading
 - Cloudflare Pages deployment files for SPA routing and asset headers
-- Exhibition audio listener page (`/listen/?p={id}`) — 11 papers with Arabic names and date spans; awaiting client MP3 files for papers 4–11
+- Exhibition audio listener page (`/listen/?p={id}`) — 13 papers with Arabic names and date spans, plus prev/next chronological navigation; awaiting client MP3 files for papers 10, 11, and 13
+- Bilingual (EN/AR) About page (`/about/`) — six sections (project, Ahed's biography, writings, objects, exhibition info, credits) with a colophon crediting Heinrich-Böll-Stiftung's support
 
 ## Appears incomplete
 
