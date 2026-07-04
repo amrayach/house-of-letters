@@ -27,3 +27,10 @@ export const EXHIBITION_PAPERS = {
 };
 
 export const EXHIBITION_PAPER_COUNT = Object.keys(EXHIBITION_PAPERS).length;
+
+/**
+ * Chronological order of listener IDs by diary start date.
+ * Synced copy: public/listen/index.html (inline CHRONO_ORDER array).
+ * When editing, update BOTH locations.
+ */
+export const EXHIBITION_CHRONO_ORDER = [1, 2, 13, 12, 3, 4, 5, 6, 7, 8, 9, 10, 11];

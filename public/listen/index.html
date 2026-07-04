@@ -8,13 +8,13 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
 <title>House of Dreams — Exhibition Audio</title>
-<meta name="description" content="Listen to the prison diaries of Ahed Sheikh Hassan — audio narrations from 105 papers written during his detention in Syrian prisons, 1987–1994.">
+<meta name="description" content="Recorded readings from the prison writings of Ahed Sheikh Hassan — exhibition audio guide for House of Dreams.">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://www.houseofdreams.space/listen/">
 <meta property="og:title" content="House of Dreams — Listen">
-<meta property="og:description" content="Audio narrations of prison diaries written by Ahed Sheikh Hassan in Syrian prisons, 1987–1994.">
+<meta property="og:description" content="Exhibition audio guide — prison writings of Ahed Sheikh Hassan.">
 <meta property="og:image" content="https://www.houseofdreams.space/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -22,7 +22,7 @@
 <!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="House of Dreams — Listen">
-<meta name="twitter:description" content="Audio narrations of prison diaries written by Ahed Sheikh Hassan in Syrian prisons, 1987–1994.">
+<meta name="twitter:description" content="Exhibition audio guide — prison writings of Ahed Sheikh Hassan.">
 <meta name="twitter:image" content="https://www.houseofdreams.space/og-image.png">
 
 <!-- Favicon -->
@@ -107,6 +107,37 @@ body{
   margin-top:4px;
 }
 .paper-label[hidden]{display:none}
+.paper-pos{
+  font-size:.72rem;
+  letter-spacing:.2em;
+  color:rgba(255,255,255,.44);
+  margin-top:8px;
+}
+
+/* --- Prev/next navigation --- */
+.paper-nav{
+  width:100%;
+  max-width:380px;
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:clamp(24px,4vh,36px) 0 0;
+}
+.nav-link{
+  padding:10px 16px;
+  border:1px solid rgba(255,255,255,.44);
+  color:rgba(255,255,255,.78);
+  text-decoration:none;
+  font-size:.76rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  transition:background .15s ease,color .15s ease;
+}
+.nav-link:hover,.nav-link:focus-visible{
+  background:#fff;
+  color:#000;
+  border-color:#fff;
+}
 
 /* --- Language selector --- */
 .lang-selector{
@@ -430,7 +461,11 @@ body{
     13: { archiveNum: 3,  ar: 'الورقة الثالثة',              dates: '19/7/1990 \u2013 8/9/1990' }
   };
 
-  var SVG_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  // Chronological order by diary start date — synced from
+  // scripts/exhibition-papers.js (EXHIBITION_CHRONO_ORDER). Update BOTH.
+  var CHRONO_ORDER = [1, 2, 13, 12, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+
+  var SVG_PLAY ='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
   var SVG_PAUSE = '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
 
   // --- URL parsing ---
@@ -458,6 +493,23 @@ body{
     var m = Math.floor(sec / 60);
     var s = Math.floor(sec % 60);
     return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function buildNav(id) {
+    var idx = CHRONO_ORDER.indexOf(id);
+    var prevId = idx > 0 ? CHRONO_ORDER[idx - 1] : null;
+    var nextId = idx < CHRONO_ORDER.length - 1 ? CHRONO_ORDER[idx + 1] : null;
+    var html = '<nav class="paper-nav reveal reveal-d4" dir="ltr" lang="en" aria-label="Paper navigation">';
+    if (prevId) {
+      html += '<a class="nav-link" id="nav-prev" data-id="' + prevId + '" href="?p=' + prevId + '" aria-label="Previous paper">&#8249; Prev</a>';
+    } else {
+      html += '<span></span>';
+    }
+    if (nextId) {
+      html += '<a class="nav-link" id="nav-next" data-id="' + nextId + '" href="?p=' + nextId + '" aria-label="Next paper">Next &#8250;</a>';
+    }
+    html += '</nav>';
+    return html;
   }
 
   // --- Render ---
@@ -490,6 +542,7 @@ body{
         '<div class="paper-name-ar" lang="ar" dir="rtl">' + paper.ar + '</div>' +
         '<div class="paper-dates" dir="ltr">' + paper.dates + '</div>' +
         '<p class="paper-label" id="paper-label" lang="en">Paper ' + paper.archiveNum + '</p>' +
+        '<p class="paper-pos" lang="en"><span dir="ltr">' + (CHRONO_ORDER.indexOf(id) + 1) + ' / ' + CHRONO_ORDER.length + '</span></p>' +
       '</section>' +
 
       '<nav class="lang-selector reveal reveal-d2" role="radiogroup" aria-label="Language selection">' +
@@ -522,7 +575,9 @@ body{
         '<div class="transcript-scroll" id="transcript-scroll">' +
           '<article class="transcript-text" id="transcript-text" role="article" lang="en"></article>' +
         '</div>' +
-      '</div>';
+      '</div>' +
+
+      buildNav(id);
 
     initAudio(id);
   }
@@ -542,6 +597,14 @@ body{
     var transcriptLoading = document.getElementById('transcript-loading');
     var transcriptText = document.getElementById('transcript-text');
     var transcriptScroll = document.getElementById('transcript-scroll');
+    var navPrev = document.getElementById('nav-prev');
+    var navNext = document.getElementById('nav-next');
+
+    function updateNavHrefs() {
+      var suffix = currentLang ? '&lang=' + currentLang : '';
+      if (navPrev) navPrev.href = '?p=' + navPrev.getAttribute('data-id') + suffix;
+      if (navNext) navNext.href = '?p=' + navNext.getAttribute('data-id') + suffix;
+    }
 
     var audio = new Audio();
     audio.preload = 'metadata';
@@ -640,6 +703,7 @@ body{
     function selectLang(lang) {
       if (currentLang === lang) return;
       currentLang = lang;
+      updateNavHrefs();
 
       // Update button states
       btnAr.setAttribute('aria-pressed', lang === LANG_AR ? 'true' : 'false');
@@ -775,6 +839,11 @@ body{
 
     btnAr.addEventListener('click', function() { selectLang(LANG_AR); });
     btnEn.addEventListener('click', function() { selectLang(LANG_EN); });
+
+    var urlLang = new URLSearchParams(window.location.search).get('lang');
+    if (urlLang === LANG_AR || urlLang === LANG_EN) {
+      selectLang(urlLang);
+    }
   }
 })();
 </script>
