@@ -2167,6 +2167,8 @@ const clock = new THREE.Clock();
 let debugFpsFrames = 0;
 let debugFpsTime = 0;
 let debugFpsValue = 0;
+let archiveCanvasCovered = false;
+let coveredFrameCounter = 0;
 
 function updateDebugPanel(delta) {
   if (!debugPanelVisible) return;
@@ -2460,8 +2462,19 @@ function animate() {
       updateDust(dustParticles, elapsedTime);
     }
 
-    // Render via post-processing composer
-    composer.render(delta);
+    // Render via post-processing composer.
+    // While an opaque overlay fully covers the canvas (landing screen, or the
+    // loading screen during the cinematic flight — which runs its own renderer),
+    // rendering the archive every frame is wasted GPU that competes with the
+    // cinematic. Keep a periodic warm render (~2/s) so shaders compile and
+    // freshly loaded letter assets flush through the pipeline before the
+    // start screen reveals the scene.
+    archiveCanvasCovered = uiState === UI_STATE.LANDING
+      || (uiState === UI_STATE.LOADING && !isTransitioningOutOfLoading);
+    coveredFrameCounter = archiveCanvasCovered ? coveredFrameCounter + 1 : 0;
+    if (!archiveCanvasCovered || coveredFrameCounter % 30 === 1) {
+      composer.render(delta);
+    }
 
     // Render orbit viewer if active (isolated canvas, no post-processing)
     if (orbitInspect.isActive()) {
