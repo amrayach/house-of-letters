@@ -250,11 +250,16 @@
       <div class="inspect-panel shell-panel">
         <div class="inspect-header">
           <div class="inspect-header-copy">
-            <p class="shell-kicker">Letter Inspect</p>
+            <p class="shell-kicker">Paper Inspect</p>
             <div class="inspect-heading">
-              <h2 id="inspect-title">Letter</h2>
+              <h2 id="inspect-title">Paper</h2>
               <span id="inspect-side-badge">Front</span>
+              <div class="inspect-nav">
+                <button id="inspect-prev-btn" class="btn btn-inspect-secondary" type="button" aria-label="Previous paper">‹ Prev</button>
+                <button id="inspect-next-btn" class="btn btn-inspect-secondary" type="button" aria-label="Next paper">Next ›</button>
+              </div>
             </div>
+            <p id="inspect-sequence" class="inspect-sequence" dir="ltr"></p>
             <p id="inspect-status" class="screen-status">Press E to return to the archive.</p>
           </div>
           <button
@@ -268,11 +273,11 @@
 
         <div id="inspect-scan-viewport">
           <div id="inspect-scan-stage">
-            <img id="inspect-scan-image" src="" alt="Letter scan">
+            <img id="inspect-scan-image" src="" alt="Paper scan">
           </div>
         </div>
 
-        <div id="inspect-orbit-viewport" role="img" aria-label="3D letter model viewer" hidden>
+        <div id="inspect-orbit-viewport" role="img" aria-label="3D paper model viewer" hidden>
           <!-- Canvas inserted programmatically by orbitInspect.js init() -->
         </div>
 

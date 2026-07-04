@@ -16,6 +16,7 @@ import { START_SHELL_CONTENT } from '@config/startShellContent.js';
 import { LANDING_COPY } from '@config/siteCopy.js';
 import lettersData from '@data/letters.json';
 import { validatedProvisionalChronology } from '@data/provisionalChronology.js';
+import { PAPER_DATES } from '@data/paperDates.js';
 import { diag } from '@utils/diagnostics.js';
 import * as orbitInspect from './renderer/orbitInspect.js';
 
@@ -63,16 +64,6 @@ const deferredRequestedLetterIds = Object.freeze(
 const timelineRequiredLetterIds = validatedProvisionalChronology
   ? new Set(validatedProvisionalChronology.flatMap((group) => group.letterIds))
   : null;
-const chronologyLabelByLetterId = (() => {
-  if (!validatedProvisionalChronology) return new Map();
-  const map = new Map();
-  for (const group of validatedProvisionalChronology) {
-    for (const id of group.letterIds) {
-      map.set(id, group.focusedLabel);
-    }
-  }
-  return map;
-})();
 
 // Loading Scene Elements
 const loadingSceneContainer = document.getElementById('loading-scene-container');
@@ -258,6 +249,9 @@ const inspectPromptCopy = document.getElementById('inspect-prompt-copy');
 const inspectTouchBtn = document.getElementById('inspect-touch-btn');
 const inspectOverlay = document.getElementById('inspect-overlay');
 const inspectTitle = document.getElementById('inspect-title');
+const inspectSequence = document.getElementById('inspect-sequence');
+const inspectPrevBtn = document.getElementById('inspect-prev-btn');
+const inspectNextBtn = document.getElementById('inspect-next-btn');
 const inspectStatus = document.getElementById('inspect-status');
 const inspectSideBadge = document.getElementById('inspect-side-badge');
 const inspectScanViewport = document.getElementById('inspect-scan-viewport');
@@ -273,6 +267,7 @@ const inspectExitBtn = document.getElementById('inspect-exit-btn');
 const inspectOrbitViewport = document.getElementById('inspect-orbit-viewport');
 const inspectOrbitToggleBtn = document.getElementById('inspect-orbit-toggle-btn');
 const letterDataById = new Map(lettersData.map((letter) => [letter.id, letter]));
+const TOTAL_PAPERS = lettersData.length;
 const subtitleElement = document.createElement('div');
 subtitleElement.className = 'subtitle';
 subtitleElement.hidden = true;
@@ -420,11 +415,11 @@ function getDeferredStageStatusText() {
   const deferredStage = letterLoadStageState[LETTER_LOAD_STAGE.DEFERRED];
 
   if (deferredStage.status === LETTER_LOAD_STAGE_STATUS.DEGRADED) {
-    return deferredStage.statusMessage || 'Some later letters are unavailable this session.';
+    return deferredStage.statusMessage || 'Some later papers are unavailable this session.';
   }
 
   if (deferredStage.status === LETTER_LOAD_STAGE_STATUS.FAILED) {
-    return deferredStage.statusMessage || 'Later letters could not be loaded. You can keep exploring the core archive.';
+    return deferredStage.statusMessage || 'Later papers could not be loaded. You can keep exploring the core archive.';
   }
 
   return '';
@@ -620,14 +615,14 @@ function finalizeDeferredLetterLoad({ loadedLetters = [], error = null } = {}) {
 
   if (error) {
     status = LETTER_LOAD_STAGE_STATUS.FAILED;
-    statusMessage = 'Later letters could not be loaded. You can keep exploring the core archive.';
+    statusMessage = 'Later papers could not be loaded. You can keep exploring the core archive.';
   } else if (missingLetterIds.length > 0) {
     status = integratedLetterIds.length > 0
       ? LETTER_LOAD_STAGE_STATUS.DEGRADED
       : LETTER_LOAD_STAGE_STATUS.FAILED;
     statusMessage = integratedLetterIds.length > 0
-      ? 'Some later letters are unavailable this session.'
-      : 'Later letters could not be loaded. You can keep exploring the core archive.';
+      ? 'Some later papers are unavailable this session.'
+      : 'Later papers could not be loaded. You can keep exploring the core archive.';
   }
 
   setLetterLoadStageStatus(LETTER_LOAD_STAGE.DEFERRED, status, {
@@ -886,7 +881,14 @@ function updateInspectContent() {
   const activePath = inspectState.side === 'back' ? backPath : frontPath;
 
   if (inspectTitle) {
-    inspectTitle.textContent = `Letter ${inspectState.letterId}`;
+    inspectTitle.textContent = `Paper ${inspectState.letterId}`;
+  }
+
+  if (inspectSequence) {
+    const dates = PAPER_DATES[inspectState.letterId];
+    inspectSequence.textContent = dates
+      ? `${inspectState.letterId} / ${TOTAL_PAPERS} · ${dates.label}`
+      : `${inspectState.letterId} / ${TOTAL_PAPERS}`;
   }
 
   if (inspectSideBadge) {
@@ -903,7 +905,7 @@ function updateInspectContent() {
     if (inspectScanImage.src !== new URL(activePath, window.location.href).href) {
       inspectScanImage.src = activePath;
     }
-    inspectScanImage.alt = `Letter ${inspectState.letterId} ${inspectState.side} scan`;
+    inspectScanImage.alt = `Paper ${inspectState.letterId} ${inspectState.side} scan`;
   }
 
   const canSwitchSides = inspectState.phase === INSPECT_PHASE.ACTIVE;
@@ -929,6 +931,16 @@ function updateInspectContent() {
     inspectOrbitToggleBtn.disabled = inspectState.phase !== INSPECT_PHASE.ACTIVE;
   }
 
+  const canStep = inspectState.phase === INSPECT_PHASE.ACTIVE;
+
+  if (inspectPrevBtn) {
+    inspectPrevBtn.disabled = !canStep || inspectState.letterId <= 1;
+  }
+
+  if (inspectNextBtn) {
+    inspectNextBtn.disabled = !canStep || inspectState.letterId >= TOTAL_PAPERS;
+  }
+
   updateInspectZoomUI();
 }
 
@@ -942,8 +954,8 @@ if (debugUiEnabled) {
 
 function getSubtitleText(letterData) {
   if (letterData.text) return letterData.text;
-  const dateRange = chronologyLabelByLetterId.get(letterData.id);
-  return dateRange ? `Letter ${letterData.id} · ${dateRange}` : `Letter ${letterData.id}`;
+  const dates = PAPER_DATES[letterData.id];
+  return dates ? `Paper ${letterData.id} · ${dates.label}` : `Paper ${letterData.id}`;
 }
 
 function setElementHidden(element, hidden) {
@@ -1446,6 +1458,42 @@ function switchInspectSide(nextSide) {
   return true;
 }
 
+function stepInspectPaper(delta) {
+  if (inspectState.phase !== INSPECT_PHASE.ACTIVE || !inspectState.letterId) {
+    return false;
+  }
+
+  const nextId = THREE.MathUtils.clamp(inspectState.letterId + delta, 1, TOTAL_PAPERS);
+
+  if (nextId === inspectState.letterId) {
+    return false;
+  }
+
+  inspectState.letterId = nextId;
+  inspectState.side = 'front';
+  setInspectZoom(INSPECT.DEFAULT_ZOOM);
+
+  if (inspectScanViewport) {
+    inspectScanViewport.scrollTop = 0;
+    inspectScanViewport.scrollLeft = 0;
+  }
+
+  if (inspectState.subMode === 'orbit') {
+    const letterObject = getLetterObjectById(nextId);
+    if (letterObject) {
+      orbitInspect.showLetter(letterObject);
+    } else {
+      // Deferred paper's 3D model not loaded this session — fall back to scan view.
+      inspectState.subMode = 'scan';
+      orbitInspect.hide();
+    }
+  }
+
+  diag.log('inspect', `step id=${nextId}`);
+  syncInspectUi();
+  return true;
+}
+
 function adjustInspectZoom(direction) {
   if (inspectState.phase !== INSPECT_PHASE.ACTIVE) {
     return false;
@@ -1811,6 +1859,12 @@ function handleInspectKeyDown(event) {
     return;
   }
 
+  if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
+    event.preventDefault();
+    stepInspectPaper(event.code === 'ArrowRight' ? 1 : -1);
+    return;
+  }
+
   // F/B/zoom are scan-only — no-op in orbit mode
   if (inspectState.subMode === 'orbit') {
     return;
@@ -1962,6 +2016,14 @@ if (inspectExitBtn) {
 
 if (inspectOrbitToggleBtn) {
   inspectOrbitToggleBtn.addEventListener('click', handleTouchOrbitToggle);
+}
+
+if (inspectPrevBtn) {
+  inspectPrevBtn.addEventListener('click', () => stepInspectPaper(-1));
+}
+
+if (inspectNextBtn) {
+  inspectNextBtn.addEventListener('click', () => stepInspectPaper(1));
 }
 
 // Landing language toggle
