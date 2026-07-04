@@ -28,8 +28,11 @@ export class ThemeMixer {
     if (Math.abs(t - this.lastT) < 0.001) return;
     this.lastT = t;
 
-    const volumeA = AUDIO.THEME_VOLUME * (1 - t);
-    const volumeB = AUDIO.THEME_VOLUME * t;
+    // Equal-power crossfade. A linear fade (1-t / t) dips combined acoustic
+    // power to half (-3 dB) at the midpoint of the walk between zones;
+    // cos/sin gains keep A² + B² constant so the bed stays level.
+    const volumeA = AUDIO.THEME_VOLUME * Math.cos(t * Math.PI / 2);
+    const volumeB = AUDIO.THEME_VOLUME * Math.sin(t * Math.PI / 2);
 
     audioEngine.setThemeVolumes(volumeA, volumeB);
 
