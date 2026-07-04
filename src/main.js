@@ -1624,6 +1624,13 @@ function transitionToGame() {
 
   // Fade out loading screen — CSS transition 0.8s ease reveals start screen beneath
   loadingScreen.style.opacity = '0';
+  // The loading screen (z-index 2000) sits above the start screen (1000) and
+  // fades over ~0.8s before `settle()` sets `hidden`. Opacity 0 does NOT stop
+  // hit-testing, so without this the loading-scene canvas intercepts every
+  // click on the "Enter Archive" button for the whole fade — the button looks
+  // ready but is dead. Make the fading overlay click-through immediately so
+  // the start-card button works the instant it is visible.
+  loadingScreen.style.pointerEvents = 'none';
 
   let settled = false;
   const settle = () => {
@@ -1633,6 +1640,7 @@ function transitionToGame() {
 
     loadingScreen.hidden = true;
     loadingScreen.style.opacity = '';
+    loadingScreen.style.pointerEvents = '';
     isTransitioningOutOfLoading = false;
 
     setStartPendingState(false);
