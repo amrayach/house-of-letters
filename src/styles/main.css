@@ -1053,15 +1053,12 @@ body[data-input-mode="touch"] .inspect-controls-desktop {
     transition-duration: 0.01s !important;
   }
 
-  #landing-screen:not(.landing-revealed) .landing-column {
-    opacity: 1;
-  }
-
-  #start-screen:not(.shell-revealed) .shell-panel-start,
-  #start-screen:not(.shell-revealed) .start-shell-copy,
-  #start-screen:not(.shell-revealed) .start-shell-entry,
-  #start-screen:not(.shell-revealed) .start-shell-detail:not([hidden]) {
-    opacity: 1;
+  #landing-screen .landing-column,
+  #start-screen .shell-panel-start,
+  #start-screen .start-shell-copy,
+  #start-screen .start-shell-entry,
+  #start-screen .start-shell-detail:not([hidden]) {
+    opacity: 1 !important;
   }
 }
 
