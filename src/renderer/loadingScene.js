@@ -221,6 +221,14 @@ class LegacyJSONLoader {
  * LoadingScene - Creates an immersive 3D loading experience with the Sednaya building
  */
 export class LoadingScene {
+  // Speed-profile knots (time -> distance along spline) with Fritsch–Carlson
+  // tangents for a monotone, C1-continuous flight. Segment slopes are
+  // 0.667 / 1.091 / 1.0; interior tangents are their harmonic means,
+  // endpoint tangents 0 (ease in from rest, ease out into the fade).
+  static SPEED_KNOTS_T = [0, 0.15, 0.7, 1];
+  static SPEED_KNOTS_P = [0, 0.1, 0.7, 1];
+  static SPEED_TANGENTS = [0, 0.827586, 1.043478, 0];
+
   constructor(container) {
     this.container = container;
     this.scene = null;
@@ -542,9 +550,8 @@ export class LoadingScene {
       } else {
         // Point lights have gentle pulse
         light.intensity = baseIntensity * pulse * (0.3 + progress * 0.7);
-        
+
         // Slight movement
-        const basePos = light.position.clone();
         light.position.y += Math.sin(time * speed * 2 + phase) * 0.1;
       }
     });
@@ -1000,35 +1007,44 @@ export class LoadingScene {
     }
   }
   
-  getAdaptiveSmoothing(progress) {
-    // Vary smoothing based on flight phase
-    // Higher values = snappier response, lower = smoother
-    if (progress < 0.2) {
-      return 2.0; // Smooth establishing shot
-    } else if (progress < 0.6) {
-      return 3.0; // More responsive during active flight
-    } else {
-      return 2.5; // Smooth final approach
-    }
+  getAdaptiveSmoothing() {
+    // Constant smoothing. The previous phase-stepped values (2.0 / 3.0 / 2.5)
+    // introduced acceleration discontinuities at 20% and 60% progress —
+    // the damp chase visibly changed character mid-flight.
+    return 2.5;
   }
   
   droneSpeedEase(t) {
-    // Google Earth style easing:
-    // Very slow start for dramatic effect
-    // Accelerate through middle
-    // Slow and deliberate for final approach
-    if (t < 0.15) {
-      // Slow majestic start
-      return this.easeInQuad(t / 0.15) * 0.1;
-    } else if (t < 0.7) {
-      // Smooth acceleration through middle
-      const middleT = (t - 0.15) / 0.55;
-      return 0.1 + this.easeInOutCubic(middleT) * 0.6;
-    } else {
-      // Slow dramatic approach to entrance
-      const endT = (t - 0.7) / 0.3;
-      return 0.7 + this.easeOutQuart(endT) * 0.3;
+    // Google Earth style pacing: slow majestic start, faster middle,
+    // deliberate final approach. Same knots as the original piecewise
+    // curve — (0.15 time -> 0.10 distance), (0.70 -> 0.70) — but evaluated
+    // as a monotone cubic Hermite (Fritsch–Carlson tangents) so velocity
+    // is C1-continuous. The old piecewise easing decelerated to a dead
+    // stop at t=0.15 and stepped from 0 to 4x speed at t=0.7, which read
+    // as a visible stall-then-lurch mid-flight.
+    const knotsT = LoadingScene.SPEED_KNOTS_T;
+    const knotsP = LoadingScene.SPEED_KNOTS_P;
+    const tangents = LoadingScene.SPEED_TANGENTS;
+
+    const clamped = Math.min(Math.max(t, 0), 1);
+    let seg = knotsT.length - 2;
+    for (let i = 0; i < knotsT.length - 1; i++) {
+      if (clamped <= knotsT[i + 1]) { seg = i; break; }
     }
+
+    const h = knotsT[seg + 1] - knotsT[seg];
+    const s = (clamped - knotsT[seg]) / h;
+    const s2 = s * s;
+    const s3 = s2 * s;
+    const h00 = 2 * s3 - 3 * s2 + 1;
+    const h10 = s3 - 2 * s2 + s;
+    const h01 = -2 * s3 + 3 * s2;
+    const h11 = s3 - s2;
+
+    return h00 * knotsP[seg]
+      + h10 * h * tangents[seg]
+      + h01 * knotsP[seg + 1]
+      + h11 * h * tangents[seg + 1];
   }
   
   easeInOutCubic(t) {
