@@ -50,8 +50,8 @@ body{
 
 /* --- Fade-in animation --- */
 @keyframes fadeSlideIn{
-  from{opacity:0;transform:translateY(8px)}
-  to{opacity:1;transform:translateY(0)}
+  from{opacity:0}
+  to{opacity:1}
 }
 .reveal{opacity:0;animation:fadeSlideIn .4s ease-out forwards}
 .reveal-d1{animation-delay:.15s}
@@ -70,7 +70,7 @@ body{
   font-size:.72rem;
   letter-spacing:.42em;
   text-transform:uppercase;
-  color:rgba(255,255,255,.62);
+  color:rgba(255,255,255,.68);
   margin-bottom:12px;
 }
 .title{
@@ -95,7 +95,7 @@ body{
 }
 .paper-dates{
   font-size:.84rem;
-  color:rgba(255,255,255,.58);
+  color:rgba(255,255,255,.56);
   letter-spacing:.06em;
   margin-bottom:8px;
 }
@@ -103,7 +103,7 @@ body{
   font-size:.76rem;
   letter-spacing:.42em;
   text-transform:uppercase;
-  color:rgba(255,255,255,.62);
+  color:rgba(255,255,255,.68);
   margin-top:4px;
 }
 .paper-label[hidden]{display:none}
@@ -124,40 +124,28 @@ body{
   padding:14px 12px;
   background:transparent;
   color:#fff;
-  border:1px solid rgba(255,255,255,.28);
-  border-radius:14px;
+  border:1px solid rgba(255,255,255,.44);
   font-family:inherit;
   font-size:1rem;
   letter-spacing:.06em;
+  text-transform:uppercase;
   cursor:pointer;
-  transition:all .3s ease;
-  position:relative;
-  overflow:hidden;
+  transition:background .15s ease,color .15s ease,border-color .15s ease;
 }
-.lang-btn::before{
-  content:'';
-  position:absolute;
-  inset:0;
-  border-radius:inherit;
-  background:radial-gradient(circle at top center,rgba(112,144,255,.08) 0%,transparent 60%);
-  opacity:0;
-  transition:opacity .3s ease;
-  pointer-events:none;
-}
-.lang-btn:hover::before,.lang-btn:focus-visible::before{opacity:1}
 .lang-btn:hover,.lang-btn:focus-visible{
-  border-color:rgba(255,255,255,.58);
+  background:#fff;
+  color:#000;
+  border-color:#fff;
 }
 .lang-btn:focus-visible{
-  outline:2px solid rgba(102,136,204,.7);
+  outline:2px solid #fff;
   outline-offset:2px;
 }
 .lang-btn[aria-pressed="true"]{
-  border-color:rgba(102,136,204,.7);
-  background:linear-gradient(180deg,rgba(11,16,26,.78) 0%,rgba(5,6,10,.9) 100%);
-  box-shadow:0 0 24px rgba(102,136,204,.18);
+  background:#fff;
+  color:#000;
+  border-color:#fff;
 }
-.lang-btn[aria-pressed="true"]::before{opacity:1}
 .lang-label{
   display:block;
   font-size:1rem;
@@ -171,8 +159,8 @@ body{
   color:rgba(255,255,255,.44);
   margin-top:4px;
 }
-.lang-btn[aria-pressed="true"] .lang-format{
-  color:rgba(255,255,255,.6);
+.lang-btn:hover .lang-format,.lang-btn:focus-visible .lang-format,.lang-btn[aria-pressed="true"] .lang-format{
+  color:rgba(0,0,0,.6);
 }
 
 /* --- Player --- */
@@ -190,32 +178,22 @@ body{
 .play-btn{
   width:72px;
   height:72px;
-  border-radius:50%;
-  border:2px solid rgba(255,255,255,.38);
+  border:2px solid #fff;
   background:transparent;
   color:#fff;
   cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
-  transition:all .3s ease;
-  position:relative;
+  transition:background .15s ease,color .15s ease;
   flex-shrink:0;
 }
-.play-btn::before{
-  content:'';
-  position:absolute;
-  inset:0;
-  border-radius:inherit;
-  background:radial-gradient(circle at center,rgba(102,136,204,.1) 0%,transparent 70%);
-  pointer-events:none;
-}
 .play-btn:hover,.play-btn:focus-visible{
-  border-color:rgba(255,255,255,.7);
-  box-shadow:0 0 28px rgba(102,136,204,.22);
+  background:#fff;
+  color:#000;
 }
 .play-btn:focus-visible{
-  outline:2px solid rgba(102,136,204,.7);
+  outline:2px solid #fff;
   outline-offset:3px;
 }
 .play-btn:disabled{
@@ -234,7 +212,6 @@ body{
   width:100%;
   height:3px;
   background:rgba(255,255,255,.12);
-  border-radius:2px;
   overflow:hidden;
   cursor:pointer;
   position:relative;
@@ -243,14 +220,12 @@ body{
   background-clip:content-box;
 }
 .progress-track:focus-visible{
-  outline:2px solid rgba(102,136,204,.7);
+  outline:2px solid #fff;
   outline-offset:4px;
-  border-radius:2px;
 }
 .progress-fill{
   height:100%;
-  background:rgba(102,136,204,.7);
-  border-radius:2px;
+  background:rgba(255,255,255,.7);
   width:0%;
   transition:width .15s linear;
 }
@@ -259,7 +234,7 @@ body{
   justify-content:space-between;
   font-size:.72rem;
   letter-spacing:.1em;
-  color:rgba(255,255,255,.46);
+  color:rgba(255,255,255,.44);
 }
 
 /* --- Loading indicator --- */
@@ -267,7 +242,7 @@ body{
   font-size:.76rem;
   letter-spacing:.2em;
   text-transform:uppercase;
-  color:rgba(255,255,255,.46);
+  color:rgba(255,255,255,.44);
   text-align:center;
 }
 .loading-indicator[hidden]{display:none}
@@ -295,31 +270,31 @@ body{
   font-size:clamp(2.4rem,7vw,3.6rem);
   font-weight:normal;
   line-height:1.1;
-  color:rgba(255,255,255,.4);
+  color:rgba(255,255,255,.38);
   margin-bottom:16px;
 }
 .error-msg{
   font-size:.88rem;
   line-height:1.6;
-  color:rgba(255,255,255,.58);
+  color:rgba(255,255,255,.56);
 }
 .retry-btn{
   margin-top:16px;
   padding:10px 20px;
   background:transparent;
-  color:rgba(255,255,255,.58);
-  border:1px solid rgba(255,255,255,.28);
-  border-radius:14px;
+  color:rgba(255,255,255,.78);
+  border:1px solid rgba(255,255,255,.44);
   font-family:inherit;
   font-size:.76rem;
   letter-spacing:.12em;
   text-transform:uppercase;
   cursor:pointer;
-  transition:all .3s ease;
+  transition:background .15s ease,color .15s ease;
 }
 .retry-btn:hover,.retry-btn:focus-visible{
-  color:#fff;
-  border-color:rgba(255,255,255,.58);
+  background:#fff;
+  color:#000;
+  border-color:#fff;
 }
 
 /* --- Archive link --- */
@@ -334,7 +309,7 @@ body{
   letter-spacing:.12em;
   transition:color .2s ease;
 }
-.archive-link:hover{color:rgba(255,255,255,.7)}
+.archive-link:hover{color:rgba(255,255,255,.78)}
 
 /* --- Footer --- */
 .footer{
@@ -360,7 +335,7 @@ body{
 
 /* --- Focus indicators (a11y) --- */
 :focus-visible{
-  outline:2px solid rgba(102,136,204,.7);
+  outline:2px solid #fff;
   outline-offset:2px;
 }
 :focus:not(:focus-visible){outline:none}
@@ -385,12 +360,12 @@ body{
 }
 .transcript-scroll::-webkit-scrollbar{width:3px}
 .transcript-scroll::-webkit-scrollbar-track{background:transparent}
-.transcript-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:2px}
+.transcript-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.28)}
 .transcript-text{
   font-family:'Courier New',Courier,monospace;
   font-size:.95rem;
   line-height:1.7;
-  color:rgba(255,255,255,.82);
+  color:rgba(255,255,255,.88);
   text-align:left;
   white-space:pre-wrap;
   word-wrap:break-word;
@@ -405,7 +380,7 @@ body{
 .noscript-msg{
   text-align:center;
   padding:48px 24px;
-  color:rgba(255,255,255,.62);
+  color:rgba(255,255,255,.68);
   font-size:.92rem;
   line-height:1.7;
 }
