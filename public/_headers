@@ -62,3 +62,6 @@
 
 /listen/index.html
   Cache-Control: public, max-age=60, must-revalidate
+
+/about/index.html
+  Cache-Control: public, max-age=60, must-revalidate

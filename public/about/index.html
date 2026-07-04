@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>About — House of Dreams</title>
+<meta name="description" content="About House of Dreams — an archival and audiovisual project built around the prison writings of Ahed Sheikh Hassan, written in Sednaya Prison between 1988 and 1993.">
+<link rel="canonical" href="https://www.houseofdreams.space/about/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.houseofdreams.space/about/">
+<meta property="og:title" content="About — House of Dreams">
+<meta property="og:description" content="About House of Dreams — an archival and audiovisual project built around the prison writings of Ahed Sheikh Hassan, written in Sednaya Prison between 1988 and 1993.">
+<meta property="og:image" content="https://www.houseofdreams.space/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="About — House of Dreams">
+<meta name="twitter:description" content="About House of Dreams — an archival and audiovisual project built around the prison writings of Ahed Sheikh Hassan, written in Sednaya Prison between 1988 and 1993.">
+<meta name="twitter:image" content="https://www.houseofdreams.space/og-image.png">
+
+<!-- Favicon -->
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:#000}
+body{
+  min-height:100vh;
+  background:#000;
+  color:#fff;
+  font-family:'Courier New',Courier,monospace;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+[hidden]{display:none !important}
+::selection{background:#fff;color:#000}
+
+a{color:#fff;text-decoration:underline;text-underline-offset:3px}
+a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:2px solid #fff;outline-offset:2px}
+:focus:not(:focus-visible){outline:none}
+
+.page{
+  max-width:42rem;
+  margin:0 auto;
+  padding:clamp(32px,7vh,64px) 24px clamp(40px,8vh,72px);
+}
+
+/* --- Header --- */
+.page-header{
+  padding-bottom:clamp(32px,6vh,52px);
+  border-bottom:1px solid rgba(255,255,255,0.2);
+}
+.header-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px 24px;
+  flex-wrap:wrap;
+  margin-bottom:clamp(36px,7vh,60px);
+}
+.back-link{
+  font-size:.84rem;
+  letter-spacing:.08em;
+}
+.back-link::before{content:'\2190\00A0\00A0'}
+.page[dir="rtl"] .back-link::before{content:'\2192\00A0\00A0'}
+
+.lang-toggle{display:flex;gap:12px}
+.lang-btn{
+  min-height:44px;
+  padding:10px 22px;
+  background:#000;
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.4);
+  font-family:inherit;
+  font-size:.9rem;
+  letter-spacing:.08em;
+  cursor:pointer;
+}
+.lang-btn:hover{border-color:#fff}
+.lang-btn[aria-pressed="true"]{background:#fff;color:#000;border-color:#fff}
+
+.kicker{
+  font-size:.76rem;
+  letter-spacing:.42em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.62);
+}
+.page-header .kicker{margin-bottom:14px}
+.page-title{
+  font-size:clamp(1.4rem,4.5vw,2rem);
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  line-height:1.35;
+  font-weight:normal;
+}
+.noscript-note{
+  margin-top:16px;
+  font-size:.8rem;
+  line-height:1.7;
+  color:rgba(255,255,255,0.62);
+}
+
+/* --- Sections --- */
+.section{
+  padding:clamp(36px,6vh,56px) 0;
+  border-bottom:1px solid rgba(255,255,255,0.2);
+}
+.section .kicker{margin-bottom:22px}
+.section p{
+  font-size:.95rem;
+  line-height:1.7;
+  letter-spacing:normal;
+  color:rgba(255,255,255,0.78);
+  margin-bottom:1.1em;
+}
+.section p:last-child{margin-bottom:0}
+[lang="ar"] .section p{font-size:1.05rem;line-height:1.85}
+
+/* --- Colophon / info lists --- */
+.colophon{
+  margin-top:6px;
+  border-bottom:1px solid rgba(255,255,255,0.14);
+}
+.colophon-row{
+  display:grid;
+  grid-template-columns:minmax(0,11rem) minmax(0,1fr);
+  gap:6px 24px;
+  padding:14px 0;
+  border-top:1px solid rgba(255,255,255,0.14);
+}
+.colophon dt{
+  font-size:.8rem;
+  line-height:1.7;
+  color:rgba(255,255,255,0.55);
+}
+.colophon dd{
+  font-size:.95rem;
+  line-height:1.7;
+  color:rgba(255,255,255,0.9);
+}
+[lang="ar"] .colophon dd{font-size:1.05rem}
+@media (max-width:540px){
+  .colophon-row{grid-template-columns:1fr;gap:4px}
+}
+
+.link-list{
+  list-style:none;
+  margin-top:22px;
+}
+.link-list li{padding:6px 0;font-size:.95rem;line-height:1.7}
+[lang="ar"] .link-list li{font-size:1.05rem}
+
+/* --- Footer --- */
+.footer{
+  padding-top:clamp(36px,7vh,56px);
+  text-align:center;
+}
+.footer-text{
+  font-size:.68rem;
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.28);
+}
+
+/* --- Arabic typography --- */
+:lang(ar),[lang="ar"]{
+  font-family:'Noto Naskh Arabic','Geeza Pro','Traditional Arabic','Arabic Typesetting',serif;
+  letter-spacing:0 !important;
+  word-spacing:.05em;
+}
+:lang(ar) *,[lang="ar"] *{letter-spacing:0 !important}
+</style>
+</head>
+<body>
+
+<div class="page" id="page" lang="en" dir="ltr">
+
+  <header class="page-header">
+    <div class="header-bar">
+      <a class="back-link" href="/"><span data-lang="en">House of Dreams</span><span data-lang="ar" lang="ar" hidden>بيت الأحلام</span></a>
+      <div class="lang-toggle" role="group" aria-label="Language selection">
+        <button class="lang-btn" id="btn-ar" type="button" lang="ar" aria-pressed="false">العربية</button>
+        <button class="lang-btn" id="btn-en" type="button" lang="en" aria-pressed="true">English</button>
+      </div>
+    </div>
+    <p class="kicker"><span data-lang="en">About the project</span><span data-lang="ar" lang="ar" hidden>عن المشروع</span></p>
+    <h1 class="page-title"><span lang="ar" dir="rtl">بيت الأحلام</span><span aria-hidden="true"> / </span><span lang="en" dir="ltr">House of Dreams</span></h1>
+    <noscript>
+      <p class="noscript-note">JavaScript is required to switch languages. <span lang="ar" dir="rtl">يتطلب تبديل اللغة تفعيل جافاسكربت.</span></p>
+    </noscript>
+  </header>
+
+  <main id="content">
+
+    <!-- ============ ENGLISH ============ -->
+    <div id="content-en" data-lang="en" lang="en" dir="ltr">
+
+      <section class="section">
+        <h2 class="kicker">About House of Dreams</h2>
+        <p>House of Dreams is a long-term artistic, archival and audiovisual practice by Alaa Sheikh Hassan (also known as Alaa Hassan). It takes the form of an installation and an interactive digital archive, built around the prison writings and handmade objects of Ahed Sheikh Hassan, a Syrian political prisoner who spent seven years in Sednaya Prison between 1987 and 1994.</p>
+        <p>The project transforms a private family archive into a public space for testimony, grief, imagination and cultural memory. Papers that were smuggled out of prison, and objects that were made and given under confinement, are opened here for others to read, hear and remember.</p>
+        <p>House of Dreams is not a single work, and not only a website. The virtual archive on this site is one of its forms; the installation is another. Both grow from the same material, and the practice continues.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="kicker">About Ahed Sheikh Hassan</h2>
+        <p>Ahed Sheikh Hassan was born in 1956 and died in 1996. A Syrian, he was arrested by the Syrian regime in 1987 for his membership in the Communist Labor Party, and held for seven years in Sednaya Prison, from 1987 to 1994.</p>
+        <p>He was a writer, a prisoner, a father, a reader and a political subject. Inside the prison he made an inner life for himself: he wrote, he read, he built things with his hands, and he stayed present in the life of his family. He died in 1996, two years after his release.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="kicker">About the prison writings</h2>
+        <p>The prison writings were written between 1988 and 1993 in Sednaya Prison, on small, delicate sheets of paper that were smuggled out to his family. They record daily life, thought, fear, tenderness and survival.</p>
+        <p>The archive counts 105 papers. A selection of them is presented in the virtual archive on this site.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="kicker">The handmade objects and the small house</h2>
+        <p>In prison, Ahed built a small model house from basic materials and gave it to his children. The project takes its name from this house.</p>
+        <p>The archive also holds other handmade pieces he was allowed to gift to his family, books from the prison, and family photographs — pictures the family took outside prison to show him their life.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="kicker">Exhibition information</h2>
+        <p>Ahed Sheikh Hassan’s archive is included in the exhibition “Sednaya: Syria’s Architecture of Repression and Death” by the Syria Prisons Museum at Memorial Berlin-Hohenschönhausen, Germany.</p>
+        <dl class="colophon">
+          <div class="colophon-row">
+            <dt>Exhibition</dt>
+            <dd>Sednaya: Syria’s Architecture of Repression and Death</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>Institution</dt>
+            <dd>Syria Prisons Museum</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>Venue</dt>
+            <dd>Memorial Berlin-Hohenschönhausen, Germany</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>Dates</dt>
+            <dd>26 March 2026 – 27 September 2026</dd>
+          </div>
+        </dl>
+        <ul class="link-list">
+          <li><a href="https://prisons.museum/en/news/exhibition-sednaya-syria-s-architecture-of-repression-and-death">Exhibition page — Syria Prisons Museum</a></li>
+          <li><a href="https://www.stiftung-hsh.de/en/visit/exhibitions/translate-to-english-sednaya">Visitor information — Memorial Berlin-Hohenschönhausen</a></li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2 class="kicker">Credits</h2>
+        <dl class="colophon">
+          <div class="colophon-row">
+            <dt>Artist / project author</dt>
+            <dd>Alaa Sheikh Hassan</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>Transcription and editing of the diaries</dt>
+            <dd>Abdallah Al-Fahl</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>Website development</dt>
+            <dd>Amr Ayash</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>Voice recording / sound production</dt>
+            <dd>Bashar Darwish</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>Music</dt>
+            <dd>Louay Kanawati, Hekmat Al-Qassar</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>Supported by</dt>
+            <dd>Heinrich-Böll-Stiftung</dd>
+          </div>
+          <!-- FUTURE CREDITS (EN): add new .colophon-row entries above this line. Keep in sync with the Arabic colophon below. -->
+        </dl>
+      </section>
+
+    </div>
+
+    <!-- ============ ARABIC ============ -->
+    <div id="content-ar" data-lang="ar" lang="ar" dir="rtl" hidden>
+
+      <section class="section">
+        <h2 class="kicker">عن بيت الأحلام</h2>
+        <p>بيت الأحلام ممارسة فنية وأرشيفية وسمعية بصرية طويلة الأمد للفنان علاء الشيخ حسن (المعروف أيضاً باسم علاء حسن). يتخذ المشروع شكل عمل تركيبي وأرشيف رقمي تفاعلي، وهو مبني حول مذكرات ومصنوعات يدوية أنتجها عهد الشيخ حسن، المعتقل السياسي السوري الذي قضى سبع سنوات في سجن صيدنايا بين عامي 1987 و1994.</p>
+        <p>يحوّل المشروع أرشيفاً عائلياً خاصاً إلى فضاء عام للشهادة والحزن والخيال والذاكرة الثقافية. فالأوراق التي هُرّبت من السجن، والمصنوعات التي صُنعت وأُهديت في ظل الاعتقال، تُفتح هنا أمام الآخرين للقراءة والاستماع والتذكّر.</p>
+        <p>بيت الأحلام ليس عملاً واحداً، وليس مجرد موقع إلكتروني؛ فالأرشيف الافتراضي على هذا الموقع أحد أشكاله، والعمل التركيبي شكل آخر، وكلاهما ينمو من المادة نفسها، والممارسة مستمرة.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="kicker">عن عهد الشيخ حسن</h2>
+        <p>وُلد عهد الشيخ حسن عام 1956 وتوفي عام 1996. وهو سوري اعتقله النظام السوري عام 1987 بسبب انتمائه إلى حزب العمل الشيوعي، وقضى سبع سنوات في سجن صيدنايا بين عامي 1987 و1994.</p>
+        <p>كان كاتباً وسجيناً وأباً وقارئاً وذاتاً سياسية. صنع لنفسه داخل السجن حياة داخلية: كتب وقرأ وصنع أشياء بيديه، وظل حاضراً في حياة عائلته. توفي عام 1996، بعد عامين من الإفراج عنه.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="kicker">عن المذكرات</h2>
+        <p>كُتبت المذكرات بين عامي 1988 و1993 في سجن صيدنايا، على أوراق صغيرة رقيقة هُرّبت إلى عائلته خارج السجن. تسجّل الأوراق الحياة اليومية والفكر والخوف والحنان والنجاة.</p>
+        <p>يضم الأرشيف 105 أوراق، تُعرض مختارات منها في الأرشيف الافتراضي على هذا الموقع.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="kicker">المصنوعات اليدوية والبيت الصغير</h2>
+        <p>بنى عهد داخل السجن بيتاً صغيراً من مواد بسيطة وأهداه إلى أطفاله، ومن هذا البيت أخذ المشروع اسمه.</p>
+        <p>يضم الأرشيف أيضاً مصنوعات يدوية أخرى سُمح له بإهدائها إلى عائلته، وكتباً من السجن، وصوراً فوتوغرافية التقطتها العائلة خارج السجن لتريه حياتها.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="kicker">معلومات المعرض</h2>
+        <p>أُدرج أرشيف عهد الشيخ حسن ضمن معرض «صيدنايا: عمارة القمع والموت في سوريا» الذي يقيمه متحف السجون السورية في نصب برلين-هوهنشونهاوزن التذكاري في ألمانيا.</p>
+        <dl class="colophon">
+          <div class="colophon-row">
+            <dt>المعرض</dt>
+            <dd>صيدنايا: عمارة القمع والموت في سوريا</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>الجهة المنظمة</dt>
+            <dd>متحف السجون السورية</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>المكان</dt>
+            <dd>نصب برلين-هوهنشونهاوزن التذكاري، ألمانيا</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>التواريخ</dt>
+            <dd>26 آذار/مارس 2026 – 27 أيلول/سبتمبر 2026</dd>
+          </div>
+        </dl>
+        <ul class="link-list">
+          <li><a href="https://prisons.museum/en/news/exhibition-sednaya-syria-s-architecture-of-repression-and-death">صفحة المعرض — متحف السجون السورية</a></li>
+          <li><a href="https://www.stiftung-hsh.de/en/visit/exhibitions/translate-to-english-sednaya">معلومات الزيارة — نصب برلين-هوهنشونهاوزن التذكاري</a></li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2 class="kicker">شكر وتقدير</h2>
+        <dl class="colophon">
+          <div class="colophon-row">
+            <dt>الفنان / صاحب المشروع</dt>
+            <dd>علاء الشيخ حسن</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>تفريغ المذكرات وتحريرها</dt>
+            <dd>عبد الله الفحل</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>تطوير الموقع</dt>
+            <dd>عمرو عياش</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>التسجيل الصوتي / الإنتاج الصوتي</dt>
+            <dd>بشار درويش</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>الموسيقى</dt>
+            <dd>لؤي قنواتي، حكمت القصار</dd>
+          </div>
+          <div class="colophon-row">
+            <dt>بدعم من</dt>
+            <dd>مؤسسة هاينريش بول</dd>
+          </div>
+          <!-- FUTURE CREDITS (AR): add new .colophon-row entries above this line. Keep in sync with the English colophon above. -->
+        </dl>
+      </section>
+
+    </div>
+
+  </main>
+
+  <footer class="footer">
+    <p class="footer-text" lang="en" dir="ltr">houseofdreams.space</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var KEY = 'hod-lang';
+  var htmlEl = document.documentElement;
+  var page = document.getElementById('page');
+  var btnAr = document.getElementById('btn-ar');
+  var btnEn = document.getElementById('btn-en');
+
+  function detectLang() {
+    try {
+      var q = new URLSearchParams(window.location.search).get('lang');
+      if (q === 'ar' || q === 'en') return q;
+    } catch (e) {}
+    try {
+      var stored = localStorage.getItem(KEY);
+      if (stored === 'ar' || stored === 'en') return stored;
+    } catch (e) {}
+    var nav = (navigator.language || '').toLowerCase();
+    if (nav.indexOf('ar') === 0) return 'ar';
+    return 'en';
+  }
+
+  function apply(lang) {
+    var dir = lang === 'ar' ? 'rtl' : 'ltr';
+    htmlEl.setAttribute('lang', lang);
+    htmlEl.setAttribute('dir', dir);
+    page.setAttribute('lang', lang);
+    page.setAttribute('dir', dir);
+    var nodes = document.querySelectorAll('[data-lang]');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].hidden = nodes[i].getAttribute('data-lang') !== lang;
+    }
+    btnAr.setAttribute('aria-pressed', lang === 'ar' ? 'true' : 'false');
+    btnEn.setAttribute('aria-pressed', lang === 'en' ? 'true' : 'false');
+  }
+
+  function select(lang) {
+    try { localStorage.setItem(KEY, lang); } catch (e) {}
+    apply(lang);
+  }
+
+  btnAr.addEventListener('click', function () { select('ar'); });
+  btnEn.addEventListener('click', function () { select('en'); });
+
+  apply(detectLang());
+})();
+</script>
+</body>
+</html>
