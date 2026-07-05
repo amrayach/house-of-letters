@@ -430,7 +430,7 @@ function createAnchorRecord(anchor, textureCache, cfg, sharedGeometry, gradientS
     anchorRing,
     anchorCore,
     labelPlane,
-    textureCache,       // shared Map; textures rasterized on demand, disposed via the cache (:751)
+    textureCache,       // shared Map; textures rasterized on demand, disposed in dispose() via textureCache
   };
 }
 
