@@ -54,7 +54,7 @@ All tunable values live in `src/config/constants.js`:
 **Never hardcode values in modules** — import from constants.
 
 ### Material Strategy
-- **Letter meshes**: `MeshBasicMaterial` with SRGB texture map (unlit — avoids lighting artifacts on scanned documents)
+- **Letter meshes**: `MeshBasicMaterial` with SRGB texture map (unlit — avoids lighting artifacts on scanned documents), `FrontSide` only, texture U-flipped (`repeat.x=-1, offset.x=1`), inward-wound duplicate skin dropped from the index buffer at load — the source GLBs bake a mirrored duplicate skin into every paper sheet (verify with `dev/paper-orientation-check.html`)
 - **Glass/plexi**: `MeshBasicMaterial`, transparent, opacity 0.15, double-sided
 - **Strings**: `LineBasicMaterial`, white, opacity 0.15, frustum culling disabled
 

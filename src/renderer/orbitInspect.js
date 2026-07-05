@@ -131,9 +131,13 @@ function applyEnhancedMaterials(clone) {
       }
       tex.needsUpdate = true;
 
+      // FrontSide, not DoubleSide: the shared textures are U-flipped in
+      // letters.js to un-mirror the scans, and the GLB Front/Back sheets
+      // cross at mid-height — front-face culling keeps each side of the
+      // paper showing only its own sheet (same convention as letters.js).
       child.material = new THREE.MeshBasicMaterial({
         map: tex,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
       });
       child.renderOrder = 0;
     } else {

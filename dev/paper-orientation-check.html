@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Paper Orientation Check — House of Dreams</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #111; color: #ccc; font-family: monospace; padding: 16px; }
+h1 { color: #d6bc7f; font-size: 18px; margin-bottom: 4px; }
+.subtitle { color: #888; font-size: 12px; margin-bottom: 12px; max-width: 900px; }
+.controls { margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
+button { background: #333; color: #d6bc7f; border: 1px solid #555; padding: 6px 14px; cursor: pointer; font-family: monospace; }
+#status { color: #888; margin-left: 12px; font-size: 12px; }
+.row { display: flex; gap: 20px; align-items: flex-start; }
+.col { text-align: center; }
+.col label { display: block; color: #888; font-size: 11px; margin-bottom: 4px; }
+canvas, img.scan { border: 1px solid #444; display: block; background: #1a1a1a; height: 560px; }
+img.scan { object-fit: contain; width: 110px; }
+</style>
+</head>
+<body>
+<h1>Paper Orientation Check</h1>
+<p class="subtitle">
+Renders the letter through the PRODUCTION pipeline (src/renderer/letters.js — material
+replacement, texture U-flip, FrontSide culling) from both sides, next to the authoritative
+scans. PASS: each render matches its scan — same text direction (unmirrored), one
+continuous scan top-to-bottom (no mixed front/back halves).
+</p>
+<div class="controls">
+  <button id="prev">&lt; Prev</button>
+  <span id="letterLabel">Letter ?</span>
+  <button id="next">Next &gt;</button>
+  <span id="status">Loading…</span>
+</div>
+<div class="row">
+  <div class="col"><label>3D render — FRONT (+Z view)</label><canvas id="frontCanvas" width="220" height="1120"></canvas></div>
+  <div class="col"><label>Front scan (truth)</label><img id="frontScan" class="scan"></div>
+  <div class="col"><label>3D render — BACK (−Z view)</label><canvas id="backCanvas" width="220" height="1120"></canvas></div>
+  <div class="col"><label>Back scan (truth)</label><img id="backScan" class="scan"></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { loadLetters } from '/src/renderer/letters.js';
+
+const statusEl = document.getElementById('status');
+const letterLabel = document.getElementById('letterLabel');
+const frontCanvas = document.getElementById('frontCanvas');
+const backCanvas = document.getElementById('backCanvas');
+const frontScan = document.getElementById('frontScan');
+const backScan = document.getElementById('backScan');
+
+const res = await fetch('/src/data/letters.json');
+const lettersData = await res.json();
+
+const params = new URLSearchParams(location.search);
+let currentIndex = Math.max(0, lettersData.findIndex(l => l.id === parseInt(params.get('id') || '1', 10)));
+
+// One offscreen renderer drives both views; results are blitted to 2D canvases.
+const glCanvas = document.createElement('canvas');
+glCanvas.width = frontCanvas.width;
+glCanvas.height = frontCanvas.height;
+const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(frontCanvas.width, frontCanvas.height, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+let scene = null;
+
+function findPaperBounds(model) {
+  // Bounds of the textured paper sheets only (exclude plexi/glass/strings)
+  const box = new THREE.Box3();
+  let found = false;
+  model.traverse((child) => {
+    if (child.isMesh && child.material?.map && !child.userData.isGlass && !child.userData.isFocusHelper) {
+      box.expandByObject(child);
+      found = true;
+    }
+  });
+  return found ? box : new THREE.Box3().setFromObject(model);
+}
+
+async function loadLetter() {
+  const data = lettersData[currentIndex];
+  letterLabel.textContent = `Letter ${data.id} (${currentIndex + 1}/${lettersData.length})`;
+  statusEl.textContent = 'Loading…';
+  frontScan.src = data.frontImage || `/assets/letters/${data.id}.jpg`;
+  backScan.src = data.backImage || `/assets/letters/${data.id}-1.jpg`;
+
+  if (scene) {
+    scene.traverse((c) => { if (c.isMesh) { c.geometry?.dispose(); c.material?.map?.dispose?.(); c.material?.dispose?.(); } });
+  }
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1a1a);
+
+  // PRODUCTION pipeline — same call main.js makes.
+  await loadLetters(scene, [data], renderer);
+  window.__scene = scene; // debug/automation access
+
+  const model = scene.children.find((c) => c.userData?.id === data.id);
+  if (!model) { statusEl.textContent = 'Model failed to load'; return; }
+
+  const bounds = findPaperBounds(model);
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+
+  const fov = 40;
+  const aspect = frontCanvas.width / frontCanvas.height;
+  const distH = (size.y / 2) / Math.tan(THREE.MathUtils.degToRad(fov / 2)) * 1.05;
+  const distW = (size.x / 2) / (Math.tan(THREE.MathUtils.degToRad(fov / 2)) * aspect) * 1.05;
+  const dist = Math.max(distH, distW, 0.05);
+
+  for (const [canvas, dir] of [[frontCanvas, +1], [backCanvas, -1]]) {
+    const camera = new THREE.PerspectiveCamera(fov, aspect, 0.01, 100);
+    // Views along the model's local Z axis (letter 1 has zero yaw; for rotated
+    // letters, look along their rotated normal).
+    const normal = new THREE.Vector3(0, 0, dir).applyEuler(model.rotation);
+    camera.position.copy(center).addScaledVector(normal, dist);
+    camera.lookAt(center);
+    renderer.render(scene, camera);
+    canvas.getContext('2d').drawImage(glCanvas, 0, 0);
+  }
+
+  statusEl.textContent = `Letter ${data.id} rendered — compare each render to its scan.`;
+}
+
+document.getElementById('prev').addEventListener('click', () => { if (currentIndex > 0) { currentIndex--; loadLetter(); } });
+document.getElementById('next').addEventListener('click', () => { if (currentIndex < lettersData.length - 1) { currentIndex++; loadLetter(); } });
+
+// ---------------------------------------------------------------------------
+// Quantitative check, callable from automation: window.__check()
+// Crops the bright paper region from each render/scan, downsamples to a
+// common grid, and Pearson-correlates render vs scan — as-is and mirrored.
+// PASS per side: corr(asIs) clearly above corr(mirrored).
+// ---------------------------------------------------------------------------
+const GRID_W = 48, GRID_H = 192;
+
+function brightCrop(source, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(source, 0, 0, w, h);
+  const d = ctx.getImageData(0, 0, w, h).data;
+  let minX = w, maxX = 0, minY = h, maxY = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      if (lum > 140) {
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX <= minX || maxY <= minY) return null;
+  return { canvas: c, sx: minX, sy: minY, sw: maxX - minX + 1, sh: maxY - minY + 1 };
+}
+
+function sampleGrid(crop, mirror) {
+  const c = document.createElement('canvas');
+  c.width = GRID_W; c.height = GRID_H;
+  const ctx = c.getContext('2d');
+  if (mirror) { ctx.translate(GRID_W, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(crop.canvas, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, GRID_W, GRID_H);
+  const d = ctx.getImageData(0, 0, GRID_W, GRID_H).data;
+  const out = new Float32Array(GRID_W * GRID_H);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2];
+  }
+  return out;
+}
+
+function pearson(a, b) {
+  const n = a.length;
+  let sa = 0, sb = 0;
+  for (let i = 0; i < n; i++) { sa += a[i]; sb += b[i]; }
+  const ma = sa / n, mb = sb / n;
+  let cov = 0, va = 0, vb = 0;
+  for (let i = 0; i < n; i++) {
+    const da = a[i] - ma, db = b[i] - mb;
+    cov += da * db; va += da * da; vb += db * db;
+  }
+  return cov / Math.sqrt(va * vb || 1);
+}
+
+window.__check = function () {
+  const result = { id: lettersData[currentIndex].id };
+  const renders = { frontRender: frontCanvas, backRender: backCanvas };
+  const scans = { frontScan, backScan };
+  const scanGrids = {};
+  for (const [sName, img] of Object.entries(scans)) {
+    if (!img.complete || !img.naturalWidth) { result[sName] = 'not-loaded'; continue; }
+    const crop = brightCrop(img, 220, 1120);
+    if (crop) scanGrids[sName] = sampleGrid(crop, false);
+  }
+  for (const [rName, canvas] of Object.entries(renders)) {
+    const crop = brightCrop(canvas, canvas.width, canvas.height);
+    if (!crop) { result[rName] = 'no-paper-found'; continue; }
+    const asIs = sampleGrid(crop, false);
+    const mirrored = sampleGrid(crop, true);
+    result[rName] = {};
+    for (const [sName, sGrid] of Object.entries(scanGrids)) {
+      result[rName][sName] = {
+        asIs: +pearson(asIs, sGrid).toFixed(4),
+        mirrored: +pearson(mirrored, sGrid).toFixed(4),
+      };
+    }
+  }
+  return JSON.stringify(result);
+};
+
+loadLetter();
+</script>
+</body>
+</html>

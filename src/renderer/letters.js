@@ -331,9 +331,48 @@ export async function loadLetters(scene, lettersData, renderer, onProgress = nul
                   const existingMap = child.material.map;
                   
                   if (existingMap) {
+                    // All 47 source GLBs share the same export defects (see
+                    // dev/inspect-glb.mjs + dev/paper-orientation-check.html):
+                    // each paper sheet is a closed thin slab whose readable
+                    // skin (wound toward local +Y) carries horizontally
+                    // mirrored UVs, plus a duplicate skin wound the other way
+                    // and near-degenerate rim walls. The sheets also cross at
+                    // mid-height, so the duplicate skins won the depth test on
+                    // the upper half and showed the scan mirrored. Fix at
+                    // load: keep only the readable skin, flip the texture's U
+                    // axis, and render FrontSide so each side of the paper
+                    // shows exactly its own unmirrored scan. orbitInspect.js
+                    // shares these geometry/texture instances and must keep
+                    // the same FrontSide convention.
+                    const sheetGeometry = child.geometry;
+                    if (sheetGeometry?.index) {
+                      const posAttr = sheetGeometry.attributes.position;
+                      const index = sheetGeometry.index;
+                      const kept = [];
+                      for (let i = 0; i < index.count; i += 3) {
+                        const a = index.getX(i);
+                        const b = index.getX(i + 1);
+                        const c = index.getX(i + 2);
+                        // cross(B-A, C-A).y > 0 => triangle wound toward
+                        // local +Y (the readable skin on both sheet nodes)
+                        const e1x = posAttr.getX(b) - posAttr.getX(a);
+                        const e1z = posAttr.getZ(b) - posAttr.getZ(a);
+                        const e2x = posAttr.getX(c) - posAttr.getX(a);
+                        const e2z = posAttr.getZ(c) - posAttr.getZ(a);
+                        if (e1z * e2x - e1x * e2z > 0) {
+                          kept.push(a, b, c);
+                        }
+                      }
+                      if (kept.length > 0 && kept.length < index.count) {
+                        sheetGeometry.setIndex(kept);
+                      }
+                    }
+
                     // Set correct color space for the texture
                     existingMap.colorSpace = THREE.SRGBColorSpace;
                     existingMap.anisotropy = textureAnisotropy;
+                    existingMap.repeat.x = -1;
+                    existingMap.offset.x = 1;
                     existingMap.needsUpdate = true;
 
                     console.log(`[TEXTURE] ${child.name} has texture: ${existingMap.image?.width}x${existingMap.image?.height}`);
@@ -341,7 +380,7 @@ export async function loadLetters(scene, lettersData, renderer, onProgress = nul
                     // Replace with a simple MeshBasicMaterial to eliminate lighting issues
                     child.material = new THREE.MeshBasicMaterial({
                       map: existingMap,
-                      side: THREE.DoubleSide,
+                      side: THREE.FrontSide,
                       transparent: false
                     });
 

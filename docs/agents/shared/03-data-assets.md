@@ -154,6 +154,7 @@ Observed runtime schema: 46 records, all with the same keys today.
   - provisional inspect anchors used for inspect camera framing
 - Readable-side direction comes from the GLB `Front` and `Back` node transforms first; mesh-normal synthesis is only a fallback when those nodes are missing or malformed.
 - The renderer argument is used only to cap letter-scan texture anisotropy at runtime; this is not part of the JSON content contract.
+- All 47 GLB exports share a source-side defect that `loadLetters()` corrects at load time (do not "simplify" the correction away): each paper sheet (`Front`/`Back` node) is a closed thin slab whose readable skin carries horizontally mirrored UVs, plus an opposite-wound duplicate skin and near-degenerate rim walls, and the two sheets cross at mid-height. The loader keeps only the readable skin (local `+Y`-wound triangles), flips each sheet texture's U axis (`repeat.x = -1`, `offset.x = 1`), and renders paper sheets `FrontSide`. `orbitInspect.js` shares those geometry/texture instances and must keep the same `FrontSide` convention. Audit tools: `dev/inspect-glb.mjs` (offline geometry/UV dump) and `dev/paper-orientation-check.html` (renders letters through the production pipeline and correlates both sides against the authoritative scans).
 
 ## Generated vs source assets
 
