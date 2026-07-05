@@ -74,6 +74,8 @@ export const AUDIO = {
   NARRATION_FADE_NEAR: 1.5,    // full volume at this distance
   NARRATION_FADE_FAR: 8,       // volume reaches 0 at this distance
   NARRATION_FADE_EXPONENT: 1.0,  // falloff curve (<1=convex/slower drop, 1=linear, >1=concave/faster drop)
+  NARRATION_FADE_OUT_MS: 70,     // fade narration to 0 before pausing (kills the switch/leave click)
+  NARRATION_ATTACK_STEP: 0.06,   // max per-frame narration volume rise (~270ms to full @60fps)
   AUDIO_SWITCH_HYSTERESIS: 1.5,  // world-space units; prevents audio flapping in dense zones
   POLYPHONIC_MODE: false,        // true = all in-range narrations play simultaneously
   THEME_CROSSFADE_START: 100,    // world-z where crossfade begins (zone 2 territory, theme A)

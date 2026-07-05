@@ -137,6 +137,10 @@ export class AudioEngine {
     }
   }
 
+  countPlayingNarrations() {
+    return Object.values(this.narrations).filter((h) => h && h.playing()).length;
+  }
+
   registerNarration(letterId, url) {
     this.narrationUrls[letterId] = url;
   }

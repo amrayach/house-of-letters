@@ -164,6 +164,10 @@ const debugAudioTarget = document.getElementById('debug-audio-target');
 const debugNearestDist = document.getElementById('debug-nearest-dist');
 const debugDiagTail = document.getElementById('debug-diag-tail');
 
+if (typeof window !== 'undefined' && window.__hol) {
+  window.__hol.audio = () => audioEngine.countPlayingNarrations();
+}
+
 let manualSpeedOverride = false;
 let debugPanelVisible = false;
 
