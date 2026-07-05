@@ -82,21 +82,24 @@ export class AudioEngine {
   }
 
   duckBackgroundTheme() {
-    if (this.backgroundTheme && this.backgroundTheme.playing()) {
+    // Duck the theme bed under narration. Called on every activateNarration; in normal play the
+    // per-frame applyThemeDucking re-sets the exact per-distance duck the next frame (cancelling these
+    // fades via Howler _stopFade), so this only takes LASTING effect where that per-frame path is gated
+    // off — i.e. during inspect (main.js runs the narration block only when inspectState.phase === IDLE).
+    // Mirrors restoreBackgroundThemeVolume's dual/single-theme structure.
+    const duckTarget = AUDIO.DUCKING_VOLUME / AUDIO.THEME_VOLUME;   // == the applyThemeDucking(1.0) scale
+    if (this.themeA) {
+      // Dual-theme mode (exhibition): fade each crossfade theme to base * duckTarget (proportional per
+      // zone). backgroundTheme aliases themeA here, so it is covered by this branch.
+      if (this.themeA.playing()) {
+        this.themeA.fade(this.themeA.volume(), this.themeABaseVolume * duckTarget, AUDIO.FADE_DURATION);
+      }
+      if (this.themeB && this.themeB.playing()) {
+        this.themeB.fade(this.themeB.volume(), this.themeBBaseVolume * duckTarget, AUDIO.FADE_DURATION);
+      }
+    } else if (this.backgroundTheme && this.backgroundTheme.playing()) {
+      // Legacy single-theme fallback
       this.backgroundTheme.fade(this.backgroundTheme.volume(), AUDIO.DUCKING_VOLUME, AUDIO.FADE_DURATION);
-    }
-    // Dual-theme mode (exhibition): the legacy single backgroundTheme is null, so the line above
-    // no-ops. Duck both crossfade themes to the full-narration level (matches applyThemeDucking(1.0)),
-    // so the bed drops under narration even where the per-frame applyThemeDucking path is gated off
-    // — i.e. during inspect (main.js narration block runs only when inspectState.phase === IDLE).
-    // In normal play the per-frame applyThemeDucking re-sets the exact per-distance duck next frame
-    // (cancelling this fade via Howler _stopFade), so this only takes lasting effect during inspect.
-    const duckTarget = AUDIO.DUCKING_VOLUME / AUDIO.THEME_VOLUME;
-    if (this.themeA && this.themeA.playing()) {
-      this.themeA.fade(this.themeA.volume(), this.themeABaseVolume * duckTarget, AUDIO.FADE_DURATION);
-    }
-    if (this.themeB && this.themeB.playing()) {
-      this.themeB.fade(this.themeB.volume(), this.themeBBaseVolume * duckTarget, AUDIO.FADE_DURATION);
     }
   }
 
