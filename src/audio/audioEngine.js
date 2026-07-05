@@ -210,18 +210,23 @@ export class AudioEngine {
     });
   }
 
-  async activateNarration(letterId) {
+  async activateNarration(letterId, { fullVolume = false } = {}) {
     this._themeRestored = false;
     const requestToken = ++this.activeNarrationRequestToken;
 
     // Same letter: resume from paused position
     if (this.currentNarrationLetterId === letterId && this.currentNarration) {
-      const wasPlaying = this.currentNarration.playing();
-      if (!wasPlaying) {
-        this.currentNarration.play();
-      }
+      const howl = this.currentNarration;
+      // Genuinely cancel an in-flight fade-out (N5): _fadingOut.delete() only clears bookkeeping — the
+      // Howler ramp keeps running and finish() would pause the just-re-approached narration. Touching
+      // volume() triggers Howler _stopFade (jumps to target + emits 'fade'); with volume > 0.001 the
+      // hardened finish() then declines to pause.
+      if (this._fadingOut.has(howl)) howl.volume(Math.max(howl.volume(), 0.01));
+      this._fadingOut.delete(howl);
+      if (!howl.playing()) howl.play();
+      if (fullVolume) howl.volume(AUDIO.NARRATION_VOLUME);
       this.duckBackgroundTheme();
-      diag.log('audio', `activateNarration id=${letterId} resume (was ${wasPlaying ? 'playing' : 'paused'})`);
+      diag.log('audio', `activateNarration id=${letterId} resume fullVolume=${fullVolume}`);
       return;
     }
 
@@ -265,14 +270,22 @@ export class AudioEngine {
       return;
     }
 
-    this.duckBackgroundTheme();
+    // SERIALIZE: do not start the incoming until the outgoing fade-out has fully paused.
+    await this._fadeOutPromise;
+    if (requestToken !== this.activeNarrationRequestToken) {
+      diag.log('audio', `activateNarration id=${letterId} STALE after fade-wait`);
+      return;
+    }
 
+    this._fadingOut.delete(narration);
+    this.duckBackgroundTheme();
     narration.stop();
+    narration.volume(fullVolume ? AUDIO.NARRATION_VOLUME : 0);   // full for inspect, else attack-ramp
     narration.play();
     this.currentNarration = narration;
     this.currentNarrationLetterId = letterId;
     this.resumeNarrationOnNextResume = false;
-    diag.log('audio', `activateNarration id=${letterId} PLAYING (prev=${prevId})`);
+    diag.log('audio', `activateNarration id=${letterId} PLAYING playing#=${this.countPlayingNarrations()}`);
   }
 
   async restartNarration(letterId) {
@@ -425,7 +438,7 @@ export class AudioEngine {
 
     if (volume <= 0) {
       const wasPlaying = this.currentNarration.playing();
-      if (wasPlaying) this.currentNarration.pause();
+      if (wasPlaying) this._fadeOutAndPause(this.currentNarration);
       if (!this._themeRestored) {
         this.restoreBackgroundThemeVolume();
       }
@@ -448,14 +461,14 @@ export class AudioEngine {
 
     const wasPlaying = this.currentNarration.playing();
     if (!wasPlaying) this.currentNarration.play();
-    this.currentNarration.volume(volume);
-
+    this._fadingOut.delete(this.currentNarration);
+    const cur = this.currentNarration.volume();
+    const next = volume > cur ? Math.min(volume, cur + AUDIO.NARRATION_ATTACK_STEP) : volume;
+    this.currentNarration.volume(next);
     if (diag.shouldLogVolume(volume, activeId)) {
-      diag.log('audio', `setNarrationVolume vol=${volume.toFixed(2)} id=${activeId}${wasPlaying ? '' : ' RESUMED'}`);
+      diag.log('audio', `setNarrationVolume ${cur.toFixed(2)}->${next.toFixed(2)} id=${activeId}`);
     }
-
-    // Proportional theme ducking: theme swells back as narration fades with distance
-    const duckRatio = volume / AUDIO.NARRATION_VOLUME;
+    const duckRatio = next / AUDIO.NARRATION_VOLUME;
     this.applyThemeDucking(duckRatio);
   }
 
