@@ -301,28 +301,23 @@ function getTextureEntry(cache, key, factory) {
   return cache.get(key);
 }
 
-function buildSequentialAnchors(lettersById, chronology, groundY) {
+function buildSequentialAnchors(lettersById, chronology, groundY, paperLabels) {
   const labelByLetterId = new Map();
-
   chronology.forEach((group) => {
     group.letterIds.forEach((id) => {
-      labelByLetterId.set(id, {
-        zone: group.zone,
-        ambientLabel: group.ambientLabel,
-        focusedLabel: group.focusedLabel,
-      });
+      labelByLetterId.set(id, { zone: group.zone, ambientLabel: group.ambientLabel, focusedLabel: group.focusedLabel });
     });
   });
-
   return [...lettersById.entries()]
     .sort(([a], [b]) => a - b)
     .map(([id, letter]) => {
       const labels = labelByLetterId.get(id) || { zone: 0, ambientLabel: '', focusedLabel: '' };
+      const paperLabel = paperLabels && paperLabels.get(id);         // I5: per-paper date for BOTH labels
       return {
         id,
         zone: labels.zone,
-        ambientLabel: labels.ambientLabel,
-        focusedLabel: labels.focusedLabel,
+        ambientLabel: paperLabel || labels.ambientLabel,
+        focusedLabel: paperLabel || labels.focusedLabel,
         letter,
         anchorPosition: new THREE.Vector3(letter.position.x, groundY, letter.position.z),
       };
@@ -541,7 +536,7 @@ function disposeMaterial(material, { disposeMap = true } = {}) {
   material.dispose();
 }
 
-export function createGroundTimeline({ scene, letters, chronology, constants } = {}) {
+export function createGroundTimeline({ scene, letters, chronology, constants, paperLabels } = {}) {
   if (!scene || !Array.isArray(letters) || !Array.isArray(chronology)) {
     console.warn(`${TIMELINE_LOG_PREFIX} Missing scene, letters, or chronology. Timeline disabled.`);
     return createNoopTimeline();
@@ -562,7 +557,7 @@ export function createGroundTimeline({ scene, letters, chronology, constants } =
   rootGroup.visible = false;
 
   const textureCache = new Map();
-  const orderedAnchors = buildSequentialAnchors(lettersById, chronology, cfg.GROUND_Y);
+  const orderedAnchors = buildSequentialAnchors(lettersById, chronology, cfg.GROUND_Y, paperLabels);
   const spineControlPoints = buildSequentialSpinePoints(orderedAnchors, cfg);
   const distortedControlPoints = buildDistortedControlPoints(spineControlPoints, cfg);
   const spineCurve = new THREE.CatmullRomCurve3(spineControlPoints, false, 'centripetal', 0.2);
