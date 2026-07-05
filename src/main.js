@@ -228,6 +228,7 @@ const startBtn = document.getElementById('start-btn');
 const startStatus = document.getElementById('start-status');
 const pauseScreen = document.getElementById('pause-screen');
 const resumeBtn = document.getElementById('resume-btn');
+const homeBtn = document.getElementById('home-btn');
 const pauseStatus = document.getElementById('pause-status');
 const pauseBtn = document.getElementById('mobile-pause-btn');
 const touchDeferredStatus = document.getElementById('touch-deferred-status');
@@ -1753,6 +1754,13 @@ function handleResume() {
   );
 }
 
+function handleReturnHome() {
+  // Full reload to the landing route. The existing beforeunload → cleanupRuntime
+  // handler disposes the scene/audio/controls; boot re-runs from #landing-screen.
+  // (Soft in-app teardown is intentionally not attempted — see the I1 plan.)
+  window.location.assign('/');
+}
+
 function handleMobilePause() {
   deactivateControls();
   forceExitInspectMode({ restorePose: true });
@@ -1977,6 +1985,7 @@ if (!isTouchDevice) {
 }
 
 resumeBtn.addEventListener('click', handleResume);
+if (homeBtn) homeBtn.addEventListener('click', handleReturnHome);
 startBtn.addEventListener('click', handleStartExperience);
 document.addEventListener('keydown', handleInspectKeyDown);
 
@@ -2531,6 +2540,7 @@ function cleanupRuntime() {
   speedSlider.removeEventListener('input', handleSpeedSliderInput);
   startBtn.removeEventListener('click', handleStartExperience);
   resumeBtn.removeEventListener('click', handleResume);
+  if (homeBtn) homeBtn.removeEventListener('click', handleReturnHome);
   document.removeEventListener('keydown', handleInspectKeyDown);
 
   if (skipBtn) {

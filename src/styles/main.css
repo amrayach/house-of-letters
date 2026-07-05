@@ -561,6 +561,8 @@ body {
 
 .shell-panel-pause .btn {
   margin-top: var(--space-1);
+  display: block;
+  width: 100%;
 }
 
 .btn {
