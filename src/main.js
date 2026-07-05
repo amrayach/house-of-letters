@@ -558,11 +558,20 @@ function tryInitializeGroundTimeline() {
     groundTimeline = null;
   }
 
+  const paperLabels = new Map();
+  for (const group of available) {
+    for (const id of group.letterIds) {
+      const dates = PAPER_DATES[id];
+      if (dates) paperLabels.set(id, dates.label);
+    }
+  }
+
   groundTimeline = createGroundTimeline({
     scene,
     letters: letterObjects,
     chronology: available,
     constants: TIMELINE,
+    paperLabels,
   });
 
   groundTimelineCoveredGroupCount = available.length;
