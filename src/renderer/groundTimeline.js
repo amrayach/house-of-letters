@@ -409,17 +409,12 @@ function createAnchorRecord(anchor, textureCache, cfg, sharedGeometry, gradientS
   anchorCore.rotation.x = -Math.PI / 2;
   anchorCore.position.copy(anchor.anchorPosition);
 
-  const ambientTextureKey = `ambient:${anchor.ambientLabel}`;
-  const focusedTextureKey = `focused:${anchor.focusedLabel}`;
-  const ambientTexture = getTextureEntry(textureCache, ambientTextureKey, () => createLabelTexture(anchor.ambientLabel, cfg));
-  const focusedTexture = getTextureEntry(textureCache, focusedTextureKey, () => createLabelTexture(anchor.focusedLabel, cfg));
-
   const labelPlane = new THREE.Mesh(
     sharedGeometry.labelPlaneGeometry,
     new THREE.MeshBasicMaterial({
       transparent: true,
       opacity: 0,
-      map: ambientTexture.texture,
+      map: null,                    // lazily assigned by applyLabelState on first promotion
       depthTest: false,
       depthWrite: false,
       toneMapped: false,
@@ -431,12 +426,11 @@ function createAnchorRecord(anchor, textureCache, cfg, sharedGeometry, gradientS
   labelPlane.visible = false;
 
   return {
-    ...anchor,
+    ...anchor,          // includes ambientLabel + focusedLabel
     anchorRing,
     anchorCore,
     labelPlane,
-    ambientTexture,
-    focusedTexture,
+    textureCache,       // shared Map; textures rasterized on demand, disposed via the cache (:751)
   };
 }
 
@@ -447,7 +441,9 @@ function applyLabelState(record, mode, cfg) {
     return;
   }
 
-  const textureEntry = mode === 'focused' ? record.focusedTexture : record.ambientTexture;
+  const label = mode === 'focused' ? record.focusedLabel : record.ambientLabel;
+  if (!label) { record.labelPlane.visible = false; record.labelPlane.material.opacity = 0; return; }
+  const textureEntry = getTextureEntry(record.textureCache, label, () => createLabelTexture(label, cfg));
   const nextOpacity = mode === 'focused' ? cfg.LABEL_FOCUSED_OPACITY : cfg.LABEL_AMBIENT_OPACITY;
   const nextHeight = mode === 'focused' ? cfg.LABEL_FOCUSED_HEIGHT : cfg.LABEL_AMBIENT_HEIGHT;
   const nextWidth = Math.min(textureEntry.aspect * nextHeight, cfg.LABEL_MAX_WIDTH);
