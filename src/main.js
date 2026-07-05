@@ -1403,12 +1403,10 @@ function enterInspectMode() {
   startInspectTransition(target.pose, INSPECT_PHASE.ENTERING);
   setViewMode(VIEW_MODE.INSPECT);
   clearRuntimeTargeting();
-  // Resume narration at current playhead (clearRuntimeTargeting paused it via deactivateNarration)
-  audioEngine.activateNarration(inspectState.letterId);
-  // Set full volume — per-frame distance-based updates are skipped during inspect
-  if (audioEngine.currentNarration) {
-    audioEngine.currentNarration.volume(AUDIO.NARRATION_VOLUME);
-  }
+  // Resume the inspected letter's narration at full volume via the engine API.
+  // (Do NOT touch audioEngine.currentNarration here — activateNarration is async/lazy-loading and the
+  //  current narration may still be the outgoing one, which under the I3 fade is mid-fade.)
+  void audioEngine.activateNarration(inspectState.letterId, { fullVolume: true });
   diag.log('inspect', `enter id=${inspectState.letterId} side=${inspectState.side}`);
   return true;
 }
