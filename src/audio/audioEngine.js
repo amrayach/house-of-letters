@@ -445,7 +445,7 @@ export class AudioEngine {
     this.resumeNarrationOnNextResume = Boolean(this.currentNarration && this.currentNarration.playing());
 
     if (this.resumeNarrationOnNextResume) {
-      this.currentNarration.pause();
+      this._fadeOutAndPause(this.currentNarration);   // fade to 0 then pause (de-click)
     }
 
     // Pause polyphonic narrations
@@ -471,9 +471,15 @@ export class AudioEngine {
       this.backgroundTheme.play();
     }
 
-    // Resume current narration
-    if (this.currentNarration && this.resumeNarrationOnNextResume && !this.currentNarration.playing()) {
-      this.currentNarration.play();
+    // Resume current narration — cancel any in-flight pause fade the way activateNarration does (N5):
+    // touch volume to a non-zero floor so Howler _stopFade fires and the hardened finish() DECLINES to
+    // pause (volume > 0.001); clear the fade bookkeeping; then resume if paused. It comes back silent
+    // (~0) and the per-frame setNarrationVolume attack-limiter ramps it up smoothly (de-click).
+    if (this.currentNarration && this.resumeNarrationOnNextResume) {
+      const howl = this.currentNarration;
+      if (this._fadingOut.has(howl)) howl.volume(Math.max(howl.volume(), 0.01));
+      this._fadingOut.delete(howl);
+      if (!howl.playing()) howl.play();
     }
 
     const resumedNarration = this.resumeNarrationOnNextResume;
