@@ -67,7 +67,7 @@
 - Re-coupling audio activation with visual targeting (viewDot/facingDot) — narration activation must remain distance-only via `audioActiveId`/`audioActiveIds`
 - In polyphonic mode, using a single monotonic request token for stale-load prevention — each narration uses `activeNarrations.has(letterId)` membership check after async
 - In polyphonic mode, ducking theme based on sum of all narration volumes instead of `Math.max` — sum causes over-ducking with multiple narrations
-- Letting per-frame `setNarrationVolume` run during non-IDLE inspect phases — inspect sets full volume via `restartNarration`, per-frame updates must not override it
+- Letting per-frame `setNarrationVolume` run during non-IDLE inspect phases — inspect sets full volume via `activateNarration(letterId, { fullVolume: true })`, per-frame updates must not override it
 - Letting candidate scoring drift back to raw root-center distance and ignoring readable-side metadata
 - Letting focus scoring depend on display-mesh raycasting instead of the dedicated side colliders
 - Regressing readable-side normals back to averaged display-mesh normals when `Front` and `Back` node transforms are present

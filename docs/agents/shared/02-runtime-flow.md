@@ -254,10 +254,9 @@
   - narration volume scales with distance per frame (`AUDIO.NARRATION_FADE_NEAR` to `AUDIO.NARRATION_FADE_FAR` with configurable exponent)
   - `activateNarration(letterId)` resumes from the paused position for the same letter, or pauses the old narration and starts fresh for a different letter
   - `deactivateNarration()` pauses (not stops) the narration, preserving the playhead position for later resume
-  - `restartNarration(letterId)` always seeks to the beginning and plays at full volume — available in audioEngine but not currently called by main.js
   - inspect mode does not interrupt narration — on inspect entry, narration continues from the current playhead at full volume; on exit, per-frame distance-based volume updates resume smoothly
   - `setNarrationVolume(volume)` is called per-frame from `main.js` using `currentTargetState.audioActiveId` (not visual `activeId`) and auto-pauses when volume reaches 0, auto-resumes when volume rises above 0
-  - per-frame volume updates are skipped during inspect mode (`inspectState.phase !== IDLE`) — inspect entry sets full volume explicitly via `currentNarration.volume(AUDIO.NARRATION_VOLUME)`
+  - per-frame volume updates are skipped during inspect mode (`inspectState.phase !== IDLE`) — inspect entry sets full volume explicitly via `activateNarration(letterId, { fullVolume: true })`
   - `isGloballyPaused` prevents per-frame volume updates from interfering with the global pause/visibility system
   - narration `onend` restores theme volume and clears current narration state
 - Theme mixing:
