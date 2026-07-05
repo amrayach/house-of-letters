@@ -22,6 +22,8 @@ export class AudioEngine {
     this._themeRestored = false;
     this.activeNarrations = new Set();
     this.pausedActiveNarrations = new Set();
+    this._fadingOut = new Map();     // howl -> fade-out promise (idempotency + serialization)
+    this._fadeOutPromise = Promise.resolve();  // resolves when the current outgoing fade+pause finishes
   }
 
   init() {
@@ -131,10 +133,34 @@ export class AudioEngine {
     if (this.themeB) this.themeB.volume(this.themeBBaseVolume * duckScale);
   }
 
+  _fadeOutAndPause(howl) {
+    if (!howl || !howl.playing()) return Promise.resolve();
+    if (this._fadingOut.has(howl)) return this._fadingOut.get(howl);   // already fading → same promise
+    const from = howl.volume();
+    if (from <= 0.001) { howl.pause(); return Promise.resolve(); }
+    const p = new Promise((resolve) => {
+      let settled = false;
+      let timer = null;
+      const finish = () => {
+        if (settled) return;                 // one-shot: both 'fade' and the safety timeout call this (N5)
+        settled = true;
+        clearTimeout(timer);
+        howl.off('fade', finish);            // don't leak onto this howl's NEXT fade cycle (N5)
+        this._fadingOut.delete(howl);
+        if (howl.playing() && howl.volume() <= 0.001) howl.pause();
+        resolve();
+      };
+      howl.once('fade', finish);
+      timer = setTimeout(finish, AUDIO.NARRATION_FADE_OUT_MS + 40);   // safety net if 'fade' is dropped
+    });
+    this._fadingOut.set(howl, p);
+    howl.fade(from, 0, AUDIO.NARRATION_FADE_OUT_MS);
+    return p;
+  }
+
   pauseCurrentNarration() {
-    if (this.currentNarration && this.currentNarration.playing()) {
-      this.currentNarration.pause();
-    }
+    this._fadeOutPromise = this._fadeOutAndPause(this.currentNarration);
+    return this._fadeOutPromise;
   }
 
   countPlayingNarrations() {
