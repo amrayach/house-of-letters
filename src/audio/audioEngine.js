@@ -288,60 +288,6 @@ export class AudioEngine {
     diag.log('audio', `activateNarration id=${letterId} PLAYING playing#=${this.countPlayingNarrations()}`);
   }
 
-  async restartNarration(letterId) {
-    const requestToken = ++this.activeNarrationRequestToken;
-
-    // Pause any different narration
-    if (this.currentNarrationLetterId !== letterId) {
-      this.pauseCurrentNarration();
-    }
-
-    // Lazy load if not already loaded
-    if (!this.narrations[letterId] && this.narrationUrls[letterId]) {
-      console.log(`Lazy loading narration for letter ${letterId}...`);
-      try {
-        await this.loadNarration(letterId, this.narrationUrls[letterId]);
-      } catch (error) {
-        console.error(`Failed to load narration for letter ${letterId}:`, error);
-        return;
-      }
-    }
-
-    const narration = this.narrations[letterId];
-    if (!narration) {
-      console.warn(`Narration for letter ${letterId} not loaded (and no URL registered)`);
-      return;
-    }
-
-    if (narration.state() === 'loading') {
-      console.log(`Waiting for narration ${letterId} to finish loading...`);
-      try {
-        await new Promise((resolve, reject) => {
-          narration.once('load', resolve);
-          narration.once('loaderror', reject);
-        });
-      } catch (error) {
-        console.error(`Failed while waiting for narration ${letterId}:`, error);
-        return;
-      }
-    }
-
-    if (requestToken !== this.activeNarrationRequestToken) {
-      console.log(`Ignoring stale narration restart for letter ${letterId}`);
-      return;
-    }
-
-    this.duckBackgroundTheme();
-
-    narration.stop();
-    narration.play();
-    narration.volume(AUDIO.NARRATION_VOLUME);
-    this.currentNarration = narration;
-    this.currentNarrationLetterId = letterId;
-    this.resumeNarrationOnNextResume = false;
-    diag.log('audio', `restartNarration id=${letterId} PLAYING`);
-  }
-
   deactivateNarration() {
     diag.log('audio', `deactivateNarration currId=${this.currentNarrationLetterId} playing=${this.currentNarration?.playing() ?? 'none'}`);
     this.activeNarrationRequestToken += 1;
